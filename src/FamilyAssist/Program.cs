@@ -92,7 +92,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 // Localization: read language from DB (AppSettings.Language), fallback to "en"
-var supportedCultures = new[] { "en", "de" };
+var supportedCultures = new[] { "en", "de", "fr" };
 app.UseRequestLocalization(opts =>
 {
     opts.SetDefaultCulture(AppSettingsCultureProvider.DefaultLanguage);

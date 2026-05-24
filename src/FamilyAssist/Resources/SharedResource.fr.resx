@@ -1,0 +1,436 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute name="space" use="optional" ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- ═══ Common ═══ -->
+  <data name="Common.Save"><value>Enregistrer</value></data>
+  <data name="Common.Cancel"><value>Annuler</value></data>
+  <data name="Common.Create"><value>Créer</value></data>
+  <data name="Common.Delete"><value>Supprimer</value></data>
+  <data name="Common.Confirm"><value>Confirmer</value></data>
+  <data name="Common.Close"><value>Fermer</value></data>
+  <data name="Common.Apply"><value>Appliquer</value></data>
+  <data name="Common.Submit"><value>Envoyer</value></data>
+  <data name="Common.Refresh"><value>Actualiser</value></data>
+  <data name="Common.Remove"><value>Retirer</value></data>
+  <data name="Common.Clear"><value>Effacer</value></data>
+  <data name="Common.Load"><value>Charger</value></data>
+  <data name="Common.Loading"><value>Chargement...</value></data>
+  <data name="Common.Search"><value>Rechercher...</value></data>
+  <data name="Common.All"><value>Tous</value></data>
+  <data name="Common.Active"><value>Actif</value></data>
+  <data name="Common.Inactive"><value>Inactif</value></data>
+  <data name="Common.Paused"><value>En pause</value></data>
+  <data name="Common.Optional"><value>optionnel</value></data>
+  <data name="Common.Name"><value>Nom</value></data>
+  <data name="Common.Description"><value>Description</value></data>
+  <data name="Common.Status"><value>Statut</value></data>
+  <data name="Common.Actions"><value>Actions</value></data>
+  <data name="Common.Person"><value>Personne</value></data>
+  <data name="Common.Filter"><value>Filtre</value></data>
+  <data name="Common.Done"><value>Terminé</value></data>
+  <data name="Common.Type"><value>Type</value></data>
+  <data name="Common.Date"><value>Date</value></data>
+  <data name="Common.Time"><value>Heure</value></data>
+  <data name="Common.Days"><value>Jours</value></data>
+  <data name="Common.Task"><value>Tâche</value></data>
+  <data name="Common.Role"><value>Rôle</value></data>
+  <data name="Common.Credits"><value>Crédits</value></data>
+  <data name="Common.SelectedCount"><value>{0} sélectionné(s)</value></data>
+  <data name="Common.InactivePrefix"><value>[inactif] {0}</value></data>
+  <data name="Common.ConnectionError"><value>Erreur de connexion : {0}</value></data>
+  <data name="Common.Snackbar.Error"><value>Erreur : {0}</value></data>
+  <data name="Common.Date.Today"><value>Aujourd'hui</value></data>
+  <data name="Common.Date.Yesterday"><value>Hier</value></data>
+  <data name="Common.Date.Tomorrow"><value>Demain</value></data>
+
+  <!-- ═══ Roles ═══ -->
+  <data name="Role.Admin"><value>Admin</value></data>
+  <data name="Role.Parent"><value>Parent</value></data>
+  <data name="Role.Child"><value>Enfant</value></data>
+
+  <!-- ═══ Validation ═══ -->
+  <data name="Validation.NameRequired"><value>Le nom est requis</value></data>
+  <data name="Validation.EntityIdRequired"><value>L'ID d'entité est requis</value></data>
+  <data name="Validation.StateRequired"><value>L'état est requis</value></data>
+  <data name="Validation.ChoreRequired"><value>Sélectionne une corvée</value></data>
+
+  <!-- ═══ App ═══ -->
+  <data name="App.Name"><value>FamilyAssist</value></data>
+
+  <!-- ═══ Nav ═══ -->
+  <data name="Nav.Dashboard"><value>Tableau de bord</value></data>
+  <data name="Nav.Tasks"><value>Tâches</value></data>
+  <data name="Nav.Chores"><value>Corvées</value></data>
+  <data name="Nav.InternetRules"><value>Règles Internet</value></data>
+  <data name="Nav.Admin"><value>Admin</value></data>
+  <data name="Nav.Dev"><value>Dev</value></data>
+  <data name="Nav.Settings"><value>Paramètres</value></data>
+
+  <!-- ═══ PageTitles ═══ -->
+  <data name="PageTitle.Dashboard"><value>Tableau de bord - FamilyAssist</value></data>
+  <data name="PageTitle.Tasks"><value>Tâches - FamilyAssist</value></data>
+  <data name="PageTitle.Chores"><value>Corvées - FamilyAssist</value></data>
+  <data name="PageTitle.Settings"><value>Paramètres - FamilyAssist</value></data>
+  <data name="PageTitle.Admin"><value>Admin - FamilyAssist</value></data>
+  <data name="PageTitle.Dev"><value>Dev - FamilyAssist</value></data>
+  <data name="PageTitle.Setup"><value>Configuration - FamilyAssist</value></data>
+
+  <!-- ═══ Home / Dashboard ═══ -->
+  <data name="Home.Title"><value>Tableau de bord</value></data>
+  <data name="Home.NoConnection"><value>Pas de connexion à Home Assistant. Vérifie la configuration.</value></data>
+  <data name="Home.NoPersons"><value>Aucune personne configurée.</value></data>
+  <data name="Home.SetupLink"><value>Configurer maintenant</value></data>
+  <data name="Home.Stats.Open"><value>En cours</value></data>
+  <data name="Home.Stats.CompletedThisWeek"><value>Terminées (semaine)</value></data>
+  <data name="Home.Stats.MissedThisWeek"><value>Manquées (semaine)</value></data>
+  <data name="Home.State.Home"><value>À la maison</value></data>
+  <data name="Home.State.Away"><value>Absent</value></data>
+
+  <!-- ═══ Setup ═══ -->
+  <data name="Setup.Welcome"><value>Bienvenue dans FamilyAssist !</value></data>
+  <data name="Setup.Subtitle"><value>Configure ton système familial en quelques étapes.</value></data>
+  <data name="Setup.HaConnection"><value>Connexion Home Assistant</value></data>
+  <data name="Setup.Connected"><value>Connecté • Token détecté</value></data>
+  <data name="Setup.NoConnection"><value>Pas de connexion. Vérifie la configuration de l'add-on et recharge la page.</value></data>
+  <data name="Setup.ImportPersons"><value>Importer les personnes</value></data>
+  <data name="Setup.HaRequired"><value>La connexion HA doit d'abord être établie.</value></data>
+  <data name="Setup.NoHaPersons"><value>Aucune personne trouvée dans Home Assistant.</value></data>
+  <data name="Setup.SelectPersons"><value>Sélectionne les personnes que FamilyAssist doit gérer :</value></data>
+  <data name="Setup.SelectButton"><value>Sélectionner les personnes</value></data>
+  <data name="Setup.ImportButton"><value>Importer {0}</value></data>
+  <data name="Setup.AssignRoles"><value>Attribuer les rôles</value></data>
+  <data name="Setup.AdminRequired"><value>Au moins une personne doit être Admin.</value></data>
+  <data name="Setup.AdminWarning"><value>Attribue le rôle « Admin » à au moins une personne.</value></data>
+  <data name="Setup.FirstChore"><value>Créer la première corvée</value></data>
+  <data name="Setup.FirstChoreHint"><value>Crée une corvée avec un planning — ou fais-le plus tard sous « Corvées ».</value></data>
+  <data name="Setup.ChoreCreated"><value>Corvée créée ! Tu peux en créer d'autres sous « Corvées ».</value></data>
+  <data name="Setup.CreateChore"><value>Créer une corvée</value></data>
+  <data name="Setup.ToDashboard"><value>Aller au tableau de bord</value></data>
+
+  <!-- ═══ Tasks ═══ -->
+  <data name="Tasks.Title"><value>Tâches</value></data>
+  <data name="Tasks.PermanentHeader"><value>Toujours disponibles ({0})</value></data>
+  <data name="Tasks.Filter.Today"><value>Aujourd'hui</value></data>
+  <data name="Tasks.Filter.Open"><value>En cours</value></data>
+  <data name="Tasks.Filter.Permanent"><value>Permanent (détail)</value></data>
+  <data name="Tasks.Filter.Pending"><value>En attente de confirmation</value></data>
+  <data name="Tasks.Filter.ThisWeek"><value>Cette semaine</value></data>
+  <data name="Tasks.Filter.Overdue"><value>En retard</value></data>
+  <data name="Tasks.Generate"><value>Générer les tâches</value></data>
+  <data name="Tasks.NoResults"><value>Aucune tâche pour le filtre sélectionné.</value></data>
+  <data name="Tasks.CommentsTooltip"><value>Commentaires / Photos</value></data>
+  <data name="Tasks.Claim"><value>Prendre</value></data>
+  <data name="Tasks.Confirm"><value>Confirmer</value></data>
+  <data name="Tasks.NoUser"><value>Aucun utilisateur connecté. Sélectionne une personne sous Dev.</value></data>
+  <data name="Tasks.LoggedInAs"><value>Connecté en tant que : {0} ({1})</value></data>
+  <data name="Tasks.AdHocTooltip"><value>Tâche ponctuelle</value></data>
+  <data name="Tasks.Snackbar.Generated"><value>{0} nouvelles tâches générées.</value></data>
+  <data name="Tasks.Snackbar.AdHocCreated"><value>Tâche ponctuelle créée !</value></data>
+  <data name="Tasks.Snackbar.Claimed"><value>Tâche prise !</value></data>
+  <data name="Tasks.Snackbar.Completed"><value>Terminé ! +{0} crédits pour {1}</value></data>
+  <data name="Tasks.Snackbar.PendingConfirmation"><value>Terminé ! En attente de confirmation parentale.</value></data>
+  <data name="Tasks.Snackbar.Confirmed"><value>Confirmé ! +{0} crédits pour {1}</value></data>
+  <data name="Tasks.Snackbar.Cancelled"><value>Tâche « {0} » annulée.</value></data>
+  <data name="Tasks.CreditReason.Completed"><value>Terminée : {0}</value></data>
+  <data name="Tasks.CreditReason.Confirmed"><value>Confirmée : {0}</value></data>
+  <data name="Tasks.Assignment.CompletedAt"><value>Terminée par {0} — {1}</value></data>
+  <data name="Tasks.Assignment.Completed"><value>Terminée par {0}</value></data>
+  <data name="Tasks.Assignment.PendingAt"><value>Terminée par {0} — {1} (non confirmée)</value></data>
+  <data name="Tasks.Assignment.Pending"><value>Terminée par {0} (non confirmée)</value></data>
+  <data name="Tasks.Assignment.Claimed"><value>Prise par {0}</value></data>
+  <data name="Tasks.Assignment.Assigned"><value>Assignée : {0}</value></data>
+  <data name="Tasks.Assignment.OpenForAll"><value>Ouverte à tous</value></data>
+
+  <!-- ═══ Chores ═══ -->
+  <data name="Chores.Title"><value>Corvées</value></data>
+  <data name="Chores.Empty"><value>Aucune corvée créée. Crée la première !</value></data>
+  <data name="Chores.Filter.Inactive"><value>Inactives</value></data>
+  <data name="Chores.Filter.NoSchedule"><value>Sans planning</value></data>
+  <data name="Chores.Column.Schedule"><value>Planning</value></data>
+  <data name="Chores.CreateTooltip"><value>Nouvelle corvée</value></data>
+  <data name="Chores.NoSchedule"><value>Sans planning</value></data>
+
+  <!-- ═══ Schedule ═══ -->
+  <data name="Schedule.Daily"><value>Quotidien</value></data>
+  <data name="Schedule.Weekdays"><value>Lun-Ven</value></data>
+  <data name="Schedule.Weekend"><value>Sam+Dim</value></data>
+  <data name="Schedule.XTimesPerWeek"><value>{0}x/sem</value></data>
+  <data name="Schedule.Weekly"><value>Hebdomadaire</value></data>
+  <data name="Schedule.Monthly"><value>Mensuel</value></data>
+  <data name="Schedule.EveryXMonths"><value>Tous les {0} mois</value></data>
+  <data name="Schedule.EveryXWeeks"><value>Toutes les {0} sem</value></data>
+  <data name="Schedule.Permanent"><value>Permanent</value></data>
+  <data name="Schedule.NoDays"><value>Aucun jour</value></data>
+  <data name="Schedule.SpecificDays"><value>Jours spécifiques</value></data>
+  <data name="Schedule.XTimesPerWeekLabel"><value>X fois par semaine</value></data>
+  <data name="Schedule.WeeklyLabel"><value>Hebdomadaire</value></data>
+  <data name="Schedule.MonthlyLabel"><value>Mensuel</value></data>
+  <data name="Schedule.EveryXMonthsLabel"><value>Tous les X mois</value></data>
+  <data name="Schedule.EveryXWeeksLabel"><value>Toutes les X semaines</value></data>
+  <data name="Schedule.PermanentLabel"><value>Permanent (toujours disponible)</value></data>
+
+  <!-- ═══ DayShort ═══ -->
+  <data name="DayShort.Monday"><value>Lun</value></data>
+  <data name="DayShort.Tuesday"><value>Mar</value></data>
+  <data name="DayShort.Wednesday"><value>Mer</value></data>
+  <data name="DayShort.Thursday"><value>Jeu</value></data>
+  <data name="DayShort.Friday"><value>Ven</value></data>
+  <data name="DayShort.Saturday"><value>Sam</value></data>
+  <data name="DayShort.Sunday"><value>Dim</value></data>
+
+  <!-- ═══ Settings ═══ -->
+  <data name="Settings.Title"><value>Paramètres</value></data>
+  <data name="Settings.Tab.Persons"><value>Personnes</value></data>
+  <data name="Settings.Tab.Icons"><value>Icônes</value></data>
+  <data name="Settings.Tab.Storage"><value>Stockage</value></data>
+  <data name="Settings.Tab.Trigger"><value>Déclencheurs</value></data>
+  <data name="Settings.Tab.System"><value>Système</value></data>
+  <data name="Settings.Persons.Managed"><value>Personnes gérées</value></data>
+  <data name="Settings.Persons.Links"><value>Liens</value></data>
+  <data name="Settings.Persons.EditLinks"><value>Modifier les liens</value></data>
+  <data name="Settings.Persons.Activate"><value>Activer</value></data>
+  <data name="Settings.Persons.Pause"><value>Mettre en pause</value></data>
+  <data name="Settings.Persons.Available"><value>Personnes HA disponibles</value></data>
+  <data name="Settings.Persons.ImportHint"><value>Clique sur une personne pour l'ajouter au système.</value></data>
+  <data name="Settings.Persons.AllImported"><value>Toutes les personnes HA sont déjà dans le système.</value></data>
+  <data name="Settings.Persons.LinkTodo"><value>1 Todo</value></data>
+  <data name="Settings.Persons.LinkDevices"><value>{0} appareil(s)</value></data>
+  <data name="Settings.Icons.Title"><value>Génération d'icônes pour les corvées</value></data>
+  <data name="Settings.Icons.Mode"><value>Mode</value></data>
+  <data name="Settings.Icons.Mode.Keyword"><value>Correspondance par mots-clés (hors ligne, rapide)</value></data>
+  <data name="Settings.Icons.Mode.OllamaMaterial"><value>Ollama → Material Icons</value></data>
+  <data name="Settings.Icons.Mode.OllamaEmoji"><value>Ollama → Emoji</value></data>
+  <data name="Settings.Icons.OllamaUrl"><value>URL Ollama</value></data>
+  <data name="Settings.Icons.Model"><value>Modèle</value></data>
+  <data name="Settings.Icons.ModelManual"><value>Modèle (manuel)</value></data>
+  <data name="Settings.Icons.NoModels"><value>Aucun modèle trouvé – vérifie l'URL ou saisis manuellement</value></data>
+  <data name="Settings.Icons.TestConnection"><value>Tester la connexion</value></data>
+  <data name="Settings.Storage.Title"><value>Rétention des photos</value></data>
+  <data name="Settings.Storage.Description"><value>Les photos dans les commentaires sont automatiquement supprimées X jours après la fin de la tâche. Les commentaires texte sont conservés.</value></data>
+  <data name="Settings.Storage.RetentionLabel"><value>Durée de rétention (jours)</value></data>
+  <data name="Settings.Storage.RetentionHelper"><value>Min. 7, max. 365 jours après la fin de la tâche</value></data>
+  <data name="Settings.Trigger.Title"><value>Déclencheurs d'événements</value></data>
+  <data name="Settings.Trigger.Description"><value>Quand un capteur HA atteint un état spécifique, une tâche est automatiquement créée.</value></data>
+  <data name="Settings.Trigger.State"><value>État</value></data>
+  <data name="Settings.Trigger.Debounce"><value>Anti-rebond</value></data>
+  <data name="Settings.Trigger.None"><value>Aucun déclencheur configuré.</value></data>
+  <data name="Settings.Trigger.Create"><value>Nouveau déclencheur</value></data>
+  <data name="Settings.System.HaConnection"><value>Connexion Home Assistant</value></data>
+  <data name="Settings.System.Reachable"><value>Accessible ({0}ms)</value></data>
+  <data name="Settings.System.Unreachable"><value>Inaccessible</value></data>
+  <data name="Settings.System.WsConnected"><value>Connecté</value></data>
+  <data name="Settings.System.WsDisconnected"><value>Déconnecté</value></data>
+  <data name="Settings.System.Testing"><value>Test en cours...</value></data>
+  <data name="Settings.System.EventLog"><value>Journal d'événements</value></data>
+  <data name="Settings.System.EventLogLive"><value>En direct</value></data>
+  <data name="Settings.System.EventLogOff"><value>Désactivé</value></data>
+  <data name="Settings.System.EventLogFilter"><value>Filtre (Entité)</value></data>
+  <data name="Settings.System.EventLogFilterPlaceholder"><value>ex. sensor. ou light.salon</value></data>
+  <data name="Settings.System.EntityInfo"><value>Entité / Info</value></data>
+  <data name="Settings.System.Old"><value>Ancien</value></data>
+  <data name="Settings.System.New"><value>Nouveau</value></data>
+  <data name="Settings.System.WaitingForEvents"><value>En attente d'événements... (WebSocket doit être connecté)</value></data>
+  <data name="Settings.System.NoEventsForFilter"><value>Aucun événement pour le filtre « {0} »</value></data>
+  <data name="Settings.System.TokenEmpty"><value>(vide)</value></data>
+  <data name="Settings.Snackbar.IconsSaved"><value>Paramètres d'icônes enregistrés.</value></data>
+  <data name="Settings.Snackbar.OllamaConnected"><value>Connecté ! {0} modèles disponibles : {1}</value></data>
+  <data name="Settings.Snackbar.OllamaFailed"><value>Pas de connexion à {0}</value></data>
+  <data name="Settings.Snackbar.RetentionSaved"><value>Durée de rétention enregistrée.</value></data>
+  <data name="Settings.Snackbar.TriggerCreated"><value>Déclencheur « {0} » créé.</value></data>
+  <data name="Settings.Snackbar.TriggerSaved"><value>Déclencheur « {0} » enregistré.</value></data>
+  <data name="Settings.Snackbar.TriggerDeleted"><value>Déclencheur « {0} » supprimé.</value></data>
+  <data name="Settings.Snackbar.RestOk"><value>API REST accessible ({0}ms)</value></data>
+  <data name="Settings.Snackbar.RestFailed"><value>API REST inaccessible</value></data>
+  <data name="Settings.Snackbar.EventMonitorFailed"><value>Le moniteur d'événements n'a pas pu être démarré : {0}</value></data>
+  <data name="Settings.System.Language"><value>Langue</value></data>
+  <data name="Settings.System.LanguageHelper"><value>Langue de l'interface. Un rechargement de la page est nécessaire.</value></data>
+  <data name="Settings.System.PointsUnitName"><value>Nom de l'unité</value></data>
+  <data name="Settings.System.PointsUnitNameHelper"><value>Nom de l'unité de récompense (ex. Crédits, Étoiles, Points)</value></data>
+  <data name="Settings.Snackbar.LanguageSaved"><value>Langue enregistrée. Recharge la page.</value></data>
+  <data name="Settings.Snackbar.PointsUnitSaved"><value>Nom de l'unité enregistré.</value></data>
+
+  <!-- ═══ Admin ═══ -->
+  <data name="Admin.Title"><value>Admin — Corrections de solde</value></data>
+  <data name="Admin.Tab.Correction"><value>Correction</value></data>
+  <data name="Admin.Tab.Log"><value>Journal des transactions</value></data>
+  <data name="Admin.Tab.Reset"><value>Réinitialiser les crédits</value></data>
+  <data name="Admin.AmountLabel"><value>Montant (positif = crédit, négatif = débit)</value></data>
+  <data name="Admin.ReasonLabel"><value>Motif</value></data>
+  <data name="Admin.ReasonPlaceholder"><value>ex. correction lave-vaisselle comptée deux fois</value></data>
+  <data name="Admin.Submit"><value>Enregistrer</value></data>
+  <data name="Admin.NoTransactions"><value>Aucune transaction trouvée.</value></data>
+  <data name="Admin.Amount"><value>Montant</value></data>
+  <data name="Admin.ResetWarning"><value>Fixe le solde d'une personne à une valeur spécifique. Crée une entrée de correction.</value></data>
+  <data name="Admin.NewBalance"><value>Nouveau solde de crédits</value></data>
+  <data name="Admin.ResetButton"><value>Fixer à {0}</value></data>
+  <data name="Admin.Type.ChoreCompleted"><value>Corvée terminée</value></data>
+  <data name="Admin.Type.Bonus"><value>Bonus</value></data>
+  <data name="Admin.Type.Penalty"><value>Pénalité</value></data>
+  <data name="Admin.Type.Internet"><value>Internet</value></data>
+  <data name="Admin.Snackbar.Booked"><value>{0} crédits enregistrés pour {1}.</value></data>
+  <data name="Admin.Snackbar.NoChange"><value>Aucune modification nécessaire.</value></data>
+  <data name="Admin.ResetReason"><value>Réinitialisation admin : crédits fixés à {0} (était : {1})</value></data>
+  <data name="Admin.Snackbar.Reset"><value>Crédits de {0} fixés à {1}.</value></data>
+
+  <!-- ═══ Dev ═══ -->
+  <data name="Dev.Title"><value>Outils développeur</value></data>
+  <data name="Dev.UserContext"><value>Contexte utilisateur</value></data>
+  <data name="Dev.UserContextHint"><value>Simule l'utilisateur HA connecté. En mode add-on, c'est lu automatiquement depuis l'en-tête Ingress.</value></data>
+  <data name="Dev.ActivePerson"><value>Personne active</value></data>
+  <data name="Dev.LoggedIn"><value>Connecté en tant que : {0} (Rôle : {1}, Crédits : {2})</value></data>
+  <data name="Dev.CanAct"><value>Peut agir</value></data>
+  <data name="Dev.CannotAct"><value>Ne peut pas agir</value></data>
+  <data name="Dev.ParentOrAdmin"><value>Parent/Admin</value></data>
+  <data name="Dev.NoParentAccess"><value>Pas d'accès parent</value></data>
+  <data name="Dev.NoAdmin"><value>Pas admin</value></data>
+  <data name="Dev.GuestMode"><value>Aucun utilisateur sélectionné — mode invité (lecture seule).</value></data>
+  <data name="Dev.Info"><value>Info</value></data>
+  <data name="Dev.InfoMode"><value>Mode</value></data>
+  <data name="Dev.InfoDbPath"><value>Chemin BDD</value></data>
+  <data name="Dev.InfoPersons"><value>Personnes</value></data>
+  <data name="Dev.Snackbar.Cleared"><value>Contexte utilisateur effacé — mode invité.</value></data>
+  <data name="Dev.Snackbar.Set"><value>Contexte utilisateur : {0}</value></data>
+
+  <!-- ═══ Dialogs ═══ -->
+  <data name="Dialog.ChoreCreate.Title"><value>Nouvelle corvée</value></data>
+  <data name="Dialog.ChoreEdit.Title"><value>Modifier la corvée</value></data>
+  <data name="Dialog.Chore.CreditsLabel"><value>Crédits (récompense)</value></data>
+  <data name="Dialog.Chore.IconLabel"><value>Icône :</value></data>
+  <data name="Dialog.Chore.NoIcon"><value>Pas d'icône</value></data>
+  <data name="Dialog.Chore.Generate"><value>Générer</value></data>
+  <data name="Dialog.Chore.SelectIcon"><value>Choisir</value></data>
+  <data name="Dialog.Chore.UnknownIcon"><value>(inconnu)</value></data>
+  <data name="Dialog.Schedule.Title"><value>Planning : {0}</value></data>
+  <data name="Dialog.Schedule.Description"><value>Les plannings définissent quand et à quelle fréquence « {0} » doit être accomplie.</value></data>
+  <data name="Dialog.Schedule.Rhythm"><value>Rythme</value></data>
+  <data name="Dialog.Schedule.DefaultPerson"><value>Personne par défaut</value></data>
+  <data name="Dialog.Schedule.OpenPlaceholder"><value>Ouvert</value></data>
+  <data name="Dialog.Schedule.TimesPerWeek"><value>Fois par semaine</value></data>
+  <data name="Dialog.Schedule.IntervalMonths"><value>Tous les X mois</value></data>
+  <data name="Dialog.Schedule.IntervalMonthsHelper"><value>ex. 3 = tous les 3 mois</value></data>
+  <data name="Dialog.Schedule.IntervalWeeks"><value>Toutes les X semaines</value></data>
+  <data name="Dialog.Schedule.IntervalWeeksHelper"><value>ex. 2 = toutes les 2 semaines</value></data>
+  <data name="Dialog.Schedule.TimesPerDay"><value>Répétitions par jour (ex. matin + soir = 2)</value></data>
+  <data name="Dialog.Schedule.Add"><value>Ajouter un planning</value></data>
+  <data name="Dialog.Trigger.TitleNew"><value>Nouveau déclencheur</value></data>
+  <data name="Dialog.Trigger.TitleEdit"><value>Modifier le déclencheur</value></data>
+  <data name="Dialog.Trigger.EntityId"><value>ID d'entité</value></data>
+  <data name="Dialog.Trigger.NamePlaceholder"><value>ex. Lave-vaisselle terminé</value></data>
+  <data name="Dialog.Trigger.State"><value>État déclencheur</value></data>
+  <data name="Dialog.Trigger.StatePlaceholder"><value>ex. on, done, open</value></data>
+  <data name="Dialog.Trigger.StateHelper"><value>État auquel la tâche est créée</value></data>
+  <data name="Dialog.Trigger.Debounce"><value>Anti-rebond (minutes)</value></data>
+  <data name="Dialog.Trigger.DebounceHelper"><value>Intervalle minimum entre deux déclenchements (0 = pas d'anti-rebond)</value></data>
+  <data name="Dialog.PersonEntity.Title"><value>Liens : {0}</value></data>
+  <data name="Dialog.PersonEntity.Description"><value>Lie des entités Home Assistant à cette personne.</value></data>
+  <data name="Dialog.PersonEntity.TodoList"><value>Liste de tâches</value></data>
+  <data name="Dialog.PersonEntity.TodoHint"><value>Les tâches sont synchronisées avec cette liste HA.</value></data>
+  <data name="Dialog.PersonEntity.TodoLabel"><value>Entité todo</value></data>
+  <data name="Dialog.PersonEntity.Devices"><value>Appareils (contrôle Internet)</value></data>
+  <data name="Dialog.PersonEntity.DevicesHint"><value>Entités switch qui contrôlent l'accès Internet des appareils de cette personne.</value></data>
+  <data name="Dialog.PersonEntity.SwitchLabel"><value>Entités switch</value></data>
+  <data name="Dialog.AdHocTask.Title"><value>Créer une tâche ponctuelle</value></data>
+  <data name="Dialog.AdHoc.Description"><value>Crée une tâche unique (sans planning récurrent).</value></data>
+  <data name="Dialog.AdHoc.ForWhom"><value>Pour qui ?</value></data>
+  <data name="Dialog.AdHoc.ForMyself"><value>Pour moi (prendre directement)</value></data>
+  <data name="Dialog.AdHoc.ForSomeone"><value>Pour quelqu'un d'autre</value></data>
+  <data name="Dialog.AdHoc.OpenForAll"><value>Ouverte à tous</value></data>
+  <data name="Dialog.AdHoc.ExistingChore"><value>Corvée existante</value></data>
+  <data name="Dialog.AdHoc.Custom"><value>Tâche personnalisée</value></data>
+  <data name="Dialog.AdHoc.ChoreLabel"><value>Corvée</value></data>
+  <data name="Dialog.AdHoc.TaskName"><value>Nom de la tâche</value></data>
+  <data name="Dialog.AdHoc.AssignTo"><value>Assigner à</value></data>
+  <data name="Dialog.AdHoc.DueDate"><value>Date d'échéance (optionnel)</value></data>
+  <data name="Dialog.Comments.Title"><value>Commentaires — {0}</value></data>
+  <data name="Dialog.Comments.Empty"><value>Pas encore de commentaires. Écris le premier !</value></data>
+  <data name="Dialog.Comments.Label"><value>Commentaire</value></data>
+  <data name="Dialog.Comments.Placeholder"><value>Écris un message...</value></data>
+  <data name="Dialog.Comments.Camera"><value>Appareil photo</value></data>
+  <data name="Dialog.Comments.Gallery"><value>Galerie</value></data>
+  <data name="Dialog.Comments.FileCount"><value>{0} image(s)</value></data>
+  <data name="Dialog.Comments.NoUser"><value>Aucun utilisateur sélectionné. Sélectionne un utilisateur sous /dev d'abord.</value></data>
+  <data name="Dialog.Comments.UploadError"><value>Erreur d'envoi : {0}</value></data>
+  <data name="Dialog.Comments.Snackbar.Posted"><value>Commentaire publié !</value></data>
+  <data name="Dialog.IconPicker.Title"><value>Choisir une icône</value></data>
+  <data name="Dialog.IconPicker.SearchLabel"><value>Rechercher...</value></data>
+  <data name="Dialog.IconPicker.Tab.Favorites"><value>★ Favoris</value></data>
+  <data name="Dialog.IconPicker.Tab.Material"><value>Material</value></data>
+  <data name="Dialog.IconPicker.Tab.Emoji"><value>Emoji</value></data>
+  <data name="Dialog.IconPicker.Tab.AI"><value>IA</value></data>
+  <data name="Dialog.IconPicker.ColorLabel"><value>Couleur (optionnel)</value></data>
+  <data name="Dialog.IconPicker.CollapseColor"><value>Réduire</value></data>
+  <data name="Dialog.IconPicker.OtherColor"><value>Autre couleur...</value></data>
+  <data name="Dialog.IconPicker.TypeAI"><value>Généré par IA (SVG)</value></data>
+  <data name="Dialog.IconPicker.TypeEmoji"><value>Emoji</value></data>
+  <data name="Dialog.IconPicker.TypeMaterial"><value>Material Icon</value></data>
+  <data name="Dialog.IconPicker.RecentlyUsed"><value>Utilisés récemment</value></data>
+  <data name="Dialog.IconPicker.HouseholdFavorites"><value>Favoris du foyer</value></data>
+  <data name="Dialog.IconPicker.AllCount"><value>Tous ({0})</value></data>
+  <data name="Dialog.IconPicker.SearchHint"><value>Astuce : utilise la recherche pour trouver des icônes plus vite !</value></data>
+  <data name="Dialog.IconPicker.SearchResults"><value>Résultats de recherche ({0})</value></data>
+  <data name="Dialog.IconPicker.MaterialResults"><value>Material Icons ({0} résultats)</value></data>
+  <data name="Dialog.IconPicker.EmojiResults"><value>Emojis ({0} résultats)</value></data>
+  <data name="Dialog.IconPicker.NoResults"><value>Aucun résultat pour « {0} »</value></data>
+  <data name="Dialog.IconPicker.AI.Description"><value>Décris l'icône souhaitée – l'IA générera un pictogramme SVG.</value></data>
+  <data name="Dialog.IconPicker.AI.Label"><value>Description</value></data>
+  <data name="Dialog.IconPicker.AI.Placeholder"><value>ex. voiture avec aspirateur, nourrir le chat, sortir les poubelles...</value></data>
+  <data name="Dialog.IconPicker.AI.Generating"><value>Génération en cours...</value></data>
+  <data name="Dialog.IconPicker.AI.Generate"><value>Générer l'icône</value></data>
+  <data name="Dialog.IconPicker.AI.Result"><value>Résultat :</value></data>
+  <data name="Dialog.IconPicker.AI.Retry"><value>Réessayer</value></data>
+  <data name="Dialog.IconPicker.AI.HidePrompt"><value>Masquer le prompt</value></data>
+  <data name="Dialog.IconPicker.AI.ShowPrompt"><value>Afficher le prompt</value></data>
+  <data name="Dialog.IconPicker.AI.NoSvg"><value>Aucun SVG valide reçu. Essaie une autre description ou vérifie la connexion Ollama.</value></data>
+  <data name="Dialog.IconPicker.AI.Timeout"><value>Délai dépassé (>3 min). {0}</value></data>
+  <data name="Dialog.IconPicker.AI.HintSmall"><value>Le modèle (≤4B) est trop petit pour la génération SVG. Essaie un modèle 7B+.</value></data>
+  <data name="Dialog.IconPicker.AI.HintMedium"><value>Essaie une description plus courte ou un modèle plus grand (13B+).</value></data>
+  <data name="Dialog.IconPicker.AI.HintLarge"><value>Essaie une description plus courte.</value></data>
+
+  <!-- ═══ MudBlazor internal ═══ -->
+  <data name="MudBlazor.MudDataGrid.is empty"><value>est vide</value></data>
+  <data name="MudBlazor.MudDataGrid.is not empty"><value>n'est pas vide</value></data>
+  <data name="MudBlazor.MudDataGrid.contains"><value>contient</value></data>
+  <data name="MudBlazor.MudDataGrid.not contains"><value>ne contient pas</value></data>
+  <data name="MudBlazor.MudDataGrid.equals"><value>est égal à</value></data>
+  <data name="MudBlazor.MudDataGrid.not equals"><value>n'est pas égal à</value></data>
+  <data name="MudBlazor.MudDataGrid.starts with"><value>commence par</value></data>
+  <data name="MudBlazor.MudDataGrid.ends with"><value>se termine par</value></data>
+  <data name="MudBlazor.MudDataGrid.&gt;"><value>supérieur à</value></data>
+  <data name="MudBlazor.MudDataGrid.&gt;="><value>supérieur ou égal à</value></data>
+  <data name="MudBlazor.MudDataGrid.&lt;"><value>inférieur à</value></data>
+  <data name="MudBlazor.MudDataGrid.&lt;="><value>inférieur ou égal à</value></data>
+  <data name="MudBlazor.MudTablePager.All"><value>Tous</value></data>
+  <data name="MudBlazor.MudTablePager.Rows per page:"><value>Lignes par page :</value></data>
+</root>

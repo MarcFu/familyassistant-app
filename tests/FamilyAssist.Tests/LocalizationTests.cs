@@ -65,4 +65,40 @@ public class LocalizationTests
         Assert.True(result.ResourceNotFound);
         Assert.Equal("NonExistent.Key.That.Does.Not.Exist", result.Value);
     }
+
+    [Fact]
+    public void French_Common_Save_ReturnsTranslation()
+    {
+        CultureInfo.CurrentUICulture = new CultureInfo("fr");
+        var localizer = CreateLocalizer();
+
+        var result = localizer["Common.Save"];
+
+        Assert.False(result.ResourceNotFound, $"Resource 'Common.Save' not found. SearchedLocation: {result.SearchedLocation}");
+        Assert.Equal("Enregistrer", result.Value);
+    }
+
+    [Fact]
+    public void French_TasksTitle_ReturnsTranslation()
+    {
+        CultureInfo.CurrentUICulture = new CultureInfo("fr");
+        var localizer = CreateLocalizer();
+
+        var result = localizer["Tasks.Title"];
+
+        Assert.False(result.ResourceNotFound, $"Resource 'Tasks.Title' not found. SearchedLocation: {result.SearchedLocation}");
+        Assert.Equal("Tâches", result.Value);
+    }
+
+    [Fact]
+    public void French_Nav_Settings_ReturnsTranslation()
+    {
+        CultureInfo.CurrentUICulture = new CultureInfo("fr");
+        var localizer = CreateLocalizer();
+
+        var result = localizer["Nav.Settings"];
+
+        Assert.False(result.ResourceNotFound, $"Resource 'Nav.Settings' not found. SearchedLocation: {result.SearchedLocation}");
+        Assert.Equal("Paramètres", result.Value);
+    }
 }
