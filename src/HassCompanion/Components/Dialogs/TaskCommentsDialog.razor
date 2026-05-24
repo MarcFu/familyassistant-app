@@ -98,12 +98,15 @@
                 }
             </div>
 
-            @if (_selectedFiles.Count > 0)
+            @if (_filePreviews.Count > 0)
             {
-                <div class="d-flex flex-wrap gap-1 mb-2">
-                    @foreach (var file in _selectedFiles)
+                <div class="d-flex flex-wrap gap-2 mb-2">
+                    @foreach (var preview in _filePreviews)
                     {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Default">@file.Name</MudChip>
+                        <div style="width: 64px; height: 64px; border: 1px solid var(--mud-palette-lines-default); border-radius: 8px; overflow: hidden;">
+                            <img src="@preview" alt="Vorschau"
+                                 style="width: 100%; height: 100%; object-fit: cover;" />
+                        </div>
                     }
                 </div>
             }
@@ -133,6 +136,7 @@
     private List<TaskComment> _comments = [];
     private string? _newCommentText;
     private List<IBrowserFile> _selectedFiles = [];
+    private List<string> _filePreviews = [];
     private TaskAttachment? _previewAttachment;
 
     protected override async Task OnInitializedAsync()
@@ -151,15 +155,37 @@
             .ToListAsync();
     }
 
-    private void OnFilesSelected(InputFileChangeEventArgs e)
+    private async Task OnFilesSelected(InputFileChangeEventArgs e)
     {
-        // Append to existing selection (camera returns 1, gallery can return multiple)
-        _selectedFiles.AddRange(e.GetMultipleFiles(5));
+        var newFiles = e.GetMultipleFiles(5);
+        _selectedFiles = [.. _selectedFiles, .. newFiles];
+
+        // Generate base64 previews for thumbnails
+        foreach (var file in newFiles)
+        {
+            try
+            {
+                // Read a small preview (max 100KB for thumbnail display)
+                await using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                var base64 = Convert.ToBase64String(ms.ToArray());
+                _filePreviews.Add($"data:{file.ContentType};base64,{base64}");
+            }
+            catch
+            {
+                _filePreviews.Add(""); // Placeholder if preview fails
+            }
+        }
+
+        StateHasChanged();
     }
 
     private void ClearFiles()
     {
-        _selectedFiles.Clear();
+        _selectedFiles = [];
+        _filePreviews = [];
+        StateHasChanged();
     }
 
     private async Task SubmitCommentAsync()
@@ -220,6 +246,7 @@
             // Reset input
             _newCommentText = null;
             _selectedFiles = [];
+            _filePreviews = [];
 
             await LoadCommentsAsync();
             Snackbar.Add("Kommentar gepostet!", Severity.Success);
