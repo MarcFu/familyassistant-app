@@ -1,0 +1,17 @@
+**/.git
+**/.gitignore
+**/.vs
+**/.idea
+**/bin
+**/obj
+**/data
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/appsettings.Development.json
+**/node_modules
+**/Thumbs.db
+**/.DS_Store
+**/tests
+**/*.md
+**/LICENSE

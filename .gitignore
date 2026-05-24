@@ -26,3 +26,9 @@ Thumbs.db
 
 # Build output
 publish/
+
+# Test results
+TestResults/
+
+# Logs
+*.log

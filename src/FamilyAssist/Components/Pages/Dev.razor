@@ -1,0 +1,98 @@
+@page "/dev"
+@rendermode InteractiveServer
+@inject FamilyAssist.Services.UserContextService UserContext
+@inject FamilyAssist.Data.AppDbContext Db
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<SharedResource> L
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>@L["PageTitle.Dev"]</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-3">@L["Dev.Title"]</MudText>
+
+<MudCard Elevation="1" Class="pa-4 mb-4" Style="max-width:500px;">
+    <MudText Typo="Typo.h6" Class="mb-3">@L["Dev.UserContext"]</MudText>
+
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+        @L["Dev.UserContextHint"]
+    </MudText>
+
+    <MudSelect T="int?" Value="_selectedPersonId" ValueChanged="OnPersonChanged"
+               Label="@L["Dev.ActivePerson"].Value" Variant="Variant.Filled" Margin="Margin.Dense"
+               Clearable="true" Class="mb-3">
+        @foreach (var person in _persons)
+        {
+            <MudSelectItem T="int?" Value="@person.Id">
+                @person.Name (@person.Role)
+            </MudSelectItem>
+        }
+    </MudSelect>
+
+    @if (UserContext.IsAuthenticated)
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-3">
+            @((MarkupString)string.Format(L["Dev.LoggedIn"], $"<strong>{UserContext.CurrentPerson!.Name}</strong>", UserContext.CurrentPerson.Role, UserContext.CurrentPerson.Credits))
+        </MudAlert>
+
+        <div class="d-flex gap-2 flex-wrap">
+            <MudChip T="string" Color="@(UserContext.CanAct ? Color.Success : Color.Error)" Size="Size.Small">
+                @(UserContext.CanAct ? L["Dev.CanAct"] : L["Dev.CannotAct"])
+            </MudChip>
+            <MudChip T="string" Color="@(UserContext.IsParentOrAdmin ? Color.Info : Color.Default)" Size="Size.Small">
+                @(UserContext.IsParentOrAdmin ? L["Dev.ParentOrAdmin"] : L["Dev.NoParentAccess"])
+            </MudChip>
+            <MudChip T="string" Color="@(UserContext.IsAdmin ? Color.Warning : Color.Default)" Size="Size.Small">
+                @(UserContext.IsAdmin ? L["Role.Admin"] : L["Dev.NoAdmin"])
+            </MudChip>
+        </div>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Info">
+            @L["Dev.GuestMode"]
+        </MudAlert>
+    }
+</MudCard>
+
+<MudCard Elevation="1" Class="pa-4" Style="max-width:500px;">
+    <MudText Typo="Typo.h6" Class="mb-3">@L["Dev.Info"]</MudText>
+    <MudSimpleTable Dense="true" Elevation="0">
+        <tbody>
+            <tr><td><strong>@L["Dev.InfoMode"]</strong></td><td>@_mode</td></tr>
+            <tr><td><strong>@L["Dev.InfoDbPath"]</strong></td><td>@_dbPath</td></tr>
+            <tr><td><strong>@L["Dev.InfoPersons"]</strong></td><td>@_persons.Count</td></tr>
+            <tr><td><strong>.NET</strong></td><td>@System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription</td></tr>
+        </tbody>
+    </MudSimpleTable>
+</MudCard>
+
+@code {
+    private List<Person> _persons = [];
+    private int? _selectedPersonId;
+    private string _mode = "Development";
+    private string _dbPath = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _persons = await Db.Persons.OrderBy(p => p.Name).ToListAsync();
+        _selectedPersonId = UserContext.CurrentPersonId;
+        _mode = Environment.GetEnvironmentVariable("SUPERVISOR_TOKEN") is not null ? "Add-on (Production)" : "Development";
+        _dbPath = Db.Database.GetDbConnection().DataSource ?? "?";
+    }
+
+    private async Task OnPersonChanged(int? personId)
+    {
+        _selectedPersonId = personId;
+        await UserContext.SetCurrentPersonAsync(personId);
+
+        if (personId is null)
+        {
+            Snackbar.Add(L["Dev.Snackbar.Cleared"], Severity.Info);
+        }
+        else
+        {
+            Snackbar.Add(string.Format(L["Dev.Snackbar.Set"], UserContext.CurrentPerson?.Name), Severity.Success);
+        }
+        StateHasChanged();
+    }
+}

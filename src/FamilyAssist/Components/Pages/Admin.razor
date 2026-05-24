@@ -1,0 +1,241 @@
+@page "/admin"
+@rendermode InteractiveServer
+@inject FamilyAssist.Data.AppDbContext Db
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<SharedResource> L
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>@L["PageTitle.Admin"]</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-3">@L["Admin.Title"]</MudText>
+
+<MudTabs Elevation="1" Rounded="true" Class="mb-4">
+    <MudTabPanel Text="@L["Admin.Tab.Correction"].Value" Icon="@Icons.Material.Filled.Edit">
+        <div class="pa-4" style="max-width:500px;">
+            <MudSelect T="int?" @bind-Value="_selectedPersonId" Label="@L["Common.Person"].Value" Variant="Variant.Filled"
+                       Margin="Margin.Dense" Class="mb-3" Required="true">
+                @foreach (var person in _persons)
+                {
+                    <MudSelectItem T="int?" Value="@person.Id">@person.Name (@person.Credits @L["Common.Credits"])</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudNumericField @bind-Value="_correctionAmount" Label="@L["Admin.AmountLabel"].Value"
+                             Variant="Variant.Filled" Margin="Margin.Dense" Class="mb-3" />
+
+            <MudTextField @bind-Value="_correctionReason" Label="@L["Admin.ReasonLabel"].Value" Variant="Variant.Filled"
+                          Margin="Margin.Dense" Class="mb-3" Required="true"
+                          Placeholder="@L["Admin.ReasonPlaceholder"].Value" />
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SubmitCorrectionAsync"
+                       Disabled="@(_selectedPersonId is null || _correctionAmount == 0 || string.IsNullOrWhiteSpace(_correctionReason))"
+                       StartIcon="@Icons.Material.Filled.Save">
+                @L["Admin.Submit"]
+            </MudButton>
+        </div>
+    </MudTabPanel>
+
+    <MudTabPanel Text="@L["Admin.Tab.Log"].Value" Icon="@Icons.Material.Filled.Receipt">
+        <div class="pa-4">
+            <div class="d-flex align-center gap-3 mb-3">
+                <MudSelect T="int?" @bind-Value="_logFilterPersonId" Label="@L["Common.Person"].Value" Variant="Variant.Filled"
+                           Margin="Margin.Dense" Clearable="true" Style="max-width:200px;">
+                    @foreach (var person in _persons)
+                    {
+                        <MudSelectItem T="int?" Value="@person.Id">@person.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="CreditTransactionType?" @bind-Value="_logFilterType" Label="@L["Common.Type"].Value" Variant="Variant.Filled"
+                           Margin="Margin.Dense" Clearable="true" Style="max-width:200px;">
+                    <MudSelectItem T="CreditTransactionType?" Value="CreditTransactionType.ChoreCompleted">@L["Admin.Type.ChoreCompleted"]</MudSelectItem>
+                    <MudSelectItem T="CreditTransactionType?" Value="CreditTransactionType.ManualBonus">@L["Admin.Type.Bonus"]</MudSelectItem>
+                    <MudSelectItem T="CreditTransactionType?" Value="CreditTransactionType.ManualPenalty">@L["Admin.Type.Penalty"]</MudSelectItem>
+                    <MudSelectItem T="CreditTransactionType?" Value="CreditTransactionType.InternetTimeSpent">@L["Admin.Type.Internet"]</MudSelectItem>
+                </MudSelect>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="LoadTransactionsAsync"
+                           StartIcon="@Icons.Material.Filled.Refresh">@L["Common.Load"]</MudButton>
+            </div>
+
+            @if (_transactions.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info">@L["Admin.NoTransactions"]</MudAlert>
+            }
+            else
+            {
+                <MudTable Items="_transactions" Dense="true" Hover="true" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>@L["Common.Date"]</MudTh>
+                        <MudTh>@L["Common.Person"]</MudTh>
+                        <MudTh>@L["Admin.Amount"]</MudTh>
+                        <MudTh>@L["Common.Type"]</MudTh>
+                        <MudTh>@L["Admin.ReasonLabel"]</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Timestamp.ToLocalTime().ToString("dd.MM.yy HH:mm")</MudTd>
+                        <MudTd>@context.Person.Name</MudTd>
+                        <MudTd>
+                            <MudText Color="@(context.Amount >= 0 ? Color.Success : Color.Error)">
+                                @(context.Amount >= 0 ? $"+{context.Amount}" : context.Amount.ToString())
+                            </MudText>
+                        </MudTd>
+                        <MudTd>
+                            <MudChip T="string" Size="Size.Small" Color="@GetTypeColor(context.Type)">
+                                @GetTypeLabel(context.Type)
+                            </MudChip>
+                        </MudTd>
+                        <MudTd>@context.Reason</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </div>
+    </MudTabPanel>
+
+    <MudTabPanel Text="@L["Admin.Tab.Reset"].Value" Icon="@Icons.Material.Filled.RestartAlt">
+        <div class="pa-4" style="max-width:500px;">
+            <MudAlert Severity="Severity.Warning" Class="mb-3">
+                @L["Admin.ResetWarning"]
+            </MudAlert>
+
+            <MudSelect T="int?" @bind-Value="_resetPersonId" Label="@L["Common.Person"].Value" Variant="Variant.Filled"
+                       Margin="Margin.Dense" Class="mb-3">
+                @foreach (var person in _persons)
+                {
+                    <MudSelectItem T="int?" Value="@person.Id">@person.Name (aktuell: @person.Credits)</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudNumericField @bind-Value="_resetTarget" Label="@L["Admin.NewBalance"].Value"
+                             Variant="Variant.Filled" Margin="Margin.Dense" Class="mb-3" />
+
+            <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="ResetCreditsAsync"
+                       Disabled="@(_resetPersonId is null)"
+                       StartIcon="@Icons.Material.Filled.RestartAlt">
+                @string.Format(L["Admin.ResetButton"], _resetTarget)
+            </MudButton>
+        </div>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    private List<Person> _persons = [];
+
+    // Correction
+    private int? _selectedPersonId;
+    private int _correctionAmount;
+    private string _correctionReason = "";
+
+    // Log
+    private int? _logFilterPersonId;
+    private CreditTransactionType? _logFilterType;
+    private List<CreditTransaction> _transactions = [];
+
+    // Reset
+    private int? _resetPersonId;
+    private int _resetTarget;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _persons = await Db.Persons.OrderBy(p => p.Name).ToListAsync();
+        await LoadTransactionsAsync();
+    }
+
+    private async Task SubmitCorrectionAsync()
+    {
+        if (_selectedPersonId is null || _correctionAmount == 0 || string.IsNullOrWhiteSpace(_correctionReason))
+            return;
+
+        var person = _persons.First(p => p.Id == _selectedPersonId);
+        person.Credits += _correctionAmount;
+
+        var type = _correctionAmount > 0 ? CreditTransactionType.ManualBonus : CreditTransactionType.ManualPenalty;
+
+        Db.CreditTransactions.Add(new CreditTransaction
+        {
+            PersonId = person.Id,
+            Amount = _correctionAmount,
+            Reason = _correctionReason.Trim(),
+            Type = type,
+            Timestamp = DateTime.UtcNow
+        });
+
+        await Db.SaveChangesAsync();
+
+        Snackbar.Add(string.Format(L["Admin.Snackbar.Booked"], $"{(_correctionAmount > 0 ? "+" : "")}{_correctionAmount}", person.Name), Severity.Success);
+
+        // Reset form
+        _correctionAmount = 0;
+        _correctionReason = "";
+        _selectedPersonId = null;
+
+        // Refresh data
+        _persons = await Db.Persons.OrderBy(p => p.Name).ToListAsync();
+        await LoadTransactionsAsync();
+    }
+
+    private async Task ResetCreditsAsync()
+    {
+        if (_resetPersonId is null) return;
+
+        var person = _persons.First(p => p.Id == _resetPersonId);
+        var diff = _resetTarget - person.Credits;
+
+        if (diff == 0)
+        {
+            Snackbar.Add(L["Admin.Snackbar.NoChange"], Severity.Info);
+            return;
+        }
+
+        person.Credits = _resetTarget;
+
+        Db.CreditTransactions.Add(new CreditTransaction
+        {
+            PersonId = person.Id,
+            Amount = diff,
+            Reason = string.Format(L["Admin.ResetReason"], _resetTarget, _resetTarget - diff),
+            Type = diff > 0 ? CreditTransactionType.ManualBonus : CreditTransactionType.ManualPenalty,
+            Timestamp = DateTime.UtcNow
+        });
+
+        await Db.SaveChangesAsync();
+
+        Snackbar.Add(string.Format(L["Admin.Snackbar.Reset"], person.Name, _resetTarget), Severity.Success);
+
+        _persons = await Db.Persons.OrderBy(p => p.Name).ToListAsync();
+        _resetPersonId = null;
+        await LoadTransactionsAsync();
+    }
+
+    private async Task LoadTransactionsAsync()
+    {
+        IQueryable<CreditTransaction> query = Db.CreditTransactions
+            .Include(t => t.Person)
+            .OrderByDescending(t => t.Timestamp);
+
+        if (_logFilterPersonId.HasValue)
+            query = query.Where(t => t.PersonId == _logFilterPersonId);
+
+        if (_logFilterType.HasValue)
+            query = query.Where(t => t.Type == _logFilterType);
+
+        _transactions = await query.Take(100).ToListAsync();
+        StateHasChanged();
+    }
+
+    private static Color GetTypeColor(CreditTransactionType type) => type switch
+    {
+        CreditTransactionType.ChoreCompleted => Color.Success,
+        CreditTransactionType.ManualBonus => Color.Info,
+        CreditTransactionType.ManualPenalty => Color.Error,
+        CreditTransactionType.InternetTimeSpent => Color.Warning,
+        _ => Color.Default
+    };
+
+    private string GetTypeLabel(CreditTransactionType type) => type switch
+    {
+        CreditTransactionType.ChoreCompleted => L["Admin.Type.ChoreCompleted"],
+        CreditTransactionType.ManualBonus => L["Admin.Type.Bonus"],
+        CreditTransactionType.ManualPenalty => L["Admin.Type.Penalty"],
+        CreditTransactionType.InternetTimeSpent => L["Admin.Type.Internet"],
+        _ => "?"
+    };
+}

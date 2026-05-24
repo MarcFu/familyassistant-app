@@ -1,4 +1,4 @@
-# HassCompanion
+# FamilyAssist
 
 Home Assistant Add-on for household management — chore tracking, credit system, and HA entity sync.
 
@@ -33,7 +33,7 @@ Built with C# Blazor Server (.NET 9), MudBlazor v9, EF Core + SQLite.
 
 ### Home Assistant Integration
 - Import persons from HA (with avatar images via proxy endpoint)
-- Sync credits to HA sensors (`sensor.hasscompanion_<name>_credits`)
+- Sync credits to HA sensors (`sensor.familyassist_<name>_credits`)
 - Sync open tasks to HA todo lists (configurable per person)
 - Auto-detects Add-on mode (SUPERVISOR_TOKEN) vs dev mode (Long-Lived Token)
 
@@ -46,7 +46,7 @@ Built with C# Blazor Server (.NET 9), MudBlazor v9, EF Core + SQLite.
 ## Architecture
 
 ```
-src/HassCompanion/
+src/FamilyAssist/
 ├── Components/
 │   ├── Pages/          # Blazor pages (Home, Chores, Tasks, Settings)
 │   ├── Dialogs/        # AdHocTaskDialog, ChoreDialog, ScheduleDialog, IconPickerDialog, PersonEntityDialog
@@ -67,14 +67,11 @@ src/HassCompanion/
 
 ## Configuration
 
-### Development (appsettings.Development.json)
-```json
-{
-  "HomeAssistant": {
-    "BaseUrl": "http://homeassistant:8123",
-    "Token": "<long-lived-access-token>"
-  }
-}
+### Development (User Secrets)
+```bash
+cd src/FamilyAssist
+dotnet user-secrets set "HomeAssistant:BaseUrl" "http://your-ha:8123"
+dotnet user-secrets set "HomeAssistant:Token" "your-long-lived-access-token"
 ```
 
 ### Production (Add-on mode)
@@ -93,7 +90,7 @@ Ollama URL default: `http://localhost:11434`, Model default: `llama3.2:1b`
 
 ### Development
 ```bash
-cd src/HassCompanion
+cd src/FamilyAssist
 dotnet run
 # or
 dotnet watch
@@ -102,13 +99,13 @@ Opens at `http://localhost:5115`
 
 ### Docker / HA Add-on
 ```bash
-docker build -t hasscompanion .
-docker run -p 8099:8099 -e SUPERVISOR_TOKEN=... hasscompanion
+docker build -t familyassist .
+docker run -p 8099:8099 -e SUPERVISOR_TOKEN=... familyassist
 ```
 
 ## Database
 
-- SQLite at `./data/hasscompanion.db` (dev) or `/data/hasscompanion.db` (production)
+- SQLite at `./data/familyassist.db` (dev) or `/data/familyassist.db` (production)
 - Managed via EF Core Migrations (`dotnet ef migrations add <Name>`)
 - On startup: `MigrateAsync()` applies pending migrations automatically
 

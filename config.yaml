@@ -1,8 +1,8 @@
-name: "HassCompanion"
-description: "Companion App for household management: internet rules, chores, and credits"
+name: "FamilyAssist"
+description: "Home Assistant Add-on for household management: chore tracking, credits, and internet rules"
 version: "0.1.0"
-slug: "hasscompanion"
-url: "https://github.com/your-repo/hasscompanion"
+slug: "familyassist"
+url: "https://github.com/your-repo/familyassist"
 arch:
   - amd64
   - aarch64
@@ -10,7 +10,7 @@ homeassistant_api: true
 ingress: true
 ingress_port: 8099
 panel_icon: "mdi:home-assistant"
-panel_title: "Companion"
+panel_title: "FamilyAssist"
 map:
   - type: data
     read_only: false

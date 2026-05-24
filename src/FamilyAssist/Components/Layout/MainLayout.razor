@@ -1,0 +1,101 @@
+@inherits LayoutComponentBase
+@inject FamilyAssist.Services.HaThemeService ThemeService
+@inject FamilyAssist.Services.UserContextService UserContext
+@inject FamilyAssist.Data.AppDbContext Db
+@inject IWebHostEnvironment Env
+@inject IStringLocalizer<SharedResource> L
+@using Microsoft.EntityFrameworkCore
+@implements IDisposable
+
+<MudThemeProvider Theme="_theme" IsDarkMode="_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                       OnClick="@ToggleDrawer" />
+        <MudText Typo="Typo.h6" Class="ml-3">@L["App.Name"]</MudText>
+        <MudSpacer />
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+        <NavMenu />
+    </MudDrawer>
+
+    <MudMainContent Class="pa-4">
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+    private bool _isDarkMode = true; // Default until HA WebSocket delivers real value
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isDarkMode = ThemeService.IsDarkMode;
+        ThemeService.ThemeChanged += OnThemeChanged;
+
+        // Auto-resolve user in Dev mode: pick first Admin/Parent if none selected
+        if (Env.IsDevelopment() && !UserContext.IsAuthenticated)
+        {
+            var firstPerson = await Db.Persons
+                .OrderByDescending(p => p.Role == PersonRole.Admin)
+                .ThenByDescending(p => p.Role == PersonRole.Parent)
+                .FirstOrDefaultAsync();
+
+            if (firstPerson is not null)
+            {
+                await UserContext.SetCurrentPersonAsync(firstPerson.Id);
+            }
+        }
+    }
+
+    private void OnThemeChanged()
+    {
+        _isDarkMode = ThemeService.IsDarkMode;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight()
+        {
+            Primary = "#03a9f4",
+            Secondary = "#ff9800",
+            Surface = "#f5f5f5",
+            Background = "#fafafa",
+            AppbarBackground = "#03a9f4",
+            DrawerBackground = "#ffffff",
+            TextPrimary = "#212121",
+            TextSecondary = "#616161",
+        },
+        PaletteDark = new PaletteDark()
+        {
+            Primary = "#03a9f4",
+            Secondary = "#ff9800",
+            Surface = "#1c1c1c",
+            Background = "#121212",
+            AppbarBackground = "#1e1e1e",
+            DrawerBackground = "#1c1c1c",
+            TextPrimary = "#e1e1e1",
+            TextSecondary = "#a0a0a0",
+        },
+        Typography = new Typography()
+        {
+            Default = new DefaultTypography()
+            {
+                FontFamily = ["Roboto", "Helvetica", "Arial", "sans-serif"]
+            }
+        }
+    };
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    public void Dispose()
+    {
+        ThemeService.ThemeChanged -= OnThemeChanged;
+    }
+}

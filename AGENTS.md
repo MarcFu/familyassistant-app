@@ -21,7 +21,13 @@
 ## Build
 
 - Die App läuft oft im Hintergrund. Build-Fehler vom Typ MSB3027 (File-Lock) sind keine Code-Fehler.
-- Bei echtem Build-Test: App vorher stoppen (`Stop-Process -Name "HassCompanion"`).
+- Bei echtem Build-Test: App vorher stoppen (`Stop-Process -Name "FamilyAssist"`).
+
+## API-Endpoints & Sicherheit
+
+- **Debug-/Test-Endpoints** MÜSSEN in `if (app.Environment.IsDevelopment()) { ... }` eingeschlossen sein. Nie in Production verfügbar.
+- **Antiforgery** darf nur disabled werden wenn technisch notwendig (z.B. JS-basierter Upload). Der Grund muss als Kommentar dokumentiert sein.
+- Da die App ausschließlich als HA-Add-on betrieben wird (Ingress übernimmt Auth), gibt es keine eigene Authentifizierung. Diese Annahme in Kommentaren kennzeichnen.
 
 ## UI-Pattern: Outlined Cards (Home Assistant Style)
 
@@ -31,8 +37,20 @@
 - **Admin-Tabellen** (viele Spalten, dichte Daten) bleiben als `MudTable`.
 - **CSS-Basis:** `border-radius: 12px`, `border-color: rgba(255,255,255,0.12)`
 - **Buttons:** Pill-shaped (`border-radius: 9999px`), primäre Aktionen mit Label, sekundäre/destruktive als Icon-only mit Tooltip.
-- **FAB (Floating Action Button):** Immer `position: fixed; bottom: 24px; right: 24px; z-index: 100;`, `Size.Large`, mit `MudTooltip`. Nie inline in einer Toolbar.
+- **FAB (Floating Action Button):** Nur auf **Listen-Seiten** (Tasks, Chores) für die primäre Create-Aktion. Immer `position: fixed; bottom: 24px; right: 24px; z-index: 100;`, `Size.Large`, mit `MudTooltip`. Nie inline in einer Toolbar. **Nicht** auf Multi-Tab-Seiten (Settings) — dort normaler Button im Tab-Panel.
 - **Farben:** Primary `#03a9f4`, Secondary `#ff9800`, Surface `#1c1c1c`, Background `#121212`.
+
+## UI-Pattern: Editierbare Entitäten
+
+- **Standard-Pattern:** Shared Dialog für Create UND Edit (gleiche Komponente).
+  - Parameter: `Entity? Item` (null = neu) + `bool IsNew`.
+  - Dialog-Titel + Button-Text passen sich an: "Erstellen" vs. "Speichern".
+  - Beispiele: `ChoreDialog`, `ScheduleDialog`, `TriggerDialog`.
+- **Einfache Felder** (Rolle, Active-Toggle): Dürfen inline in der Tabelle editierbar sein.
+- **Tabellen-Aktionen:** Edit-Icon (✏️) + Delete-Icon (🗑️) pro Zeile.
+- **Create-Button:** Innerhalb des Tab-Panels / über der Tabelle. Öffnet den gleichen Dialog leer.
+- **Kein** inline-Formular für Create am Seitenende (inkonsistent, skaliert schlecht).
+- **Dropdowns für verlinkte Entities:** Immer den aktuell verlinkten Wert anzeigen, auch wenn inaktiv. Inaktive Einträge mit `[inaktiv]`-Prefix markieren und ans Ende sortieren.
 
 ## Architektur: HA-Proxy
 
