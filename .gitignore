@@ -1,0 +1,28 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.vs/
+.vs/
+
+# IDE
+.idea/
+*.swp
+*.sln.docstates
+
+# Secrets - IMPORTANT: never commit tokens!
+appsettings.Development.json
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+data/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Build output
+publish/

@@ -1,0 +1,75 @@
+@inject HassCompanion.Data.AppDbContext Db
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Link" />
+            <MudText Typo="Typo.h6">Verknüpfungen: @Person.Name</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+            Verknüpfe Home-Assistant-Entitäten mit dieser Person.
+        </MudText>
+
+        @* --- Todo-Liste --- *@
+        <MudText Typo="Typo.subtitle2" Class="mb-2">
+            <MudIcon Icon="@Icons.Material.Filled.Checklist" Size="Size.Small" Class="mr-1" />
+            Todo-Liste
+        </MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+            Aufgaben werden in diese HA-Todo-Liste synchronisiert.
+        </MudText>
+        <HaEntityPicker Domain="todo" Label="Todo-Entität" Class="mb-4"
+                        SelectedValue="@_todoEntityId"
+                        SelectedValueChanged="@(v => _todoEntityId = v)" />
+
+        <MudDivider Class="my-4" />
+
+        @* --- Geräte (Internet-Steuerung) --- *@
+        <MudText Typo="Typo.subtitle2" Class="mb-2">
+            <MudIcon Icon="@Icons.Material.Filled.Router" Size="Size.Small" Class="mr-1" />
+            Geräte (Internet-Steuerung)
+        </MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+            Switch-Entitäten die den Internetzugang für die Geräte dieser Person steuern.
+        </MudText>
+        <HaEntityPicker Domain="switch" Label="Switch-Entitäten" MultiSelect="true" Class="mb-2"
+                        SelectedValues="@_deviceEntities"
+                        SelectedValuesChanged="@(v => _deviceEntities = v.ToList())" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Abbrechen</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Save" OnClick="Save">
+            Speichern
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public Person Person { get; set; } = null!;
+
+    private string? _todoEntityId;
+    private List<string> _deviceEntities = [];
+
+    protected override void OnParametersSet()
+    {
+        _todoEntityId = Person.HaTodoEntityId;
+        _deviceEntities = Person.DeviceEntities.ToList();
+    }
+
+    private async Task Save()
+    {
+        Person.HaTodoEntityId = string.IsNullOrWhiteSpace(_todoEntityId) ? null : _todoEntityId.Trim();
+        Person.DeviceEntities = _deviceEntities;
+        await Db.SaveChangesAsync();
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

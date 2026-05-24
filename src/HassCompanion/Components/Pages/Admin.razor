@@ -1,0 +1,240 @@
+@page "/admin"
+@rendermode InteractiveServer
+@inject HassCompanion.Data.AppDbContext Db
+@inject ISnackbar Snackbar
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Admin - HassCompanion</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-3">Admin — Buchungskorrekturen</MudText>
+
+<MudTabs Elevation="1" Rounded="true" Class="mb-4">
+    <MudTabPanel Text="Korrektur buchen" Icon="@Icons.Material.Filled.Edit">
+        <div class="pa-4" style="max-width:500px;">
+            <MudSelect T="int?" @bind-Value="_selectedPersonId" Label="Person" Variant="Variant.Filled"
+                       Margin="Margin.Dense" Class="mb-3" Required="true">
+                @foreach (var person in _persons)
+                {
+                    <MudSelectItem T="int?" Value="@person.Id">@person.Name (@person.Credits Credits)</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudNumericField @bind-Value="_correctionAmount" Label="Betrag (positiv = gutschreiben, negativ = abziehen)"
+                             Variant="Variant.Filled" Margin="Margin.Dense" Class="mb-3" />
+
+            <MudTextField @bind-Value="_correctionReason" Label="Grund" Variant="Variant.Filled"
+                          Margin="Margin.Dense" Class="mb-3" Required="true"
+                          Placeholder="z.B. Korrektur Spülmaschine doppelt gebucht" />
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SubmitCorrectionAsync"
+                       Disabled="@(_selectedPersonId is null || _correctionAmount == 0 || string.IsNullOrWhiteSpace(_correctionReason))"
+                       StartIcon="@Icons.Material.Filled.Save">
+                Buchen
+            </MudButton>
+        </div>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Transaktions-Log" Icon="@Icons.Material.Filled.Receipt">
+        <div class="pa-4">
+            <div class="d-flex align-center gap-3 mb-3">
+                <MudSelect T="int?" @bind-Value="_logFilterPersonId" Label="Person" Variant="Variant.Filled"
+                           Margin="Margin.Dense" Clearable="true" Style="max-width:200px;">
+                    @foreach (var person in _persons)
+                    {
+                        <MudSelectItem T="int?" Value="@person.Id">@person.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="CreditTransactionType?" @bind-Value="_logFilterType" Label="Typ" Variant="Variant.Filled"
+                           Margin="Margin.Dense" Clearable="true" Style="max-width:200px;">
+                    <MudSelectItem T="CreditTransactionType?" Value="CreditTransactionType.ChoreCompleted">Chore erledigt</MudSelectItem>
+                    <MudSelectItem T="CreditTransactionType?" Value="CreditTransactionType.ManualBonus">Bonus</MudSelectItem>
+                    <MudSelectItem T="CreditTransactionType?" Value="CreditTransactionType.ManualPenalty">Abzug</MudSelectItem>
+                    <MudSelectItem T="CreditTransactionType?" Value="CreditTransactionType.InternetTimeSpent">Internet</MudSelectItem>
+                </MudSelect>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="LoadTransactionsAsync"
+                           StartIcon="@Icons.Material.Filled.Refresh">Laden</MudButton>
+            </div>
+
+            @if (_transactions.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info">Keine Transaktionen gefunden.</MudAlert>
+            }
+            else
+            {
+                <MudTable Items="_transactions" Dense="true" Hover="true" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>Datum</MudTh>
+                        <MudTh>Person</MudTh>
+                        <MudTh>Betrag</MudTh>
+                        <MudTh>Typ</MudTh>
+                        <MudTh>Grund</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Timestamp.ToLocalTime().ToString("dd.MM.yy HH:mm")</MudTd>
+                        <MudTd>@context.Person.Name</MudTd>
+                        <MudTd>
+                            <MudText Color="@(context.Amount >= 0 ? Color.Success : Color.Error)">
+                                @(context.Amount >= 0 ? $"+{context.Amount}" : context.Amount.ToString())
+                            </MudText>
+                        </MudTd>
+                        <MudTd>
+                            <MudChip T="string" Size="Size.Small" Color="@GetTypeColor(context.Type)">
+                                @GetTypeLabel(context.Type)
+                            </MudChip>
+                        </MudTd>
+                        <MudTd>@context.Reason</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </div>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Credits zurücksetzen" Icon="@Icons.Material.Filled.RestartAlt">
+        <div class="pa-4" style="max-width:500px;">
+            <MudAlert Severity="Severity.Warning" Class="mb-3">
+                Setzt die Credits einer Person auf einen bestimmten Wert. Erstellt eine Korrektur-Buchung.
+            </MudAlert>
+
+            <MudSelect T="int?" @bind-Value="_resetPersonId" Label="Person" Variant="Variant.Filled"
+                       Margin="Margin.Dense" Class="mb-3">
+                @foreach (var person in _persons)
+                {
+                    <MudSelectItem T="int?" Value="@person.Id">@person.Name (aktuell: @person.Credits)</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudNumericField @bind-Value="_resetTarget" Label="Neuer Credit-Stand"
+                             Variant="Variant.Filled" Margin="Margin.Dense" Class="mb-3" />
+
+            <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="ResetCreditsAsync"
+                       Disabled="@(_resetPersonId is null)"
+                       StartIcon="@Icons.Material.Filled.RestartAlt">
+                Auf @_resetTarget setzen
+            </MudButton>
+        </div>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    private List<Person> _persons = [];
+
+    // Correction
+    private int? _selectedPersonId;
+    private int _correctionAmount;
+    private string _correctionReason = "";
+
+    // Log
+    private int? _logFilterPersonId;
+    private CreditTransactionType? _logFilterType;
+    private List<CreditTransaction> _transactions = [];
+
+    // Reset
+    private int? _resetPersonId;
+    private int _resetTarget;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _persons = await Db.Persons.OrderBy(p => p.Name).ToListAsync();
+        await LoadTransactionsAsync();
+    }
+
+    private async Task SubmitCorrectionAsync()
+    {
+        if (_selectedPersonId is null || _correctionAmount == 0 || string.IsNullOrWhiteSpace(_correctionReason))
+            return;
+
+        var person = _persons.First(p => p.Id == _selectedPersonId);
+        person.Credits += _correctionAmount;
+
+        var type = _correctionAmount > 0 ? CreditTransactionType.ManualBonus : CreditTransactionType.ManualPenalty;
+
+        Db.CreditTransactions.Add(new CreditTransaction
+        {
+            PersonId = person.Id,
+            Amount = _correctionAmount,
+            Reason = _correctionReason.Trim(),
+            Type = type,
+            Timestamp = DateTime.UtcNow
+        });
+
+        await Db.SaveChangesAsync();
+
+        Snackbar.Add($"{(_correctionAmount > 0 ? "+" : "")}{_correctionAmount} Credits für {person.Name} gebucht.", Severity.Success);
+
+        // Reset form
+        _correctionAmount = 0;
+        _correctionReason = "";
+        _selectedPersonId = null;
+
+        // Refresh data
+        _persons = await Db.Persons.OrderBy(p => p.Name).ToListAsync();
+        await LoadTransactionsAsync();
+    }
+
+    private async Task ResetCreditsAsync()
+    {
+        if (_resetPersonId is null) return;
+
+        var person = _persons.First(p => p.Id == _resetPersonId);
+        var diff = _resetTarget - person.Credits;
+
+        if (diff == 0)
+        {
+            Snackbar.Add("Keine Änderung nötig.", Severity.Info);
+            return;
+        }
+
+        person.Credits = _resetTarget;
+
+        Db.CreditTransactions.Add(new CreditTransaction
+        {
+            PersonId = person.Id,
+            Amount = diff,
+            Reason = $"Admin-Reset: Credits auf {_resetTarget} gesetzt (vorher: {_resetTarget - diff})",
+            Type = diff > 0 ? CreditTransactionType.ManualBonus : CreditTransactionType.ManualPenalty,
+            Timestamp = DateTime.UtcNow
+        });
+
+        await Db.SaveChangesAsync();
+
+        Snackbar.Add($"Credits von {person.Name} auf {_resetTarget} gesetzt.", Severity.Success);
+
+        _persons = await Db.Persons.OrderBy(p => p.Name).ToListAsync();
+        _resetPersonId = null;
+        await LoadTransactionsAsync();
+    }
+
+    private async Task LoadTransactionsAsync()
+    {
+        IQueryable<CreditTransaction> query = Db.CreditTransactions
+            .Include(t => t.Person)
+            .OrderByDescending(t => t.Timestamp);
+
+        if (_logFilterPersonId.HasValue)
+            query = query.Where(t => t.PersonId == _logFilterPersonId);
+
+        if (_logFilterType.HasValue)
+            query = query.Where(t => t.Type == _logFilterType);
+
+        _transactions = await query.Take(100).ToListAsync();
+        StateHasChanged();
+    }
+
+    private static Color GetTypeColor(CreditTransactionType type) => type switch
+    {
+        CreditTransactionType.ChoreCompleted => Color.Success,
+        CreditTransactionType.ManualBonus => Color.Info,
+        CreditTransactionType.ManualPenalty => Color.Error,
+        CreditTransactionType.InternetTimeSpent => Color.Warning,
+        _ => Color.Default
+    };
+
+    private static string GetTypeLabel(CreditTransactionType type) => type switch
+    {
+        CreditTransactionType.ChoreCompleted => "Chore",
+        CreditTransactionType.ManualBonus => "Bonus",
+        CreditTransactionType.ManualPenalty => "Abzug",
+        CreditTransactionType.InternetTimeSpent => "Internet",
+        _ => "?"
+    };
+}

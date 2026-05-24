@@ -1,0 +1,156 @@
+@inject IHomeAssistantService HaService
+
+@if (MultiSelect)
+{
+    <MudSelect T="string" Label="@Label" MultiSelection="true" Variant="Variant.Filled" Dense="true"
+               SelectedValues="_selectedSet" SelectedValuesChanged="OnMultiSelectionChanged"
+               MultiSelectionTextFunc="@(selected => $"{selected.Count} ausgewählt")"
+               Clearable="true" Class="@Class">
+        @foreach (var entity in _filteredEntities)
+        {
+            <MudSelectItem T="string" Value="entity.EntityId">
+                @GetFriendlyName(entity) <span class="mud-text-secondary" style="font-size:0.75rem;">(@entity.EntityId)</span>
+            </MudSelectItem>
+        }
+    </MudSelect>
+}
+else
+{
+    <MudAutocomplete T="string" Label="@Label" Value="SelectedValue" ValueChanged="OnSingleValueChanged"
+                     SearchFunc="SearchEntities" Variant="Variant.Filled" Dense="true"
+                     Clearable="true" Class="@Class" ShowProgressIndicator="true"
+                     ToStringFunc="@(id => FormatEntityDisplay(id))"
+                     MaxItems="50" />
+}
+
+@code {
+    /// <summary>
+    /// Home Assistant domain to filter entities (e.g., "switch", "todo", "sensor")
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Domain { get; set; } = "";
+
+    /// <summary>
+    /// Whether to allow multiple selection
+    /// </summary>
+    [Parameter]
+    public bool MultiSelect { get; set; }
+
+    /// <summary>
+    /// Label text for the picker
+    /// </summary>
+    [Parameter]
+    public string? Label { get; set; }
+
+    /// <summary>
+    /// Additional CSS class
+    /// </summary>
+    [Parameter]
+    public string? Class { get; set; }
+
+    // --- Single-select binding ---
+
+    [Parameter]
+    public string? SelectedValue { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> SelectedValueChanged { get; set; }
+
+    // --- Multi-select binding ---
+
+    [Parameter]
+    public ICollection<string> SelectedValues { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<ICollection<string>> SelectedValuesChanged { get; set; }
+
+    // --- Internal state ---
+
+    private List<HaEntityState> _allEntities = [];
+    private List<HaEntityState> _filteredEntities = [];
+    private IReadOnlyCollection<string> _selectedSet = [];
+    private bool _loaded;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEntitiesAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (MultiSelect)
+        {
+            _selectedSet = SelectedValues.ToList().AsReadOnly();
+        }
+    }
+
+    private async Task LoadEntitiesAsync()
+    {
+        if (_loaded) return;
+
+        try
+        {
+            var entities = await HaService.GetEntitiesByDomainAsync(Domain);
+            _allEntities = entities
+                .OrderBy(e => GetFriendlyName(e))
+                .ThenBy(e => e.EntityId)
+                .ToList();
+            _filteredEntities = _allEntities;
+        }
+        catch
+        {
+            _allEntities = [];
+            _filteredEntities = [];
+        }
+
+        _loaded = true;
+    }
+
+    private async Task OnSingleValueChanged(string? value)
+    {
+        SelectedValue = value;
+        await SelectedValueChanged.InvokeAsync(value);
+    }
+
+    private async Task OnMultiSelectionChanged(IReadOnlyCollection<string> values)
+    {
+        _selectedSet = values;
+        var list = values.ToList();
+        SelectedValues = list;
+        await SelectedValuesChanged.InvokeAsync(list);
+    }
+
+    private Task<IEnumerable<string>> SearchEntities(string? searchText, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            return Task.FromResult(_allEntities.Select(e => e.EntityId));
+        }
+
+        var lower = searchText.ToLowerInvariant();
+        var results = _allEntities
+            .Where(e => e.EntityId.Contains(lower, StringComparison.OrdinalIgnoreCase)
+                        || GetFriendlyName(e).Contains(lower, StringComparison.OrdinalIgnoreCase))
+            .Select(e => e.EntityId);
+
+        return Task.FromResult(results);
+    }
+
+    private string FormatEntityDisplay(string? entityId)
+    {
+        if (string.IsNullOrEmpty(entityId)) return "";
+        var entity = _allEntities.FirstOrDefault(e => e.EntityId == entityId);
+        if (entity is null) return entityId;
+        var name = GetFriendlyName(entity);
+        return name != entityId ? $"{name} ({entityId})" : entityId;
+    }
+
+    private static string GetFriendlyName(HaEntityState entity)
+    {
+        if (entity.Attributes.TryGetValue("friendly_name", out var name) && name is not null)
+        {
+            return name.ToString() ?? entity.EntityId;
+        }
+        return entity.EntityId;
+    }
+}

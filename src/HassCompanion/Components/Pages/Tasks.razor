@@ -1,0 +1,543 @@
+@page "/tasks"
+@rendermode InteractiveServer
+@inject HassCompanion.Data.AppDbContext Db
+@inject HassCompanion.Services.TaskGenerator TaskGenerator
+@inject HassCompanion.Services.UserContextService UserContext
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Aufgaben - HassCompanion</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-2">Aufgaben</MudText>
+
+@if (_loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    @* ── Permanent Tasks: Expander oben ── *@
+    @if (_permanentTasks.Count > 0)
+    {
+        <MudExpansionPanels Elevation="0" Class="mb-4">
+            <MudExpansionPanel @bind-Expanded="_permanentExpanded">
+                <TitleContent>
+                    <div class="d-flex align-center">
+                        <MudIcon Icon="@Icons.Material.Filled.PushPin" Size="Size.Small" Class="mr-2" Color="Color.Primary" />
+                        <MudText Typo="Typo.subtitle1">Jederzeit verfügbar (@_permanentTasks.Count)</MudText>
+                    </div>
+                </TitleContent>
+                <ChildContent>
+                    <div class="d-flex flex-wrap gap-2 pa-2">
+                        @foreach (var task in _permanentTasks)
+                        {
+                            <MudPaper Outlined="true" Style="width: 200px; min-height: 120px; display: flex; flex-direction: column;">
+                                <div class="pa-3" style="flex: 1; overflow: hidden;">
+                                    <div class="d-flex align-start gap-2">
+                                        @if (task.Chore.Icon is not null)
+                                        {
+                                            @if (IsEmoji(task.Chore.Icon))
+                                            {
+                                                <span style="font-size:1.4rem; line-height:1;">@task.Chore.Icon</span>
+                                            }
+                                            else
+                                            {
+                                                var svg = HassCompanion.Services.IconRegistry.GetSvg(task.Chore.Icon);
+                                                if (svg is not null)
+                                                {
+                                                    <MudIcon Icon="@svg" Size="Size.Medium"
+                                                             Style="@(task.Chore.IconColor is not null ? $"color: {task.Chore.IconColor};" : "")" />
+                                                }
+                                            }
+                                        }
+                                        <MudText Typo="Typo.body1"><strong>@task.Chore.Name</strong></MudText>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(task.Chore.Description))
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Tertiary" Style="margin-top: 2px; line-height: 1.2;">@task.Chore.Description</MudText>
+                                    }
+                                </div>
+                                <div class="d-flex align-center justify-space-between pa-3 pt-0">
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success">@task.Chore.CreditsReward Cr</MudChip>
+                                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                                               StartIcon="@Icons.Material.Filled.Check"
+                                               OnClick="@(() => CompleteTask(task))"
+                                               Disabled="!UserContext.CanAct">
+                                        Erledigt
+                                    </MudButton>
+                                </div>
+                            </MudPaper>
+                        }
+                    </div>
+                </ChildContent>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    }
+
+    @* ── Filter-Toolbar ── *@
+    <div class="d-flex align-center mb-4 flex-wrap gap-2">
+        <MudSelect T="int?" @bind-Value="_filterPersonId" Label="Person" Variant="Variant.Filled"
+                   Dense="true" Margin="Margin.Dense" Clearable="true" Class="mr-2" Style="min-width: 150px;">
+            @foreach (var person in _persons)
+            {
+                <MudSelectItem T="int?" Value="@person.Id">@person.Name</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudSelect T="TaskFilter" @bind-Value="_filter" Label="Filter" Variant="Variant.Filled"
+                   Dense="true" Margin="Margin.Dense" Class="mr-2" Style="min-width: 180px;">
+            <MudSelectItem Value="TaskFilter.Today">Heute</MudSelectItem>
+            <MudSelectItem Value="TaskFilter.Open">Offen</MudSelectItem>
+            <MudSelectItem Value="TaskFilter.Permanent">Permanent (Detail)</MudSelectItem>
+            <MudSelectItem Value="TaskFilter.Pending">Wartet auf Bestätigung</MudSelectItem>
+            <MudSelectItem Value="TaskFilter.ThisWeek">Diese Woche</MudSelectItem>
+            <MudSelectItem Value="TaskFilter.Overdue">Überfällig</MudSelectItem>
+        </MudSelect>
+
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="LoadTasksAsync"
+                   StartIcon="@Icons.Material.Filled.Refresh">Aktualisieren</MudButton>
+        <MudButton Variant="Variant.Filled" Size="Size.Small" Color="Color.Primary"
+                   OnClick="GenerateTasksAsync" StartIcon="@Icons.Material.Filled.Sync"
+                   Disabled="_generating">
+            @if (_generating)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+            }
+            Aufgaben generieren
+        </MudButton>
+    </div>
+
+    @* ── Hauptliste (geplante + ad-hoc Tasks) ── *@
+    @if (_tasks.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">Keine Aufgaben für den gewählten Filter.</MudAlert>
+    }
+    else
+    {
+        @foreach (var dateGroup in _tasks.GroupBy(t => t.DueDate).OrderBy(g => g.Key))
+        {
+            <MudText Typo="Typo.subtitle1" Color="@GetDateColor(dateGroup.Key)" Class="mt-4 mb-2">
+                @FormatDate(dateGroup.Key)
+            </MudText>
+
+            @foreach (var task in dateGroup.OrderBy(t => t.Status is ChoreTaskStatus.Confirmed or ChoreTaskStatus.PendingConfirmation ? 1 : 0).ThenBy(t => t.Chore.Name).ThenBy(t => t.OccurrenceIndex))
+            {
+                <MudPaper Outlined="true" Class="pa-3 mb-2">
+                    <div class="d-flex align-center mb-2" style="min-width: 0;">
+                        <MudIcon Icon="@GetStatusIcon(task.Status)" Size="Size.Small"
+                                 Color="@GetStatusColor(task.Status)" Class="mr-2" Style="flex-shrink: 0;" />
+                        @if (task.Chore.Icon is not null)
+                        {
+                            @if (IsEmoji(task.Chore.Icon))
+                            {
+                                <MudText Typo="Typo.body1" Class="mr-1">@task.Chore.Icon</MudText>
+                            }
+                            else if (task.Chore.Icon.StartsWith("svg:"))
+                            {
+                                var svgData = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(task.Chore.Icon[4..]));
+                                <div style="width:20px; height:20px; color: @(task.Chore.IconColor ?? "currentColor"); display:inline-flex; flex-shrink: 0;" class="mr-1">
+                                    @((MarkupString)svgData)
+                                </div>
+                            }
+                            else
+                            {
+                                var resolved = HassCompanion.Services.IconRegistry.GetSvg(task.Chore.Icon);
+                                if (resolved is not null)
+                                {
+                                    <MudIcon Icon="@resolved" Size="Size.Small" Class="mr-1"
+                                             Style="@($"flex-shrink: 0;{(task.Chore.IconColor is not null ? $" color: {task.Chore.IconColor};" : "")}")" />
+                                }
+                            }
+                        }
+                        <div style="min-width: 0; flex: 1;">
+                            <MudText Typo="Typo.body1" Style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                @task.Chore.Name
+                                @if (task.OccurrenceLabel is not null)
+                                {
+                                    <span class="mud-text-secondary"> (@task.OccurrenceLabel)</span>
+                                }
+                            </MudText>
+                        </div>
+                    </div>
+                    <div class="d-flex align-center justify-space-between flex-wrap" style="row-gap: 6px;">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @GetAssignmentText(task)
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Class="ml-1">
+                                @task.Chore.CreditsReward Credits
+                            </MudChip>
+                        </MudText>
+                        <div class="d-flex flex-wrap gap-1">
+                            @if (task.Status == ChoreTaskStatus.Open)
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.PersonAdd"
+                                           OnClick="@(() => ClaimTask(task))"
+                                           Disabled="!UserContext.CanAct">
+                                    Übernehmen
+                                </MudButton>
+                            }
+                            @if (task.Status == ChoreTaskStatus.Open || task.Status == ChoreTaskStatus.Claimed)
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Check"
+                                           OnClick="@(() => CompleteTask(task))"
+                                           Disabled="!UserContext.CanAct">
+                                    Erledigt
+                                </MudButton>
+                            }
+                            @if (task.Status == ChoreTaskStatus.PendingConfirmation && UserContext.IsParentOrAdmin)
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success"
+                                           StartIcon="@Icons.Material.Filled.ThumbUp"
+                                           OnClick="@(() => ConfirmTask(task))">
+                                    Bestätigen
+                                </MudButton>
+                            }
+                            @if (task.Status != ChoreTaskStatus.Confirmed && task.Status != ChoreTaskStatus.Missed && task.Status != ChoreTaskStatus.Cancelled && UserContext.IsParentOrAdmin)
+                            {
+                                <MudTooltip Text="Abbrechen">
+                                    <MudIconButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Warning"
+                                                   Icon="@Icons.Material.Filled.Close"
+                                                   OnClick="@(() => CancelTask(task))" />
+                                </MudTooltip>
+                            }
+                        </div>
+                    </div>
+                </MudPaper>
+            }
+        }
+    }
+
+    <MudDivider Class="my-4" />
+    @if (!UserContext.IsAuthenticated)
+    {
+        <MudAlert Severity="Severity.Warning" Class="py-1">
+            Kein Benutzer angemeldet. Bitte unter <MudLink Href="/dev">Dev</MudLink> eine Person wählen.
+        </MudAlert>
+    }
+    else
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            Angemeldet als: <strong>@UserContext.CurrentPerson!.Name</strong> (@UserContext.CurrentPerson.Role)
+        </MudText>
+    }
+}
+
+@* ── FAB: fixed bottom-right (Material Design / HA standard position) ── *@
+<MudTooltip Text="Ad-hoc Aufgabe">
+    <MudFab StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary"
+            Size="Size.Large" OnClick="OpenAdHocDialogAsync"
+            Style="position: fixed; bottom: 24px; right: 24px; z-index: 100;" />
+</MudTooltip>
+
+@code {
+    private bool _loading = true;
+    private bool _generating;
+    private List<ChoreTask> _tasks = [];
+    private List<ChoreTask> _permanentTasks = [];
+    private List<Person> _persons = [];
+    private int? _filterPersonId;
+    private TaskFilter _filter = TaskFilter.Today;
+    private bool _permanentExpanded = false;
+
+    private int? ActivePersonId => UserContext.CurrentPersonId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _persons = await Db.Persons.OrderBy(p => p.Name).ToListAsync();
+        await GenerateTasksAsync();
+        _loading = false;
+    }
+
+    private async Task GenerateTasksAsync()
+    {
+        _generating = true;
+        StateHasChanged();
+
+        try
+        {
+            var count = await TaskGenerator.RunAsync();
+            if (count > 0)
+            {
+                Snackbar.Add($"{count} neue Aufgaben generiert.", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Fehler: {ex.Message}", Severity.Error);
+        }
+
+        _generating = false;
+        await LoadTasksAsync();
+    }
+
+    private async Task OpenAdHocDialogAsync()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
+        var dialog = await DialogService.ShowAsync<AdHocTaskDialog>("Ad-hoc Aufgabe erstellen", options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            Snackbar.Add("Ad-hoc Aufgabe erstellt!", Severity.Success);
+            await LoadTasksAsync();
+        }
+    }
+
+    private async Task LoadTasksAsync()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var weekEnd = today.AddDays(7 - (int)today.DayOfWeek);
+
+        // Load permanent tasks separately (for the expander)
+        _permanentTasks = await Db.ChoreTasks
+            .Include(t => t.Chore)
+            .Include(t => t.Schedule)
+            .Where(t => t.Schedule!.Rhythm == ScheduleRhythm.Permanent
+                && (t.Status == ChoreTaskStatus.Open || t.Status == ChoreTaskStatus.Claimed))
+            .OrderBy(t => t.Chore.Name)
+            .ToListAsync();
+
+        // Main query (excludes permanent tasks unless "Permanent" filter is selected)
+        IQueryable<ChoreTask> query = Db.ChoreTasks
+            .Include(t => t.Chore)
+            .Include(t => t.Schedule)
+            .Include(t => t.DefaultPerson)
+            .Include(t => t.ClaimedByPerson)
+            .Include(t => t.CompletedByPerson);
+
+        query = _filter switch
+        {
+            TaskFilter.Today => query.Where(t =>
+                t.Status != ChoreTaskStatus.Missed && t.Status != ChoreTaskStatus.Cancelled
+                && (t.ScheduleId == null || t.Schedule!.Rhythm != ScheduleRhythm.Permanent)
+                && (
+                    // Daily/SpecificDays: show only if due today
+                    (t.DueDate == today && (t.ScheduleId == null || t.Schedule!.Rhythm == ScheduleRhythm.Daily || t.Schedule!.Rhythm == ScheduleRhythm.SpecificDays))
+                    // Weekly/XTimesPerWeek/EveryXWeeks: show if due this week (DueDate <= today, still open/claimed)
+                    || (t.DueDate <= today && (t.Status == ChoreTaskStatus.Open || t.Status == ChoreTaskStatus.Claimed)
+                        && (t.Schedule!.Rhythm == ScheduleRhythm.Weekly || t.Schedule!.Rhythm == ScheduleRhythm.XTimesPerWeek || t.Schedule!.Rhythm == ScheduleRhythm.EveryXWeeks))
+                    // Monthly/EveryXMonths: show if due this month (DueDate <= today, still open/claimed)
+                    || (t.DueDate <= today && (t.Status == ChoreTaskStatus.Open || t.Status == ChoreTaskStatus.Claimed)
+                        && (t.Schedule!.Rhythm == ScheduleRhythm.Monthly || t.Schedule!.Rhythm == ScheduleRhythm.EveryXMonths))
+                    // Ad-hoc tasks (no schedule): show if due today
+                    || (t.DueDate == today && t.ScheduleId == null)
+                )),
+            TaskFilter.Open => query.Where(t =>
+                (t.Status == ChoreTaskStatus.Open || t.Status == ChoreTaskStatus.Claimed)
+                && (t.ScheduleId == null || t.Schedule!.Rhythm != ScheduleRhythm.Permanent)
+                && (t.DueDate >= today
+                    // Also include non-daily tasks whose DueDate is past but are still open (within their period)
+                    || (t.Schedule!.Rhythm == ScheduleRhythm.Weekly || t.Schedule!.Rhythm == ScheduleRhythm.XTimesPerWeek || t.Schedule!.Rhythm == ScheduleRhythm.EveryXWeeks
+                        || t.Schedule!.Rhythm == ScheduleRhythm.Monthly || t.Schedule!.Rhythm == ScheduleRhythm.EveryXMonths))),
+            TaskFilter.Permanent => query.Where(t =>
+                t.Schedule!.Rhythm == ScheduleRhythm.Permanent),
+            TaskFilter.Pending => query.Where(t => t.Status == ChoreTaskStatus.PendingConfirmation),
+            TaskFilter.ThisWeek => query.Where(t =>
+                t.DueDate <= weekEnd && t.Status != ChoreTaskStatus.Missed && t.Status != ChoreTaskStatus.Cancelled
+                && (t.ScheduleId == null || t.Schedule!.Rhythm != ScheduleRhythm.Permanent)
+                && (t.DueDate >= today
+                    || ((t.Status == ChoreTaskStatus.Open || t.Status == ChoreTaskStatus.Claimed)
+                        && (t.Schedule!.Rhythm == ScheduleRhythm.Weekly || t.Schedule!.Rhythm == ScheduleRhythm.XTimesPerWeek || t.Schedule!.Rhythm == ScheduleRhythm.EveryXWeeks
+                            || t.Schedule!.Rhythm == ScheduleRhythm.Monthly || t.Schedule!.Rhythm == ScheduleRhythm.EveryXMonths)))),
+            TaskFilter.Overdue => query.Where(t =>
+                t.DueDate < today
+                && (t.Status == ChoreTaskStatus.Open || t.Status == ChoreTaskStatus.Claimed)
+                && (t.ScheduleId == null || t.Schedule!.Rhythm != ScheduleRhythm.Permanent)),
+            _ => query
+        };
+
+        if (_filterPersonId.HasValue)
+        {
+            query = query.Where(t =>
+                t.DefaultPersonId == _filterPersonId
+                || t.ClaimedByPersonId == _filterPersonId
+                || (t.DefaultPersonId == null && t.ClaimedByPersonId == null));
+        }
+
+        _tasks = await query.OrderBy(t => t.DueDate).ThenBy(t => t.Chore.Name).Take(100).ToListAsync();
+        StateHasChanged();
+    }
+
+    private async Task ClaimTask(ChoreTask task)
+    {
+        if (ActivePersonId is null || !UserContext.CanAct) return;
+
+        task.ClaimedByPersonId = ActivePersonId;
+        task.Status = ChoreTaskStatus.Claimed;
+        await Db.SaveChangesAsync();
+        Snackbar.Add("Aufgabe übernommen!", Severity.Success);
+        StateHasChanged();
+    }
+
+    private async Task CompleteTask(ChoreTask task)
+    {
+        if (ActivePersonId is null || !UserContext.CanAct) return;
+
+        var activePerson = UserContext.CurrentPerson!;
+        task.CompletedByPersonId = ActivePersonId;
+        task.CompletedAt = DateTime.UtcNow;
+
+        if (task.ClaimedByPersonId is null)
+            task.ClaimedByPersonId = ActivePersonId;
+
+        // Parents/Admins don't need confirmation
+        if (activePerson.Role is PersonRole.Parent or PersonRole.Admin)
+        {
+            task.Status = ChoreTaskStatus.Confirmed;
+            task.ConfirmedAt = DateTime.UtcNow;
+            task.ConfirmedByPersonId = ActivePersonId;
+            task.CreditsAwarded = true;
+
+            // Award credits
+            var creditPersonId = task.ClaimedByPersonId ?? ActivePersonId!.Value;
+            var creditPerson = _persons.First(p => p.Id == creditPersonId);
+            creditPerson.Credits += task.Chore.CreditsReward;
+
+            Db.CreditTransactions.Add(new CreditTransaction
+            {
+                PersonId = creditPerson.Id,
+                Amount = task.Chore.CreditsReward,
+                Reason = $"Erledigt: {task.Chore.Name}",
+                Type = CreditTransactionType.ChoreCompleted,
+                ChoreTaskId = task.Id,
+                Timestamp = DateTime.UtcNow
+            });
+
+            Snackbar.Add($"Erledigt! +{task.Chore.CreditsReward} Credits für {creditPerson.Name}", Severity.Success);
+        }
+        else
+        {
+            task.Status = ChoreTaskStatus.PendingConfirmation;
+            Snackbar.Add("Erledigt! Wartet auf Bestätigung durch Eltern.", Severity.Info);
+        }
+
+        await Db.SaveChangesAsync();
+
+        // Permanent tasks: immediately spawn next one
+        await TaskGenerator.RespawnPermanentTaskAsync(task);
+
+        await LoadTasksAsync();
+    }
+
+    private async Task ConfirmTask(ChoreTask task)
+    {
+        if (ActivePersonId is null || !UserContext.IsParentOrAdmin) return;
+
+        task.Status = ChoreTaskStatus.Confirmed;
+        task.ConfirmedAt = DateTime.UtcNow;
+        task.ConfirmedByPersonId = ActivePersonId;
+        task.CreditsAwarded = true;
+
+        var creditPersonId = task.ClaimedByPersonId ?? task.DefaultPersonId;
+        if (creditPersonId.HasValue)
+        {
+            var creditPerson = _persons.First(p => p.Id == creditPersonId);
+            creditPerson.Credits += task.Chore.CreditsReward;
+
+            Db.CreditTransactions.Add(new CreditTransaction
+            {
+                PersonId = creditPerson.Id,
+                Amount = task.Chore.CreditsReward,
+                Reason = $"Bestätigt: {task.Chore.Name}",
+                Type = CreditTransactionType.ChoreCompleted,
+                ChoreTaskId = task.Id,
+                Timestamp = DateTime.UtcNow
+            });
+
+            Snackbar.Add($"Bestätigt! +{task.Chore.CreditsReward} Credits für {creditPerson.Name}", Severity.Success);
+        }
+
+        await Db.SaveChangesAsync();
+
+        // Permanent tasks: immediately spawn next one
+        await TaskGenerator.RespawnPermanentTaskAsync(task);
+
+        await LoadTasksAsync();
+    }
+
+    private async Task CancelTask(ChoreTask task)
+    {
+        if (!UserContext.IsParentOrAdmin) return;
+
+        task.Status = ChoreTaskStatus.Cancelled;
+        await Db.SaveChangesAsync();
+
+        Snackbar.Add($"Aufgabe \"{task.Chore.Name}\" abgebrochen.", Severity.Warning);
+        await LoadTasksAsync();
+    }
+
+    private bool CanAct() => UserContext.CanAct;
+
+    private string GetAssignmentText(ChoreTask task)
+    {
+        if (task.Status == ChoreTaskStatus.Confirmed)
+        {
+            var time = task.ConfirmedAt?.ToLocalTime().ToString("HH:mm");
+            var name = task.CompletedByPerson?.Name ?? task.ClaimedByPerson?.Name ?? "?";
+            return time is not null ? $"Erledigt von {name} — {time}" : $"Erledigt von {name}";
+        }
+        if (task.Status == ChoreTaskStatus.PendingConfirmation)
+        {
+            var time = task.CompletedAt?.ToLocalTime().ToString("HH:mm");
+            var name = task.CompletedByPerson?.Name ?? task.ClaimedByPerson?.Name ?? "?";
+            return time is not null ? $"Erledigt von {name} — {time} (unbestätigt)" : $"Erledigt von {name} (unbestätigt)";
+        }
+        if (task.ClaimedByPerson is not null) return $"Übernommen von {task.ClaimedByPerson.Name}";
+        if (task.DefaultPerson is not null) return $"Zugewiesen: {task.DefaultPerson.Name}";
+        return "Offen für alle";
+    }
+
+    private static string GetStatusIcon(ChoreTaskStatus status) => status switch
+    {
+        ChoreTaskStatus.Open => Icons.Material.Outlined.Circle,
+        ChoreTaskStatus.Claimed => Icons.Material.Filled.PersonPin,
+        ChoreTaskStatus.PendingConfirmation => Icons.Material.Filled.HourglassTop,
+        ChoreTaskStatus.Confirmed => Icons.Material.Filled.CheckCircle,
+        ChoreTaskStatus.Missed => Icons.Material.Filled.Cancel,
+        ChoreTaskStatus.Cancelled => Icons.Material.Filled.DoNotDisturb,
+        _ => Icons.Material.Outlined.Circle
+    };
+
+    private static Color GetStatusColor(ChoreTaskStatus status) => status switch
+    {
+        ChoreTaskStatus.Open => Color.Default,
+        ChoreTaskStatus.Claimed => Color.Info,
+        ChoreTaskStatus.PendingConfirmation => Color.Warning,
+        ChoreTaskStatus.Confirmed => Color.Success,
+        ChoreTaskStatus.Missed => Color.Error,
+        ChoreTaskStatus.Cancelled => Color.Warning,
+        _ => Color.Default
+    };
+
+    private static Color GetDateColor(DateOnly date)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        if (date < today) return Color.Error;
+        if (date == today) return Color.Primary;
+        return Color.Default;
+    }
+
+    private static string FormatDate(DateOnly date)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        if (date == today) return "Heute";
+        if (date == today.AddDays(-1)) return "Gestern";
+        if (date == today.AddDays(1)) return "Morgen";
+        return date.ToString("dddd, dd.MM.yyyy");
+    }
+
+    private enum TaskFilter
+    {
+        Today,
+        Open,
+        Permanent,
+        Pending,
+        ThisWeek,
+        Overdue
+    }
+
+    private static bool IsEmoji(string s) =>
+        !string.IsNullOrEmpty(s) && !s.All(c => c < 128);
+}
