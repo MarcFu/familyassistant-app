@@ -5,7 +5,7 @@
     <TitleContent>
         <div class="d-flex align-center gap-2">
             <MudIcon Icon="@Icons.Material.Filled.Link" />
-            <MudText Typo="Typo.h6">Verknüpfungen: @Person.Name</MudText>
+            <MudText Typo="Typo.h6">@L["Dialog.PersonEntity.Title"]: @Person.Name</MudText>
         </div>
     </TitleContent>
     <DialogContent>
@@ -27,17 +27,17 @@
 
         <MudDivider Class="my-4" />
 
-        @* --- Geräte (Internet-Steuerung) --- *@
+        @* --- Notifications --- *@
         <MudText Typo="Typo.subtitle2" Class="mb-2">
-            <MudIcon Icon="@Icons.Material.Filled.Router" Size="Size.Small" Class="mr-1" />
-            @L["Dialog.PersonEntity.Devices"]
+            <MudIcon Icon="@Icons.Material.Filled.Notifications" Size="Size.Small" Class="mr-1" />
+            @L["Dialog.PersonEntity.Notify"]
         </MudText>
         <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
-            @L["Dialog.PersonEntity.DevicesHint"]
+            @L["Dialog.PersonEntity.NotifyHint"]
         </MudText>
-        <HaEntityPicker Domain="switch" Label="@L["Dialog.PersonEntity.SwitchLabel"].Value" MultiSelect="true" Class="mb-2"
-                        SelectedValues="@_deviceEntities"
-                        SelectedValuesChanged="@(v => _deviceEntities = v.ToList())" />
+        <HaEntityPicker Domain="notify" Label="@L["Dialog.PersonEntity.NotifyLabel"].Value" Class="mb-2"
+                        SelectedValue="@_notifyEntity"
+                        SelectedValueChanged="@(v => _notifyEntity = v)" />
     </DialogContent>
     <DialogActions>
         <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">@L["Common.Cancel"]</MudButton>
@@ -56,18 +56,18 @@
     public Person Person { get; set; } = null!;
 
     private string? _todoEntityId;
-    private List<string> _deviceEntities = [];
+    private string? _notifyEntity;
 
     protected override void OnParametersSet()
     {
         _todoEntityId = Person.HaTodoEntityId;
-        _deviceEntities = Person.DeviceEntities.ToList();
+        _notifyEntity = Person.NotifyEntity;
     }
 
     private async Task Save()
     {
         Person.HaTodoEntityId = string.IsNullOrWhiteSpace(_todoEntityId) ? null : _todoEntityId.Trim();
-        Person.DeviceEntities = _deviceEntities;
+        Person.NotifyEntity = string.IsNullOrWhiteSpace(_notifyEntity) ? null : _notifyEntity.Trim();
         await Db.SaveChangesAsync();
         MudDialog.Close(DialogResult.Ok(true));
     }

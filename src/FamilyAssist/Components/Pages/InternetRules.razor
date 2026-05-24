@@ -1,0 +1,337 @@
+@page "/internet-rules"
+@using FamilyAssist.Data
+@using FamilyAssist.Models
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<SharedResource> L
+
+<PageTitle>@L["Nav.InternetRules"]</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4">@L["Nav.InternetRules"]</MudText>
+
+@if (_persons is null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudTabs Elevation="0" Outlined="true" Rounded="true" ApplyEffectsToContainer="true" Class="mb-4">
+        @foreach (var person in _persons)
+        {
+            <MudTabPanel Text="@person.Name" Icon="@Icons.Material.Filled.Person">
+                @* --- Devices Section --- *@
+                <MudText Typo="Typo.h6" Class="mt-4 mb-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Devices" Class="mr-1" />
+                    @L["Internet.Devices"]
+                </MudText>
+
+                @if (person.Devices.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info" Class="mb-3">@L["Internet.NoDevices"]</MudAlert>
+                }
+                else
+                {
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        @foreach (var device in person.Devices)
+                        {
+                            <MudPaper Outlined="true" Class="pa-3" Style="min-width: 220px;">
+                                <div class="d-flex align-center justify-space-between">
+                                    <div>
+                                        <MudText Typo="Typo.subtitle2">@device.Label</MudText>
+                                        <MudChip T="string" Size="Size.Small" Color="@GetRoleColor(device.Role)"
+                                                 Variant="Variant.Outlined">
+                                            @GetRoleLabel(device.Role)
+                                        </MudChip>
+                                    </div>
+                                    <div>
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                                       OnClick="@(() => EditDevice(person, device))" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => DeleteDevice(person, device))" />
+                                    </div>
+                                </div>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-family: monospace;">
+                                    @device.InternetSwitchEntity
+                                </MudText>
+                                @if (device.DetectionEntity is not null)
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Tertiary" Style="font-family: monospace;">
+                                        @device.DetectionEntity
+                                    </MudText>
+                                }
+                            </MudPaper>
+                        }
+                    </div>
+                }
+
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="@(() => AddDevice(person))" Class="mb-4">
+                    @L["Internet.AddDevice"]
+                </MudButton>
+
+                <MudDivider Class="my-4" />
+
+                @* --- Rules Section --- *@
+                <MudText Typo="Typo.h6" Class="mb-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Rule" Class="mr-1" />
+                    @L["Internet.Rules"]
+                </MudText>
+
+                @if (person.InternetRules.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info" Class="mb-3">@L["Internet.NoRules"]</MudAlert>
+                }
+                else
+                {
+                    <div class="d-flex flex-column gap-2 mb-3">
+                        @foreach (var rule in person.InternetRules.OrderBy(r => r.Name))
+                        {
+                            <MudPaper Outlined="true" Class="pa-3">
+                                <div class="d-flex align-center justify-space-between">
+                                    <div>
+                                        <div class="d-flex align-center gap-2">
+                                            <MudText Typo="Typo.subtitle2">@rule.Name</MudText>
+                                            <MudChip T="string" Size="Size.Small"
+                                                     Color="@(rule.Target == InternetRuleTarget.Gaming ? Color.Warning : Color.Info)"
+                                                     Variant="Variant.Outlined">
+                                                @(rule.Target == InternetRuleTarget.Gaming ? L["Rule.Target.Gaming"] : L["Rule.Target.Internet"])
+                                            </MudChip>
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                                                @(rule.RuleMode == InternetRuleMode.TimeWindow ? L["Rule.Mode.TimeWindow"] : L["Rule.Mode.DetectionBudget"])
+                                            </MudChip>
+                                            @if (!rule.IsActive)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Default">@L["Common.Inactive"]</MudChip>
+                                            }
+                                        </div>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                            @GetRuleSummary(rule)
+                                        </MudText>
+                                        @if (rule.AffectedDevices.Count > 0)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Tertiary">
+                                                @string.Join(", ", rule.AffectedDevices.Select(d => d.Label))
+                                            </MudText>
+                                        }
+                                    </div>
+                                    <div class="d-flex align-center">
+                                        <MudSwitch T="bool" Value="@rule.IsActive" Color="Color.Success"
+                                                   ValueChanged="@(v => ToggleRule(rule, v))" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                                       OnClick="@(() => EditRule(person, rule))" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => DeleteRule(person, rule))" />
+                                    </div>
+                                </div>
+                            </MudPaper>
+                        }
+                    </div>
+                }
+
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="@(() => AddRule(person))"
+                           Disabled="@(person.Devices.Count == 0)">
+                    @L["Internet.AddRule"]
+                </MudButton>
+            </MudTabPanel>
+        }
+    </MudTabs>
+}
+
+@code {
+    private List<Person>? _persons;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _persons = await Db.Persons
+            .Include(p => p.Devices)
+            .Include(p => p.InternetRules)
+                .ThenInclude(r => r.AffectedDevices)
+            .Where(p => p.Role == PersonRole.Child)
+            .OrderBy(p => p.Name)
+            .ToListAsync();
+    }
+
+    // ─── Devices ────────────────────────────────────────────────
+
+    private async Task AddDevice(Person person)
+    {
+        var parameters = new DialogParameters<DeviceDialog>
+        {
+            { x => x.IsNew, true },
+            { x => x.PersonId, person.Id }
+        };
+
+        var dialog = await DialogService.ShowAsync<DeviceDialog>(
+            L["Dialog.Device.TitleNew"].Value, parameters, DialogOptions());
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: PersonDevice device })
+        {
+            Db.PersonDevices.Add(device);
+            await Db.SaveChangesAsync();
+            await LoadData();
+        }
+    }
+
+    private async Task EditDevice(Person person, PersonDevice device)
+    {
+        var parameters = new DialogParameters<DeviceDialog>
+        {
+            { x => x.Device, device },
+            { x => x.IsNew, false },
+            { x => x.PersonId, person.Id }
+        };
+
+        var dialog = await DialogService.ShowAsync<DeviceDialog>(
+            L["Dialog.Device.TitleEdit"].Value, parameters, DialogOptions());
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: PersonDevice updated })
+        {
+            // Device is tracked, changes are already applied
+            await Db.SaveChangesAsync();
+            await LoadData();
+        }
+    }
+
+    private async Task DeleteDevice(Person person, PersonDevice device)
+    {
+        Db.PersonDevices.Remove(device);
+        await Db.SaveChangesAsync();
+        Snackbar.Add(string.Format(L["Internet.ConfirmDeleteDevice"].Value, device.Label), Severity.Success);
+        await LoadData();
+    }
+
+    // ─── Rules ──────────────────────────────────────────────────
+
+    private async Task AddRule(Person person)
+    {
+        var parameters = new DialogParameters<InternetRuleDialog>
+        {
+            { x => x.IsNew, true },
+            { x => x.PersonId, person.Id },
+            { x => x.AvailableDevices, person.Devices.ToList() }
+        };
+
+        var dialog = await DialogService.ShowAsync<InternetRuleDialog>(
+            L["Dialog.Rule.TitleNew"].Value, parameters, DialogOptions());
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: (InternetRule rule, HashSet<int> deviceIds) })
+        {
+            rule.AffectedDevices = person.Devices.Where(d => deviceIds.Contains(d.Id)).ToList();
+            Db.InternetRules.Add(rule);
+            await Db.SaveChangesAsync();
+            await LoadData();
+        }
+    }
+
+    private async Task EditRule(Person person, InternetRule rule)
+    {
+        var parameters = new DialogParameters<InternetRuleDialog>
+        {
+            { x => x.Rule, rule },
+            { x => x.IsNew, false },
+            { x => x.PersonId, person.Id },
+            { x => x.AvailableDevices, person.Devices.ToList() }
+        };
+
+        var dialog = await DialogService.ShowAsync<InternetRuleDialog>(
+            L["Dialog.Rule.TitleEdit"].Value, parameters, DialogOptions());
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: (InternetRule updated, HashSet<int> deviceIds) })
+        {
+            updated.AffectedDevices = person.Devices.Where(d => deviceIds.Contains(d.Id)).ToList();
+            await Db.SaveChangesAsync();
+            await LoadData();
+        }
+    }
+
+    private async Task DeleteRule(Person person, InternetRule rule)
+    {
+        Db.InternetRules.Remove(rule);
+        await Db.SaveChangesAsync();
+        Snackbar.Add(string.Format(L["Internet.ConfirmDeleteRule"].Value, rule.Name), Severity.Success);
+        await LoadData();
+    }
+
+    private async Task ToggleRule(InternetRule rule, bool active)
+    {
+        rule.IsActive = active;
+        await Db.SaveChangesAsync();
+    }
+
+    // ─── Helpers ────────────────────────────────────────────────
+
+    private string GetRuleSummary(InternetRule rule)
+    {
+        if (rule.RuleMode == InternetRuleMode.TimeWindow)
+        {
+            var start = rule.WindowStart?.ToString("HH:mm") ?? "?";
+            var end = rule.WindowEnd?.ToString("HH:mm") ?? "?";
+            var days = GetDaysLabel(rule.ApplicableDays);
+            return $"{start} – {end}, {days}";
+        }
+        else
+        {
+            var budget = rule.DailyBudgetMinutes ?? 0;
+            var hours = budget / 60;
+            var mins = budget % 60;
+            var budgetStr = hours > 0 ? $"{hours}h {mins}min" : $"{mins} min";
+            return $"{budgetStr}/Tag";
+        }
+    }
+
+    private string GetDaysLabel(DaysOfWeek days)
+    {
+        if (days == DaysOfWeek.All) return L["Days.All"].Value;
+        if (days == DaysOfWeek.Weekdays) return L["Days.Weekdays"].Value;
+        if (days == DaysOfWeek.Weekend) return L["Days.Weekend"].Value;
+
+        var parts = new List<string>();
+        if ((days & DaysOfWeek.Monday) != 0) parts.Add("Mo");
+        if ((days & DaysOfWeek.Tuesday) != 0) parts.Add("Di");
+        if ((days & DaysOfWeek.Wednesday) != 0) parts.Add("Mi");
+        if ((days & DaysOfWeek.Thursday) != 0) parts.Add("Do");
+        if ((days & DaysOfWeek.Friday) != 0) parts.Add("Fr");
+        if ((days & DaysOfWeek.Saturday) != 0) parts.Add("Sa");
+        if ((days & DaysOfWeek.Sunday) != 0) parts.Add("So");
+        return string.Join(", ", parts);
+    }
+
+    private Color GetRoleColor(DeviceRole role) => role switch
+    {
+        DeviceRole.SchoolOnly => Color.Info,
+        DeviceRole.GamingOnly => Color.Warning,
+        DeviceRole.Shared => Color.Default,
+        _ => Color.Default
+    };
+
+    private string GetRoleLabel(DeviceRole role) => role switch
+    {
+        DeviceRole.SchoolOnly => L["Device.Role.SchoolOnly"].Value,
+        DeviceRole.GamingOnly => L["Device.Role.GamingOnly"].Value,
+        DeviceRole.Shared => L["Device.Role.Shared"].Value,
+        _ => "?"
+    };
+
+    private static DialogOptions DialogOptions() => new()
+    {
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        CloseOnEscapeKey = true
+    };
+}

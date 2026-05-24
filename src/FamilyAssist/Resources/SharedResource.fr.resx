@@ -418,6 +418,67 @@
   <data name="Dialog.IconPicker.AI.HintMedium"><value>Essaie une description plus courte ou un modèle plus grand (13B+).</value></data>
   <data name="Dialog.IconPicker.AI.HintLarge"><value>Essaie une description plus courte.</value></data>
 
+  <!-- ═══ Internet Rules ═══ -->
+  <data name="Dialog.PersonEntity.Notify"><value>Notifications</value></data>
+  <data name="Dialog.PersonEntity.NotifyHint"><value>Service de notification HA pour les alertes push (p.ex. alertes de budget).</value></data>
+  <data name="Dialog.PersonEntity.NotifyLabel"><value>Entité de notification</value></data>
+  <data name="EntityPicker.SearchPlaceholder"><value>Rechercher (nom ou ID d'entité)...</value></data>
+  <data name="EntityPicker.NoEntities"><value>Aucune entité trouvée pour ce domaine.</value></data>
+  <data name="EntityPicker.NoMatch"><value>Aucun résultat pour cette recherche.</value></data>
+  <data name="EntityPicker.CountInfo"><value>{0} sur {1} affichés</value></data>
+  <data name="Internet.Devices"><value>Appareils</value></data>
+  <data name="Internet.NoDevices"><value>Aucun appareil configuré. Ajoutez d'abord des appareils.</value></data>
+  <data name="Internet.AddDevice"><value>Ajouter un appareil</value></data>
+  <data name="Internet.Rules"><value>Règles</value></data>
+  <data name="Internet.NoRules"><value>Aucune règle configurée.</value></data>
+  <data name="Internet.AddRule"><value>Ajouter une règle</value></data>
+  <data name="Internet.ConfirmDeleteDevice"><value>Supprimer l'appareil « {0} » ? Les liens de règles associés seront également supprimés.</value></data>
+  <data name="Internet.ConfirmDeleteRule"><value>Supprimer la règle « {0} » ?</value></data>
+  <data name="Device.Role.Shared"><value>Partagé</value></data>
+  <data name="Device.Role.SchoolOnly"><value>École uniquement</value></data>
+  <data name="Device.Role.GamingOnly"><value>Jeux uniquement</value></data>
+  <data name="Dialog.Device.TitleNew"><value>Nouvel appareil</value></data>
+  <data name="Dialog.Device.TitleEdit"><value>Modifier l'appareil</value></data>
+  <data name="Dialog.Device.Label"><value>Libellé</value></data>
+  <data name="Dialog.Device.Role"><value>Rôle de l'appareil</value></data>
+  <data name="Dialog.Device.InternetControl"><value>Contrôle Internet</value></data>
+  <data name="Dialog.Device.InternetSwitch"><value>Entité switch Internet</value></data>
+  <data name="Dialog.Device.InvertInternet"><value>Inversé (ON = bloqué)</value></data>
+  <data name="Dialog.Device.GamingControl"><value>Détection et blocage des jeux</value></data>
+  <data name="Dialog.Device.GamingHint"><value>Optionnel : pour la détection DPI des jeux et le blocage sélectif.</value></data>
+  <data name="Dialog.Device.DetectionEntity"><value>Capteur de détection (binary_sensor)</value></data>
+  <data name="Dialog.Device.GamingBlockEntity"><value>Switch de blocage des jeux</value></data>
+  <data name="Dialog.Device.InvertGaming"><value>Inversé (ON = jeux autorisés)</value></data>
+  <data name="Dialog.Rule.TitleNew"><value>Nouvelle règle</value></data>
+  <data name="Dialog.Rule.TitleEdit"><value>Modifier la règle</value></data>
+  <data name="Dialog.Rule.Mode"><value>Mode de règle</value></data>
+  <data name="Dialog.Rule.Target"><value>Contrôle</value></data>
+  <data name="Dialog.Rule.Devices"><value>Appareils concernés</value></data>
+  <data name="Dialog.Rule.NoDevices"><value>Aucun appareil disponible. Ajoutez d'abord des appareils.</value></data>
+  <data name="Dialog.Rule.TimeWindow"><value>Fenêtre horaire</value></data>
+  <data name="Dialog.Rule.WindowStart"><value>Autorisé à partir de</value></data>
+  <data name="Dialog.Rule.WindowEnd"><value>Autorisé jusqu'à</value></data>
+  <data name="Dialog.Rule.Budget"><value>Budget quotidien</value></data>
+  <data name="Dialog.Rule.DailyMinutes"><value>Minutes par jour</value></data>
+  <data name="Dialog.Rule.DailyMinutesHelper"><value>Budget total de jeu pour la journée</value></data>
+  <data name="Dialog.Rule.BudgetWindowStart"><value>Au plus tôt à partir de</value></data>
+  <data name="Dialog.Rule.BudgetWindowEnd"><value>Au plus tard jusqu'à</value></data>
+  <data name="Dialog.Rule.DetectionThreshold"><value>Seuil de détection (min)</value></data>
+  <data name="Dialog.Rule.DetectionThresholdHelper"><value>Minutes de trafic de jeu avant que le budget ne soit débité</value></data>
+  <data name="Dialog.Rule.GracePeriod"><value>Période de grâce (min)</value></data>
+  <data name="Dialog.Rule.GracePeriodHelper"><value>Minutes après épuisement du budget avant le blocage</value></data>
+  <data name="Dialog.Rule.Days"><value>Actif les</value></data>
+  <data name="Dialog.Rule.Weekdays"><value>Jours ouvrables</value></data>
+  <data name="Dialog.Rule.Weekend"><value>Week-end</value></data>
+  <data name="Dialog.Rule.AllDays"><value>Tous les jours</value></data>
+  <data name="Rule.Mode.TimeWindow"><value>Fenêtre horaire</value></data>
+  <data name="Rule.Mode.DetectionBudget"><value>Budget de détection</value></data>
+  <data name="Rule.Target.Internet"><value>Internet</value></data>
+  <data name="Rule.Target.Gaming"><value>Jeux</value></data>
+  <data name="Days.All"><value>Quotidien</value></data>
+  <data name="Days.Weekdays"><value>Lun–Ven</value></data>
+  <data name="Days.Weekend"><value>Sam–Dim</value></data>
+
   <!-- ═══ MudBlazor internal ═══ -->
   <data name="MudBlazor.MudDataGrid.is empty"><value>est vide</value></data>
   <data name="MudBlazor.MudDataGrid.is not empty"><value>n'est pas vide</value></data>

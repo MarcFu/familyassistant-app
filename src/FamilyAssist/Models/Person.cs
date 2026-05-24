@@ -22,9 +22,10 @@ public class Person
     public int Credits { get; set; }
 
     /// <summary>
-    /// HA switch entity IDs that control internet access for this person's devices
+    /// HA notify service target for this person (e.g., "mobile_app_alex")
+    /// Used for budget warnings, enforcement notifications, etc.
     /// </summary>
-    public List<string> DeviceEntities { get; set; } = [];
+    public string? NotifyEntity { get; set; }
 
     /// <summary>
     /// HA todo list entity ID for syncing tasks (e.g., "todo.alex_tasks")
@@ -42,6 +43,7 @@ public class Person
     public bool IsPaused { get; set; }
 
     public ICollection<CreditTransaction> CreditTransactions { get; set; } = [];
+    public ICollection<PersonDevice> Devices { get; set; } = [];
     public ICollection<InternetRule> InternetRules { get; set; } = [];
     public ICollection<ChoreSchedule> DefaultSchedules { get; set; } = [];
     public ICollection<ChoreTask> ClaimedTasks { get; set; } = [];

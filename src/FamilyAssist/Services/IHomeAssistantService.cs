@@ -11,6 +11,17 @@ public record HaPerson(string EntityId, string FriendlyName, string? State, stri
 public record HaEntityState(string EntityId, string State, Dictionary<string, object?> Attributes);
 
 /// <summary>
+/// Registry metadata for an entity (area, device, platform info).
+/// Used by the EntityPicker for richer display.
+/// </summary>
+public record HaEntityRegistryInfo(
+    string EntityId,
+    string? AreaName,
+    string? DeviceName,
+    string? Platform
+);
+
+/// <summary>
 /// A single captured WebSocket event for the live event log.
 /// </summary>
 public record HaEventLogEntry(DateTime Timestamp, string EventType, string EntityId, string? OldState, string? NewState, string? RawData);
@@ -64,6 +75,13 @@ public interface IHomeAssistantService
     /// Get all entities matching a domain (e.g., "switch", "todo")
     /// </summary>
     Task<IReadOnlyList<HaEntityState>> GetEntitiesByDomainAsync(string domain, CancellationToken ct = default);
+
+    /// <summary>
+    /// Get registry metadata (area/device names) for entities.
+    /// Uses WebSocket registry commands, cached for performance.
+    /// Returns a lookup: entity_id → HaEntityRegistryInfo
+    /// </summary>
+    Task<IReadOnlyDictionary<string, HaEntityRegistryInfo>> GetEntityRegistryAsync(CancellationToken ct = default);
 
     // ─── WebSocket API ──────────────────────────────────────────
 

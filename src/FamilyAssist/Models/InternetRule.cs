@@ -1,5 +1,9 @@
 namespace FamilyAssist.Models;
 
+/// <summary>
+/// An internet access rule that controls when and how internet/gaming is available.
+/// Rules are evaluated by the InternetEnforcementService.
+/// </summary>
 public class InternetRule
 {
     public int Id { get; set; }
@@ -10,61 +14,137 @@ public class InternetRule
     public required string Name { get; set; }
 
     /// <summary>
-    /// Type of rule: time window or daily budget
+    /// Rule mode determines the enforcement behavior
     /// </summary>
-    public InternetRuleType RuleType { get; set; }
+    public InternetRuleMode RuleMode { get; set; }
 
     /// <summary>
-    /// Category this rule applies to (e.g., Gaming, Messenger, Full access)
+    /// What this rule controls when active
     /// </summary>
-    public InternetCategory Category { get; set; }
+    public InternetRuleTarget Target { get; set; }
+
+    // ─── TimeWindow fields ──────────────────────────────────────
 
     /// <summary>
-    /// Start time for TimeWindow rules (e.g., 06:00)
+    /// Start time for TimeWindow rules (e.g., 07:00 = internet allowed from 07:00)
     /// </summary>
     public TimeOnly? WindowStart { get; set; }
 
     /// <summary>
-    /// End time for TimeWindow rules (e.g., 21:00)
+    /// End time for TimeWindow rules (e.g., 21:00 = internet blocked after 21:00)
     /// </summary>
     public TimeOnly? WindowEnd { get; set; }
-
-    /// <summary>
-    /// Daily budget in minutes for DailyBudget rules (e.g., 120 for 2h gaming)
-    /// </summary>
-    public int? DailyMinutes { get; set; }
 
     /// <summary>
     /// Which days of the week this rule applies
     /// </summary>
     public DaysOfWeek ApplicableDays { get; set; } = DaysOfWeek.All;
 
+    // ─── DetectionBudget fields (Phase 2, nullable) ─────────────
+
+    /// <summary>
+    /// Daily budget in minutes (e.g., 120 for 2h gaming)
+    /// </summary>
+    public int? DailyBudgetMinutes { get; set; }
+
+    /// <summary>
+    /// Minutes of detected gaming before the budget starts ticking (default: 5)
+    /// </summary>
+    public int? DetectionThresholdMinutes { get; set; }
+
+    /// <summary>
+    /// Grace period in minutes after budget is depleted before enforcement (default: 5)
+    /// </summary>
+    public int? GracePeriodMinutes { get; set; }
+
+    /// <summary>
+    /// Time of day when the daily budget resets (default: 06:00)
+    /// </summary>
+    public TimeOnly? BudgetResetTime { get; set; }
+
+    // ─── Credits (Phase 3) ──────────────────────────────────────
+
     /// <summary>
     /// How many credits per extra minute (0 = no extra time purchasable)
     /// </summary>
     public int CreditCostPerExtraMinute { get; set; }
 
+    // ─── Notifications ──────────────────────────────────────────
+
+    /// <summary>
+    /// Notify at these budget percentages (e.g., "75,90,100").
+    /// Stored as comma-separated integers.
+    /// </summary>
+    public string? NotifyAtPercent { get; set; }
+
+    // ─── State ──────────────────────────────────────────────────
+
     public bool IsActive { get; set; } = true;
+
+    // ─── Navigation ─────────────────────────────────────────────
+
+    /// <summary>
+    /// Devices affected by this rule (m:n via join table)
+    /// </summary>
+    public ICollection<PersonDevice> AffectedDevices { get; set; } = [];
 }
 
+/// <summary>
+/// The mode of an internet rule determines its enforcement behavior.
+/// Values must be explicit for DB storage.
+/// </summary>
+public enum InternetRuleMode
+{
+    /// <summary>
+    /// Access allowed within a specific time window (e.g., 07:00-21:00).
+    /// Outside the window, enforcement activates.
+    /// </summary>
+    TimeWindow = 0,
+
+    /// <summary>
+    /// A daily budget of minutes, tracked via detection sensors.
+    /// When depleted, enforcement activates.
+    /// </summary>
+    DetectionBudget = 1
+}
+
+/// <summary>
+/// What the rule controls when it enforces (blocks).
+/// </summary>
+public enum InternetRuleTarget
+{
+    /// <summary>
+    /// Controls full internet access (InternetSwitchEntity on device).
+    /// Used for Nachtruhe-type rules.
+    /// </summary>
+    Internet = 0,
+
+    /// <summary>
+    /// Controls only gaming access (GamingBlockEntity on device).
+    /// Used for gaming budget rules.
+    /// </summary>
+    Gaming = 1
+}
+
+/// <summary>
+/// Replaced by InternetRuleMode - kept temporarily for migration reference.
+/// </summary>
+[Obsolete("Use InternetRuleMode instead")]
 public enum InternetRuleType
 {
-    /// <summary>
-    /// Access allowed within a specific time window
-    /// </summary>
-    TimeWindow,
-
-    /// <summary>
-    /// A daily budget of minutes that can be used anytime
-    /// </summary>
-    DailyBudget
+    TimeWindow = 0,
+    DailyBudget = 1
 }
 
+/// <summary>
+/// Replaced by InternetRuleTarget - no longer needed.
+/// </summary>
+[Obsolete("Use PersonDevice + InternetRuleTarget instead")]
 public enum InternetCategory
 {
-    Gaming,
-    Messenger,
-    FullAccess
+    Gaming = 0,
+    Messenger = 1,
+    FullAccess = 2
 }
 
 [Flags]

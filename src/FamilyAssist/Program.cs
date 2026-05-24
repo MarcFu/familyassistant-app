@@ -76,6 +76,7 @@ builder.Services.AddHostedService<HomeAssistantSyncService>();
 builder.Services.AddHostedService<HaWebSocketStartupService>();
 builder.Services.AddHostedService<AttachmentCleanupService>();
 builder.Services.AddHostedService<HaEventTriggerService>();
+builder.Services.AddHostedService<InternetEnforcementService>();
 
 // Database health state (tracks migration errors for error middleware)
 builder.Services.AddSingleton<DatabaseHealthState>();

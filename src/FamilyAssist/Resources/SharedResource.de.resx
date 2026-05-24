@@ -68,6 +68,10 @@
   <data name="Common.Role"><value>Rolle</value></data>
   <data name="Common.Credits"><value>Credits</value><comment>Configurable via PointsUnitName AppSetting</comment></data>
   <data name="Common.SelectedCount"><value>{0} ausgewählt</value></data>
+  <data name="EntityPicker.SearchPlaceholder"><value>Suchen (Name oder Entity-ID)...</value></data>
+  <data name="EntityPicker.NoEntities"><value>Keine Entitäten für diese Domain gefunden.</value></data>
+  <data name="EntityPicker.NoMatch"><value>Kein Treffer für diese Suche.</value></data>
+  <data name="EntityPicker.CountInfo"><value>{0} von {1} angezeigt</value></data>
   <data name="Common.InactivePrefix"><value>[inaktiv] {0}</value></data>
   <data name="Common.ConnectionError"><value>Verbindungsfehler: {0}</value></data>
   <data name="Common.Snackbar.Error"><value>Fehler: {0}</value></data>
@@ -361,6 +365,9 @@
   <data name="Dialog.PersonEntity.Devices"><value>Geräte (Internet-Steuerung)</value></data>
   <data name="Dialog.PersonEntity.DevicesHint"><value>Switch-Entitäten die den Internetzugang für die Geräte dieser Person steuern.</value></data>
   <data name="Dialog.PersonEntity.SwitchLabel"><value>Switch-Entitäten</value></data>
+  <data name="Dialog.PersonEntity.Notify"><value>Benachrichtigungen</value></data>
+  <data name="Dialog.PersonEntity.NotifyHint"><value>HA Notify-Dienst für Push-Benachrichtigungen (z.B. Budget-Warnungen).</value></data>
+  <data name="Dialog.PersonEntity.NotifyLabel"><value>Notify-Entität</value></data>
   <data name="Dialog.AdHocTask.Title"><value>Ad-hoc Aufgabe erstellen</value></data>
   <data name="Dialog.AdHoc.Description"><value>Erstellt eine einmalige Aufgabe (ohne wiederkehrenden Zeitplan).</value></data>
   <data name="Dialog.AdHoc.ForWhom"><value>Für wen?</value></data>
@@ -417,6 +424,60 @@
   <data name="Dialog.IconPicker.AI.HintSmall"><value>Das Modell (≤4B) ist für SVG-Generierung sehr klein. Versuche ein 7B+ Modell.</value></data>
   <data name="Dialog.IconPicker.AI.HintMedium"><value>Versuche eine kürzere Beschreibung oder ein größeres Modell (13B+).</value></data>
   <data name="Dialog.IconPicker.AI.HintLarge"><value>Versuche eine kürzere Beschreibung.</value></data>
+
+  <!-- ═══ Internet Rules ═══ -->
+  <data name="Internet.Devices"><value>Geräte</value></data>
+  <data name="Internet.NoDevices"><value>Noch keine Geräte angelegt. Füge zuerst Geräte hinzu.</value></data>
+  <data name="Internet.AddDevice"><value>Gerät hinzufügen</value></data>
+  <data name="Internet.Rules"><value>Regeln</value></data>
+  <data name="Internet.NoRules"><value>Noch keine Regeln angelegt.</value></data>
+  <data name="Internet.AddRule"><value>Regel hinzufügen</value></data>
+  <data name="Internet.ConfirmDeleteDevice"><value>Gerät "{0}" wirklich löschen? Zugehörige Regel-Verknüpfungen werden ebenfalls entfernt.</value></data>
+  <data name="Internet.ConfirmDeleteRule"><value>Regel "{0}" wirklich löschen?</value></data>
+  <data name="Device.Role.Shared"><value>Gemischt</value></data>
+  <data name="Device.Role.SchoolOnly"><value>Nur Schule</value></data>
+  <data name="Device.Role.GamingOnly"><value>Nur Gaming</value></data>
+  <data name="Dialog.Device.TitleNew"><value>Neues Gerät</value></data>
+  <data name="Dialog.Device.TitleEdit"><value>Gerät bearbeiten</value></data>
+  <data name="Dialog.Device.Label"><value>Bezeichnung</value></data>
+  <data name="Dialog.Device.Role"><value>Geräte-Rolle</value></data>
+  <data name="Dialog.Device.InternetControl"><value>Internet-Steuerung</value></data>
+  <data name="Dialog.Device.InternetSwitch"><value>Internet Switch-Entität</value></data>
+  <data name="Dialog.Device.InvertInternet"><value>Invertiert (ON = blockiert)</value></data>
+  <data name="Dialog.Device.GamingControl"><value>Gaming-Erkennung &amp; Blockierung</value></data>
+  <data name="Dialog.Device.GamingHint"><value>Optional: Für DPI-basierte Gaming-Erkennung und selektive Blockierung.</value></data>
+  <data name="Dialog.Device.DetectionEntity"><value>Detection-Sensor (binary_sensor)</value></data>
+  <data name="Dialog.Device.GamingBlockEntity"><value>Gaming-Block Switch</value></data>
+  <data name="Dialog.Device.InvertGaming"><value>Invertiert (ON = Gaming erlaubt)</value></data>
+  <data name="Dialog.Rule.TitleNew"><value>Neue Regel</value></data>
+  <data name="Dialog.Rule.TitleEdit"><value>Regel bearbeiten</value></data>
+  <data name="Dialog.Rule.Mode"><value>Regel-Modus</value></data>
+  <data name="Dialog.Rule.Target"><value>Steuert</value></data>
+  <data name="Dialog.Rule.Devices"><value>Betroffene Geräte</value></data>
+  <data name="Dialog.Rule.NoDevices"><value>Keine Geräte vorhanden. Bitte zuerst Geräte anlegen.</value></data>
+  <data name="Dialog.Rule.TimeWindow"><value>Zeitfenster</value></data>
+  <data name="Dialog.Rule.WindowStart"><value>Erlaubt ab</value></data>
+  <data name="Dialog.Rule.WindowEnd"><value>Erlaubt bis</value></data>
+  <data name="Dialog.Rule.Budget"><value>Tagesbudget</value></data>
+  <data name="Dialog.Rule.DailyMinutes"><value>Minuten pro Tag</value></data>
+  <data name="Dialog.Rule.DailyMinutesHelper"><value>Gesamtes Gaming-Budget für den Tag</value></data>
+  <data name="Dialog.Rule.BudgetWindowStart"><value>Frühestens ab</value></data>
+  <data name="Dialog.Rule.BudgetWindowEnd"><value>Spätestens bis</value></data>
+  <data name="Dialog.Rule.DetectionThreshold"><value>Erkennungs-Schwelle (Min)</value></data>
+  <data name="Dialog.Rule.DetectionThresholdHelper"><value>Minuten Gaming-Traffic bevor Budget belastet wird</value></data>
+  <data name="Dialog.Rule.GracePeriod"><value>Karenzzeit (Min)</value></data>
+  <data name="Dialog.Rule.GracePeriodHelper"><value>Minuten nach Budget-Ende bevor Sperre greift</value></data>
+  <data name="Dialog.Rule.Days"><value>Gültig an</value></data>
+  <data name="Dialog.Rule.Weekdays"><value>Werktage</value></data>
+  <data name="Dialog.Rule.Weekend"><value>Wochenende</value></data>
+  <data name="Dialog.Rule.AllDays"><value>Alle Tage</value></data>
+  <data name="Rule.Mode.TimeWindow"><value>Zeitfenster</value></data>
+  <data name="Rule.Mode.DetectionBudget"><value>Erkennungs-Budget</value></data>
+  <data name="Rule.Target.Internet"><value>Internet</value></data>
+  <data name="Rule.Target.Gaming"><value>Gaming</value></data>
+  <data name="Days.All"><value>Täglich</value></data>
+  <data name="Days.Weekdays"><value>Mo–Fr</value></data>
+  <data name="Days.Weekend"><value>Sa–So</value></data>
 
   <!-- ═══ MudBlazor internal ═══ -->
   <data name="MudBlazor.MudDataGrid.is empty"><value>ist leer</value></data>

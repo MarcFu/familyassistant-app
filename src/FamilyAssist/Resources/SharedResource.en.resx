@@ -68,6 +68,10 @@
   <data name="Common.Role"><value>Role</value></data>
   <data name="Common.Credits"><value>Credits</value></data>
   <data name="Common.SelectedCount"><value>{0} selected</value></data>
+  <data name="EntityPicker.SearchPlaceholder"><value>Search (name or entity ID)...</value></data>
+  <data name="EntityPicker.NoEntities"><value>No entities found for this domain.</value></data>
+  <data name="EntityPicker.NoMatch"><value>No match for this search.</value></data>
+  <data name="EntityPicker.CountInfo"><value>{0} of {1} shown</value></data>
   <data name="Common.InactivePrefix"><value>[inactive] {0}</value></data>
   <data name="Common.ConnectionError"><value>Connection error: {0}</value></data>
   <data name="Common.Snackbar.Error"><value>Error: {0}</value></data>
@@ -361,6 +365,9 @@
   <data name="Dialog.PersonEntity.Devices"><value>Devices (Internet control)</value></data>
   <data name="Dialog.PersonEntity.DevicesHint"><value>Switch entities that control internet access for this person's devices.</value></data>
   <data name="Dialog.PersonEntity.SwitchLabel"><value>Switch entities</value></data>
+  <data name="Dialog.PersonEntity.Notify"><value>Notifications</value></data>
+  <data name="Dialog.PersonEntity.NotifyHint"><value>HA notify service for push notifications (e.g., budget warnings).</value></data>
+  <data name="Dialog.PersonEntity.NotifyLabel"><value>Notify entity</value></data>
   <data name="Dialog.AdHocTask.Title"><value>Create ad-hoc task</value></data>
   <data name="Dialog.AdHoc.Description"><value>Creates a one-time task (without recurring schedule).</value></data>
   <data name="Dialog.AdHoc.ForWhom"><value>For whom?</value></data>
@@ -417,6 +424,60 @@
   <data name="Dialog.IconPicker.AI.HintSmall"><value>The model (≤4B) is too small for SVG generation. Try a 7B+ model.</value></data>
   <data name="Dialog.IconPicker.AI.HintMedium"><value>Try a shorter description or a larger model (13B+).</value></data>
   <data name="Dialog.IconPicker.AI.HintLarge"><value>Try a shorter description.</value></data>
+
+  <!-- ═══ Internet Rules ═══ -->
+  <data name="Internet.Devices"><value>Devices</value></data>
+  <data name="Internet.NoDevices"><value>No devices configured yet. Add devices first.</value></data>
+  <data name="Internet.AddDevice"><value>Add device</value></data>
+  <data name="Internet.Rules"><value>Rules</value></data>
+  <data name="Internet.NoRules"><value>No rules configured yet.</value></data>
+  <data name="Internet.AddRule"><value>Add rule</value></data>
+  <data name="Internet.ConfirmDeleteDevice"><value>Delete device "{0}"? Associated rule links will also be removed.</value></data>
+  <data name="Internet.ConfirmDeleteRule"><value>Delete rule "{0}"?</value></data>
+  <data name="Device.Role.Shared"><value>Shared</value></data>
+  <data name="Device.Role.SchoolOnly"><value>School only</value></data>
+  <data name="Device.Role.GamingOnly"><value>Gaming only</value></data>
+  <data name="Dialog.Device.TitleNew"><value>New device</value></data>
+  <data name="Dialog.Device.TitleEdit"><value>Edit device</value></data>
+  <data name="Dialog.Device.Label"><value>Label</value></data>
+  <data name="Dialog.Device.Role"><value>Device role</value></data>
+  <data name="Dialog.Device.InternetControl"><value>Internet control</value></data>
+  <data name="Dialog.Device.InternetSwitch"><value>Internet switch entity</value></data>
+  <data name="Dialog.Device.InvertInternet"><value>Inverted (ON = blocked)</value></data>
+  <data name="Dialog.Device.GamingControl"><value>Gaming detection &amp; blocking</value></data>
+  <data name="Dialog.Device.GamingHint"><value>Optional: For DPI-based gaming detection and selective blocking.</value></data>
+  <data name="Dialog.Device.DetectionEntity"><value>Detection sensor (binary_sensor)</value></data>
+  <data name="Dialog.Device.GamingBlockEntity"><value>Gaming block switch</value></data>
+  <data name="Dialog.Device.InvertGaming"><value>Inverted (ON = gaming allowed)</value></data>
+  <data name="Dialog.Rule.TitleNew"><value>New rule</value></data>
+  <data name="Dialog.Rule.TitleEdit"><value>Edit rule</value></data>
+  <data name="Dialog.Rule.Mode"><value>Rule mode</value></data>
+  <data name="Dialog.Rule.Target"><value>Controls</value></data>
+  <data name="Dialog.Rule.Devices"><value>Affected devices</value></data>
+  <data name="Dialog.Rule.NoDevices"><value>No devices available. Please add devices first.</value></data>
+  <data name="Dialog.Rule.TimeWindow"><value>Time window</value></data>
+  <data name="Dialog.Rule.WindowStart"><value>Allowed from</value></data>
+  <data name="Dialog.Rule.WindowEnd"><value>Allowed until</value></data>
+  <data name="Dialog.Rule.Budget"><value>Daily budget</value></data>
+  <data name="Dialog.Rule.DailyMinutes"><value>Minutes per day</value></data>
+  <data name="Dialog.Rule.DailyMinutesHelper"><value>Total gaming budget for the day</value></data>
+  <data name="Dialog.Rule.BudgetWindowStart"><value>Earliest from</value></data>
+  <data name="Dialog.Rule.BudgetWindowEnd"><value>Latest until</value></data>
+  <data name="Dialog.Rule.DetectionThreshold"><value>Detection threshold (min)</value></data>
+  <data name="Dialog.Rule.DetectionThresholdHelper"><value>Minutes of gaming traffic before budget is charged</value></data>
+  <data name="Dialog.Rule.GracePeriod"><value>Grace period (min)</value></data>
+  <data name="Dialog.Rule.GracePeriodHelper"><value>Minutes after budget is depleted before enforcement</value></data>
+  <data name="Dialog.Rule.Days"><value>Active on</value></data>
+  <data name="Dialog.Rule.Weekdays"><value>Weekdays</value></data>
+  <data name="Dialog.Rule.Weekend"><value>Weekend</value></data>
+  <data name="Dialog.Rule.AllDays"><value>All days</value></data>
+  <data name="Rule.Mode.TimeWindow"><value>Time window</value></data>
+  <data name="Rule.Mode.DetectionBudget"><value>Detection budget</value></data>
+  <data name="Rule.Target.Internet"><value>Internet</value></data>
+  <data name="Rule.Target.Gaming"><value>Gaming</value></data>
+  <data name="Days.All"><value>Daily</value></data>
+  <data name="Days.Weekdays"><value>Mon–Fri</value></data>
+  <data name="Days.Weekend"><value>Sat–Sun</value></data>
 
   <!-- ═══ MudBlazor internal ═══ -->
   <data name="MudBlazor.MudDataGrid.is empty"><value>is empty</value></data>

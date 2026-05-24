@@ -214,6 +214,142 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
         }
     }
 
+    // ─── Entity Registry (cached) ──────────────────────────────
+
+    private IReadOnlyDictionary<string, HaEntityRegistryInfo>? _registryCache;
+    private DateTime _registryCacheTime;
+    private static readonly TimeSpan RegistryCacheDuration = TimeSpan.FromMinutes(5);
+
+    public async Task<IReadOnlyDictionary<string, HaEntityRegistryInfo>> GetEntityRegistryAsync(CancellationToken ct = default)
+    {
+        // Return cache if still valid
+        if (_registryCache is not null && DateTime.UtcNow - _registryCacheTime < RegistryCacheDuration)
+            return _registryCache;
+
+        if (!IsWebSocketConnected)
+        {
+            _logger.LogDebug("WebSocket not connected, cannot fetch entity registry");
+            return _registryCache ?? new Dictionary<string, HaEntityRegistryInfo>();
+        }
+
+        try
+        {
+            // Fetch all three registries in parallel
+            var areasTask = SendWsCommandAsync("config/area_registry/list", ct);
+            var devicesTask = SendWsCommandAsync("config/device_registry/list", ct);
+            var entitiesTask = SendWsCommandAsync("config/entity_registry/list", ct);
+
+            await Task.WhenAll(areasTask, devicesTask, entitiesTask);
+
+            var areas = areasTask.Result;
+            var devices = devicesTask.Result;
+            var entities = entitiesTask.Result;
+
+            // Build area lookup: area_id → name
+            var areaLookup = new Dictionary<string, string>();
+            if (areas.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var area in areas.EnumerateArray())
+                {
+                    var areaId = area.GetProperty("area_id").GetString();
+                    var areaName = area.GetProperty("name").GetString();
+                    if (areaId is not null && areaName is not null)
+                        areaLookup[areaId] = areaName;
+                }
+            }
+
+            // Build device lookup: device_id → (name, area_id)
+            var deviceLookup = new Dictionary<string, (string? Name, string? AreaId)>();
+            if (devices.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var device in devices.EnumerateArray())
+                {
+                    var deviceId = device.GetProperty("id").GetString();
+                    var deviceName = device.TryGetProperty("name_by_user", out var nbu) && nbu.ValueKind == JsonValueKind.String
+                        ? nbu.GetString()
+                        : (device.TryGetProperty("name", out var n) ? n.GetString() : null);
+                    var deviceAreaId = device.TryGetProperty("area_id", out var a) && a.ValueKind == JsonValueKind.String
+                        ? a.GetString()
+                        : null;
+
+                    if (deviceId is not null)
+                        deviceLookup[deviceId] = (deviceName, deviceAreaId);
+                }
+            }
+
+            // Build entity registry info
+            var result = new Dictionary<string, HaEntityRegistryInfo>();
+            if (entities.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var entity in entities.EnumerateArray())
+                {
+                    var entityId = entity.GetProperty("entity_id").GetString();
+                    if (entityId is null) continue;
+
+                    var entityAreaId = entity.TryGetProperty("area_id", out var ea) && ea.ValueKind == JsonValueKind.String
+                        ? ea.GetString()
+                        : null;
+                    var entityDeviceId = entity.TryGetProperty("device_id", out var ed) && ed.ValueKind == JsonValueKind.String
+                        ? ed.GetString()
+                        : null;
+                    var platform = entity.TryGetProperty("platform", out var p) && p.ValueKind == JsonValueKind.String
+                        ? p.GetString()
+                        : null;
+
+                    // Resolve area: entity-level area takes precedence, then device-level area
+                    string? areaName = null;
+                    string? deviceName = null;
+
+                    if (entityDeviceId is not null && deviceLookup.TryGetValue(entityDeviceId, out var deviceInfo))
+                    {
+                        deviceName = deviceInfo.Name;
+                        var effectiveAreaId = entityAreaId ?? deviceInfo.AreaId;
+                        if (effectiveAreaId is not null && areaLookup.TryGetValue(effectiveAreaId, out var an))
+                            areaName = an;
+                    }
+                    else if (entityAreaId is not null && areaLookup.TryGetValue(entityAreaId, out var directArea))
+                    {
+                        areaName = directArea;
+                    }
+
+                    result[entityId] = new HaEntityRegistryInfo(entityId, areaName, deviceName, platform);
+                }
+            }
+
+            _registryCache = result;
+            _registryCacheTime = DateTime.UtcNow;
+            _logger.LogInformation("Entity registry loaded: {Count} entities, {Areas} areas, {Devices} devices",
+                result.Count, areaLookup.Count, deviceLookup.Count);
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch entity registry");
+            return _registryCache ?? new Dictionary<string, HaEntityRegistryInfo>();
+        }
+    }
+
+    private async Task<JsonElement> SendWsCommandAsync(string commandType, CancellationToken ct)
+    {
+        var id = Interlocked.Increment(ref _messageId);
+        var tcs = new TaskCompletionSource<JsonElement>();
+        _pendingRequests[id] = tcs;
+
+        await SendMessageAsync(new { type = commandType, id }, ct);
+
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(15));
+        timeoutCts.Token.Register(() => tcs.TrySetCanceled());
+
+        var result = await tcs.Task;
+
+        if (result.TryGetProperty("result", out var resultArray))
+            return resultArray;
+
+        return result;
+    }
+
     // ─── WebSocket API ──────────────────────────────────────────
 
     public async Task ConnectWebSocketAsync(CancellationToken ct = default)
