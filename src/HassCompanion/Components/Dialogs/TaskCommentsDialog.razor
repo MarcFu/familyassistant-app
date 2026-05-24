@@ -1,0 +1,221 @@
+@inject HassCompanion.Data.AppDbContext Db
+@inject HassCompanion.Services.UserContextService UserContext
+@inject HassCompanion.Services.AttachmentStorageService AttachmentStorage
+@inject ISnackbar Snackbar
+@using Microsoft.EntityFrameworkCore
+@using HassCompanion.Models
+
+<MudDialog>
+    <DialogContent>
+        @if (_loading)
+        {
+            <MudProgressCircular Indeterminate="true" Class="mx-auto d-block my-4" />
+        }
+        else
+        {
+            @* ── Comment Thread ── *@
+            @if (_comments.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                    Noch keine Kommentare. Schreib den ersten!
+                </MudText>
+            }
+            else
+            {
+                <div class="mb-4" style="max-height: 400px; overflow-y: auto;">
+                    @foreach (var comment in _comments)
+                    {
+                        <MudPaper Outlined="true" Class="pa-2 mb-2">
+                            <div class="d-flex align-center gap-2 mb-1">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Primary" />
+                                <MudText Typo="Typo.caption">
+                                    <strong>@comment.Person.Name</strong> — @comment.CreatedAt.ToLocalTime().ToString("dd.MM. HH:mm")
+                                </MudText>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(comment.Text))
+                            {
+                                <MudText Typo="Typo.body2" Class="mb-1">@comment.Text</MudText>
+                            }
+                            @if (comment.Attachments.Count > 0)
+                            {
+                                <div class="d-flex flex-wrap gap-2 mt-1">
+                                    @foreach (var attachment in comment.Attachments)
+                                    {
+                                        <div style="width: 80px; height: 80px; border: 1px solid var(--mud-palette-lines-default); border-radius: 8px; overflow: hidden; cursor: pointer;"
+                                             @onclick="@(() => PreviewImage(attachment))">
+                                            <img src="/api/attachment/@attachment.Id" alt="@attachment.FileName"
+                                                 style="width: 100%; height: 100%; object-fit: cover;" loading="lazy" />
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </MudPaper>
+                    }
+                </div>
+            }
+
+            @* ── Image Preview (full size) ── *@
+            @if (_previewAttachment is not null)
+            {
+                <MudPaper Outlined="true" Class="pa-2 mb-3" Style="text-align: center;">
+                    <img src="/api/attachment/@_previewAttachment.Id" alt="@_previewAttachment.FileName"
+                         style="max-width: 100%; max-height: 300px; border-radius: 8px;" />
+                    <MudButton Size="Size.Small" OnClick="@(() => _previewAttachment = null)"
+                               Class="mt-1" StartIcon="@Icons.Material.Filled.Close">
+                        Schließen
+                    </MudButton>
+                </MudPaper>
+            }
+
+            @* ── New Comment Input ── *@
+            <MudDivider Class="my-3" />
+            <MudTextField T="string" @bind-Value="_newCommentText" Label="Kommentar" Variant="Variant.Outlined"
+                          Placeholder="Nachricht eingeben..." Lines="2" Class="mb-2" />
+
+            <div class="d-flex align-center gap-2 mb-2">
+                <MudFileUpload T="IReadOnlyList<IBrowserFile>" FilesChanged="OnFilesSelected" Accept="image/*"
+                               MaximumFileCount="5" Class="ma-0">
+                    <ActivatorContent>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.AddAPhoto">
+                            Bilder (@_selectedFiles.Count)
+                        </MudButton>
+                    </ActivatorContent>
+                </MudFileUpload>
+
+                @if (_selectedFiles.Count > 0)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @string.Join(", ", _selectedFiles.Select(f => f.Name))
+                    </MudText>
+                }
+            </div>
+
+            @if (_uploading)
+            {
+                <MudProgressLinear Indeterminate="true" Class="mb-2" />
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Schließen</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   OnClick="SubmitCommentAsync"
+                   Disabled="@(_uploading || (string.IsNullOrWhiteSpace(_newCommentText) && _selectedFiles.Count == 0))">
+            Absenden
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public int ChoreTaskId { get; set; }
+
+    private bool _loading = true;
+    private bool _uploading;
+    private List<TaskComment> _comments = [];
+    private string? _newCommentText;
+    private List<IBrowserFile> _selectedFiles = [];
+    private TaskAttachment? _previewAttachment;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCommentsAsync();
+        _loading = false;
+    }
+
+    private async Task LoadCommentsAsync()
+    {
+        _comments = await Db.TaskComments
+            .Include(c => c.Person)
+            .Include(c => c.Attachments)
+            .Where(c => c.ChoreTaskId == ChoreTaskId)
+            .OrderBy(c => c.CreatedAt)
+            .ToListAsync();
+    }
+
+    private void OnFilesSelected(IReadOnlyList<IBrowserFile> files)
+    {
+        _selectedFiles = files.ToList();
+    }
+
+    private async Task SubmitCommentAsync()
+    {
+        if (!UserContext.IsAuthenticated) return;
+        if (string.IsNullOrWhiteSpace(_newCommentText) && _selectedFiles.Count == 0) return;
+
+        _uploading = true;
+        StateHasChanged();
+
+        try
+        {
+            var comment = new TaskComment
+            {
+                ChoreTaskId = ChoreTaskId,
+                PersonId = UserContext.CurrentPersonId!.Value,
+                Text = string.IsNullOrWhiteSpace(_newCommentText) ? null : _newCommentText.Trim(),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            Db.TaskComments.Add(comment);
+            await Db.SaveChangesAsync();
+
+            // Upload attachments
+            foreach (var file in _selectedFiles)
+            {
+                if (file.Size > 10 * 1024 * 1024) // 10 MB max raw upload
+                {
+                    Snackbar.Add($"Datei '{file.Name}' ist zu groß (max 10 MB).", Severity.Warning);
+                    continue;
+                }
+
+                try
+                {
+                    await using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+                    var (relativePath, contentType, fileSize) = await AttachmentStorage.StoreImageAsync(
+                        ChoreTaskId, stream, file.Name);
+
+                    var attachment = new TaskAttachment
+                    {
+                        TaskCommentId = comment.Id,
+                        FileName = file.Name,
+                        ContentType = contentType,
+                        FilePath = relativePath,
+                        FileSize = fileSize,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    Db.TaskAttachments.Add(attachment);
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Fehler bei '{file.Name}': {ex.Message}", Severity.Error);
+                }
+            }
+
+            await Db.SaveChangesAsync();
+
+            // Reset input
+            _newCommentText = null;
+            _selectedFiles = [];
+
+            await LoadCommentsAsync();
+            Snackbar.Add("Kommentar gepostet!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Fehler: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _uploading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void PreviewImage(TaskAttachment attachment)
+    {
+        _previewAttachment = _previewAttachment?.Id == attachment.Id ? null : attachment;
+    }
+
+    private void Cancel() => MudDialog.Close(DialogResult.Ok(true));
+}

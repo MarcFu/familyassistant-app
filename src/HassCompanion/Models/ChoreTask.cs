@@ -77,6 +77,11 @@ public class ChoreTask
     /// When the task was generated
     /// </summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Comments/notes thread on this task.
+    /// </summary>
+    public List<TaskComment> Comments { get; set; } = [];
 }
 
 public enum ChoreTaskStatus

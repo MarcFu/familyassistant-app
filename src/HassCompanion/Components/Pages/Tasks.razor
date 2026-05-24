@@ -6,6 +6,7 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @using Microsoft.EntityFrameworkCore
+@using HassCompanion.Models
 
 <PageTitle>Aufgaben - HassCompanion</PageTitle>
 
@@ -121,7 +122,7 @@ else
                 @FormatDate(dateGroup.Key)
             </MudText>
 
-            @foreach (var task in dateGroup.OrderBy(t => t.Status is ChoreTaskStatus.Confirmed or ChoreTaskStatus.PendingConfirmation ? 1 : 0).ThenBy(t => t.Chore.Name).ThenBy(t => t.OccurrenceIndex))
+            @foreach (var task in dateGroup.OrderBy(t => GetSortPriority(t.Status)).ThenBy(t => t.Chore.Name).ThenBy(t => t.OccurrenceIndex))
             {
                 <MudPaper Outlined="true" Class="pa-3 mb-2">
                     <div class="d-flex align-center mb-2" style="min-width: 0;">
@@ -168,6 +169,15 @@ else
                             </MudChip>
                         </MudText>
                         <div class="d-flex flex-wrap gap-1">
+                            @* Comment button — always visible *@
+                            <MudTooltip Text="Kommentare / Fotos">
+                                <MudBadge Content="@task.Comments.Count" Overlap="true" Color="Color.Info"
+                                          Visible="@(task.Comments.Count > 0)">
+                                    <MudIconButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default"
+                                                   Icon="@Icons.Material.Filled.ChatBubbleOutline"
+                                                   OnClick="@(() => OpenCommentsAsync(task))" />
+                                </MudBadge>
+                            </MudTooltip>
                             @if (task.Status == ChoreTaskStatus.Open)
                             {
                                 <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
@@ -305,7 +315,8 @@ else
             .Include(t => t.Schedule)
             .Include(t => t.DefaultPerson)
             .Include(t => t.ClaimedByPerson)
-            .Include(t => t.CompletedByPerson);
+            .Include(t => t.CompletedByPerson)
+            .Include(t => t.Comments);
 
         query = _filter switch
         {
@@ -468,6 +479,18 @@ else
         await LoadTasksAsync();
     }
 
+    private async Task OpenCommentsAsync(ChoreTask task)
+    {
+        var parameters = new DialogParameters<TaskCommentsDialog>
+        {
+            { x => x.ChoreTaskId, task.Id }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
+        var dialog = await DialogService.ShowAsync<TaskCommentsDialog>(
+            $"Kommentare — {task.Chore.Name}", parameters, options);
+        await dialog.Result;
+    }
+
     private bool CanAct() => UserContext.CanAct;
 
     private string GetAssignmentText(ChoreTask task)
@@ -488,6 +511,21 @@ else
         if (task.DefaultPerson is not null) return $"Zugewiesen: {task.DefaultPerson.Name}";
         return "Offen für alle";
     }
+
+    /// <summary>
+    /// Explicit sort priority for task statuses. Independent of enum values
+    /// so we can safely insert new statuses without breaking sort order.
+    /// </summary>
+    private static int GetSortPriority(ChoreTaskStatus status) => status switch
+    {
+        ChoreTaskStatus.Open => 0,
+        ChoreTaskStatus.Claimed => 1,
+        ChoreTaskStatus.PendingConfirmation => 2,
+        ChoreTaskStatus.Confirmed => 3,
+        ChoreTaskStatus.Missed => 4,
+        ChoreTaskStatus.Cancelled => 5,
+        _ => 99
+    };
 
     private static string GetStatusIcon(ChoreTaskStatus status) => status switch
     {
