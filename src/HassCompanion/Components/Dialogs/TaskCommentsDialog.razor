@@ -3,6 +3,7 @@
 @inject HassCompanion.Services.AttachmentStorageService AttachmentStorage
 @inject ISnackbar Snackbar
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Forms
 @using HassCompanion.Models
 
 <MudDialog>
@@ -72,24 +73,40 @@
             <MudTextField T="string" @bind-Value="_newCommentText" Label="Kommentar" Variant="Variant.Outlined"
                           Placeholder="Nachricht eingeben..." Lines="2" Class="mb-2" />
 
-            <div class="d-flex align-center gap-2 mb-2">
-                <MudFileUpload T="IReadOnlyList<IBrowserFile>" FilesChanged="OnFilesSelected" Accept="image/*"
-                               MaximumFileCount="5" Class="ma-0">
-                    <ActivatorContent>
-                        <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Small"
-                                   StartIcon="@Icons.Material.Filled.AddAPhoto">
-                            Bilder (@_selectedFiles.Count)
-                        </MudButton>
-                    </ActivatorContent>
-                </MudFileUpload>
+            <div class="d-flex align-center gap-2 mb-2 flex-wrap">
+                @* Camera button — opens camera directly on mobile *@
+                <label class="mud-button-root mud-button mud-button-outlined mud-button-outlined-size-small mud-ripple" style="cursor: pointer;">
+                    <MudIcon Icon="@Icons.Material.Filled.CameraAlt" Size="Size.Small" Class="mr-1" />
+                    Kamera
+                    <InputFile OnChange="OnFilesSelected" accept="image/*" capture="environment"
+                               style="display: none;" />
+                </label>
+
+                @* Gallery button — pick existing images *@
+                <label class="mud-button-root mud-button mud-button-outlined mud-button-outlined-size-small mud-ripple" style="cursor: pointer;">
+                    <MudIcon Icon="@Icons.Material.Filled.PhotoLibrary" Size="Size.Small" Class="mr-1" />
+                    Galerie
+                    <InputFile OnChange="OnFilesSelected" accept="image/*" multiple
+                               style="display: none;" />
+                </label>
 
                 @if (_selectedFiles.Count > 0)
                 {
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">
-                        @string.Join(", ", _selectedFiles.Select(f => f.Name))
-                    </MudText>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info" OnClose="ClearFiles">
+                        @_selectedFiles.Count Bild(er)
+                    </MudChip>
                 }
             </div>
+
+            @if (_selectedFiles.Count > 0)
+            {
+                <div class="d-flex flex-wrap gap-1 mb-2">
+                    @foreach (var file in _selectedFiles)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default">@file.Name</MudChip>
+                    }
+                </div>
+            }
 
             @if (_uploading)
             {
@@ -134,9 +151,15 @@
             .ToListAsync();
     }
 
-    private void OnFilesSelected(IReadOnlyList<IBrowserFile> files)
+    private void OnFilesSelected(InputFileChangeEventArgs e)
     {
-        _selectedFiles = files.ToList();
+        // Append to existing selection (camera returns 1, gallery can return multiple)
+        _selectedFiles.AddRange(e.GetMultipleFiles(5));
+    }
+
+    private void ClearFiles()
+    {
+        _selectedFiles.Clear();
     }
 
     private async Task SubmitCommentAsync()
