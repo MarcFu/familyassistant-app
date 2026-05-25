@@ -1,5 +1,11 @@
 # Projekt-Regeln für KI-Assistenten
 
+## Datei- und Ordnernamen
+
+- **Lowercase** für Ordner- und Dateinamen verwenden, wo möglich und sinnvoll.
+- Ausnahme: C#/.NET-Projektstruktur folgt PascalCase-Konvention (Namespaces = Ordnernamen, z.B. `Services/`, `Models/`).
+- Für Config-Dateien, Scripts, Docker, YAML, Workflows etc. immer lowercase + kebab-case (z.B. `build.yaml`, `family-assistant/`).
+
 ## Bug-Tracking
 
 - Bugs werden fortlaufend nummeriert: `BUG-001`, `BUG-002`, ...
