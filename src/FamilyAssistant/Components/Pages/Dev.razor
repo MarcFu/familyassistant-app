@@ -74,7 +74,7 @@
                 Echte DB-Auswertung für @_achievementSubjectName.
             </MudText>
         </div>
-        <div class="d-flex gap-2 flex-wrap">
+        <div class="d-flex align-center gap-2 flex-wrap">
             <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined" Size="Size.Small">
                 @_achievements.Count(a => !IsBadgeboardLocked(a)) unlocked
             </MudChip>
@@ -84,8 +84,14 @@
         </div>
     </div>
 
+    <div class="d-flex align-center gap-3 mb-3 flex-wrap">
+        <MudText Typo="Typo.body2" Style="min-width:90px;">Ratio 1:@(_hexHeightRatio.ToString("F2"))</MudText>
+        <MudSlider T="double" Value="_hexHeightRatio" ValueChanged="v => { _hexHeightRatio = v; }" Min="1.0" Max="1.25" Step="0.01" Style="max-width:280px;" />
+        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="() => _hexHeightRatio = 1.1547">Reset (√3:2)</MudButton>
+    </div>
+
     <div class="achievement-board-scroll">
-        <div class="achievement-board">
+        <div class="achievement-board" style="@GetBoardRatioStyle()">
             @foreach (var row in _achievements.Chunk(10).Select((Achievements, Index) => new { Achievements, Index }))
             {
                 <div class="achievement-board-row @(row.Index % 2 == 1 ? "achievement-board-row-offset" : null)">
@@ -134,7 +140,7 @@
             var pictogram = GetCustomPictogram(achievement, false);
             <MudPaper Outlined="true" Class="achievement-preview-card pa-3">
                 <div class="achievement-preview-badge-wrap">
-                    <div class="@GetBadgeClass(achievement)" style="@GetBadgeStyle(achievement)">
+                    <div class="@GetBadgeClass(achievement)" style="@GetBadgeStyle(achievement) @GetPreviewRatioStyle()">
                         <div class="achievement-hex-inner">
                             <div class="achievement-hex-lines"></div>
                             @if (pictogram is not null)
@@ -184,6 +190,7 @@
     private string _achievementSubjectName = "kein aktiver Kontext";
     private HashSet<string> _unlockedAchievementKeys = [];
     private Dictionary<string, string> _achievementFacts = new();
+    private double _hexHeightRatio = 1.1547;
 
     private readonly List<DevAchievement> _achievements =
     [
@@ -403,6 +410,19 @@
     {
         var baseClass = GetBadgeClass(achievement);
         return isLocked ? $"{baseClass} achievement-hex-locked" : baseClass;
+    }
+
+    private string GetBoardRatioStyle()
+    {
+        var h = Math.Round(56 * _hexHeightRatio, 1);
+        var step = Math.Round(h * 0.75 + 5, 1);
+        return $"--achievement-board-hex-h: {h}px; --achievement-board-row-step: {step}px;";
+    }
+
+    private string GetPreviewRatioStyle()
+    {
+        var h = Math.Round(104 * _hexHeightRatio, 1);
+        return $"height: {h}px;";
     }
 
     private bool IsBadgeboardLocked(DevAchievement achievement) => !_unlockedAchievementKeys.Contains(achievement.Key);

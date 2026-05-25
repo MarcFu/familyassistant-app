@@ -192,6 +192,12 @@ Farben werden **ausschließlich aus der Kategorie** abgeleitet (`GetCategoryPale
 
 ## Review Points (visuell zu validieren)
 
+- **Achievement Hex-Ratio (optische Korrektur):** Mathematisch korrekt wäre `1:1.1547` (√3:2),
+  aber durch die vertikale Überschätzung des menschlichen Auges (vertical-horizontal illusion)
+  wirkt `1:1.05` optisch gleichmäßiger. Dev-Seite hat einen Slider zum Vergleich.
+  → Nach visuellem Test den finalen Ratio-Wert hier festhalten und als CSS-Default übernehmen.
+  Aktueller Kandidat: **1.05**.
+
 - **Card Status-Badge (oben rechts):** Abweichende operative Zustände (Pausiert, Inaktiv)
   werden oben rechts als Chip angezeigt (Zeile 1: `justify-space-between`, Identität links, Status rechts).
   Normalzustand = kein Badge. → Nach visuellem Test als feste UI-Regel übernehmen oder anpassen.

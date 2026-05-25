@@ -1,19 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 100" width="250" height="100">
   <!-- Icon (scaled to ~80px height, centered vertically) -->
   <g transform="translate(5, 10) scale(0.625)">
-    <!-- House body -->
+    <!-- House body (dark blue) -->
     <path d="M20 54 L20 112 C20 118.6 25.4 124 32 124 L96 124 C102.6 124 108 118.6 108 112 L108 54 L64 14 Z"
-          fill="#03a9f4" />
-    <!-- Roof accent -->
+          fill="#0277bd" />
+    <!-- Roof accent (medium blue) -->
     <path d="M64 14 L20 54 L108 54 Z"
-          fill="#29b6f6" />
-    <!-- Heart -->
-    <path d="M64 62
-             C60 56, 50 54, 46 60
-             C40 68, 42 78, 64 98
-             C86 78, 88 68, 82 60
-             C78 54, 68 56, 64 62 Z"
-          fill="#ff9800" />
+          fill="#0288d1" />
+    <!-- Heart (light blue), centered in house body -->
+    <path d="M64 74
+             C60 68, 50 66, 46 72
+             C40 80, 42 90, 64 110
+             C86 90, 88 80, 82 72
+             C78 66, 68 68, 64 74 Z"
+          fill="#4fc3f7" />
   </g>
   <!-- Text "Family Assistant" -->
   <text x="95" y="45" font-family="Segoe UI, Roboto, sans-serif" font-size="18" font-weight="600" fill="#ffffff">
