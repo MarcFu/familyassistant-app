@@ -1,6 +1,6 @@
 name: "FamilyAssistant"
 description: "Household management for Home Assistant: chores, credits, schedules & internet rules"
-version: "0.1.0"
+version: "0.1.1"
 slug: "familyassistant"
 url: "https://github.com/MarcFu/familyassistant-app"
 image: "ghcr.io/marcfu/familyassistant-{arch}"

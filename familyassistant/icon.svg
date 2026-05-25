@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- House body (rounded bottom corners) -->
+  <path d="M20 54 L20 112 C20 118.6 25.4 124 32 124 L96 124 C102.6 124 108 118.6 108 112 L108 54 L64 14 Z"
+        fill="#03a9f4" />
+  <!-- Roof accent (slightly lighter, gives depth) -->
+  <path d="M64 14 L20 54 L108 54 Z"
+        fill="#29b6f6" />
+  <!-- Heart (proper bezier curves) -->
+  <path d="M64 62
+           C60 56, 50 54, 46 60
+           C40 68, 42 78, 64 98
+           C86 78, 88 68, 82 60
+           C78 54, 68 56, 64 62 Z"
+        fill="#ff9800" />
+</svg>

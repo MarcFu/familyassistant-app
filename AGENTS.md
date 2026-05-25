@@ -138,6 +138,58 @@
 - `HaEventTriggerService` subscribt via WebSocket auf `state_changed`.
 - Debouncing gegen State-Flatter.
 
+## UI-Pattern: Achievement Badges
+
+- **Form:** Reguläres Pointy-Top-Hexagon. Seitenverhältnis `width : height = 1 : 1.1547` (√3:2).
+- **Clip-Path:** `polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)` — volle Container-Breite, kein prozentualer Einzug.
+- **Ring-Effekt:** Outer-Element-Background sichtbar durch `inset` auf Inner-Element (Preview: 5px, Board: 4px). Inner nutzt den gleichen Clip-Path.
+- **Glow:** `filter: drop-shadow()` statt `box-shadow` (box-shadow wird von clip-path abgeschnitten).
+
+### Größen
+
+| Kontext | Breite | Höhe | Row-Step |
+|---|---|---|---|
+| Preview (Desktop) | 104px | 120px | — |
+| Board (Desktop) | 56px | 65px | 54px |
+| Preview (Mobile ≤600px) | 92px | 106px | — |
+| Board (Mobile ≤600px) | 50px | 58px | 48.5px |
+
+### Farbsystem
+
+Farben werden **ausschließlich aus der Kategorie** abgeleitet (`GetCategoryPalette`), NICHT pro Achievement individuell. `PrimaryColor`/`AccentColor`-Felder im Record sind Legacy und werden ignoriert.
+
+| Kategorie | Farbname | Primary | Accent |
+|---|---|---|---|
+| Einstieg | Blue | `#0277bd` | `#4fc3f7` |
+| Streak / Motivation | Burnt Orange | `#bf360c` | `#ff8a65` |
+| Menge / Tagesleistung / Zuverlässigkeit | Green | `#2e7d32` | `#81c784` |
+| Chore-Mastery | Purple | `#6a1b9a` | `#ce93d8` |
+| Tageszeit / Timing | Amber | `#e65100` | `#ffcc80` |
+| Event-Reaktion / Home Assistant | Cyan | `#006064` | `#4dd0e1` |
+| Familie / Teamplay | Magenta | `#880e4f` | `#f48fb1` |
+| Kategorie / Vielfalt | Lime | `#33691e` | `#aed581` |
+| Kommentare | Teal | `#004d40` | `#80cbc4` |
+| Konsistenz | Indigo | `#1a237e` | `#7986cb` |
+| Hidden | Blue Grey | `#37474f` | `#90a4ae` |
+
+### Ring = Tier-Farbe
+
+| Tier | Ring-Farbe |
+|---|---|
+| Base | Kategorie-Accent |
+| Bronze | `#cd7f32` |
+| Silber | `#c0c0c0` |
+| Gold | `#ffd700` |
+| Legendär | `#b388ff` |
+| Hidden | `#546e7a` |
+
+### Regeln
+
+- Neue Achievements bekommen **keine** eigenen Farben — die Kategorie bestimmt alles.
+- Neue Kategorien brauchen einen neuen Eintrag in `GetCategoryPalette()` mit einem Farbton, der sich von allen bestehenden klar unterscheidet.
+- Gold/Legendär erhalten zusätzlichen `filter: drop-shadow()` für stärkeren Glow (CSS-Klassen `.achievement-hex-gold`, `.achievement-hex-legendaer`).
+- Locked-State überschreibt alle Farben mit Teal-Dark (`--achievement-primary: #00454a`, Accent/Ring: Teal).
+
 ## Review Points (visuell zu validieren)
 
 - **Card Status-Badge (oben rechts):** Abweichende operative Zustände (Pausiert, Inaktiv)
