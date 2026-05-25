@@ -4,7 +4,9 @@
 **/.idea
 **/bin
 **/obj
-**/data
+**/Data/attachments
+**/Data/backups
+/data
 **/*.db
 **/*.db-shm
 **/*.db-wal

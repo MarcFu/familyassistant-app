@@ -14,11 +14,13 @@ obj/
 # Secrets - IMPORTANT: never commit tokens!
 appsettings.Development.json
 
-# Database
+# Database & runtime data
 *.db
 *.db-shm
 *.db-wal
-data/
+**/Data/attachments/
+**/Data/backups/
+/data/
 
 # OS
 Thumbs.db
