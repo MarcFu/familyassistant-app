@@ -1,0 +1,4 @@
+configuration:
+  dev_mode:
+    name: Entwicklermodus
+    description: Aktiviert die Entwickler-Seite (Personenwechsel, Achievement-Vorschau, Diagnose).

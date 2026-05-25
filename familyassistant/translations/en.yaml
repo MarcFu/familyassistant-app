@@ -1,0 +1,4 @@
+configuration:
+  dev_mode:
+    name: Developer Mode
+    description: Enable the developer tools page (person switching, achievement preview, diagnostics).

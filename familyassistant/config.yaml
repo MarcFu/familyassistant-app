@@ -15,5 +15,7 @@ panel_title: "FamilyAssistant"
 map:
   - type: data
     read_only: false
-options: {}
-schema: {}
+options:
+  dev_mode: false
+schema:
+  dev_mode: "bool"
