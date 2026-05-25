@@ -254,7 +254,7 @@
     {
         _activeTabIndex = newIndex;
         var slug = newIndex >= 0 && newIndex < TabSlugs.Length ? TabSlugs[newIndex] : TabSlugs[0];
-        Navigation.NavigateTo($"/admin?tab={slug}", replace: true, forceLoad: false);
+        Navigation.NavigateTo($"admin?tab={slug}", replace: true, forceLoad: false);
     }
 
     private async Task SubmitCorrectionAsync()
@@ -426,7 +426,7 @@
         }
     }
 
-    private static string GetBackupDownloadUrl(string fileName) => $"/api/backup/file/{Uri.EscapeDataString(fileName)}";
+    private static string GetBackupDownloadUrl(string fileName) => $"api/backup/file/{Uri.EscapeDataString(fileName)}";
 
     private static string FormatBytes(long bytes)
     {

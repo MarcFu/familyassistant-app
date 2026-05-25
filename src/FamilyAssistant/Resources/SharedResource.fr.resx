@@ -92,6 +92,7 @@
 
   <!-- ═══ Nav ═══ -->
   <data name="Nav.Dashboard"><value>Tableau de bord</value></data>
+  <data name="Nav.Profile"><value>Profil</value></data>
   <data name="Nav.Tasks"><value>Tâches</value></data>
   <data name="Nav.Chores"><value>Corvées</value></data>
   <data name="Nav.InternetRules"><value>Règles Internet</value></data>
@@ -146,6 +147,8 @@
   <data name="Setup.ChoreCreated"><value>Corvée créée ! Tu peux en créer d'autres sous « Corvées ».</value></data>
   <data name="Setup.CreateChore"><value>Créer une corvée</value></data>
   <data name="Setup.ToDashboard"><value>Aller au tableau de bord</value></data>
+  <data name="Setup.RestoreBackup"><value>Restaurer une sauvegarde</value></data>
+  <data name="Setup.RestoreHint"><value>Tu as une sauvegarde existante ? Télécharge-la ici pour restaurer toutes les données. Après le redémarrage, tout sera comme avant.</value></data>
 
   <!-- ═══ Tasks ═══ -->
   <data name="Tasks.Title"><value>Tâches</value></data>
@@ -288,7 +291,8 @@
   <data name="Settings.Snackbar.RestFailed"><value>API REST inaccessible</value></data>
   <data name="Settings.Snackbar.EventMonitorFailed"><value>Le moniteur d'événements n'a pas pu être démarré : {0}</value></data>
   <data name="Settings.System.Language"><value>Langue</value></data>
-  <data name="Settings.System.LanguageHelper"><value>Langue de l'interface. Un rechargement de la page est nécessaire.</value></data>
+  <data name="Settings.System.LanguageHelper"><value>Langue de secours (utilisée uniquement si HA n'est pas connecté).</value></data>
+  <data name="Settings.System.LanguageFromHA"><value>La langue est synchronisée automatiquement depuis Home Assistant : {0}</value></data>
   <data name="Settings.System.PointsUnitName"><value>Nom de l'unité</value></data>
   <data name="Settings.System.PointsUnitNameHelper"><value>Nom de l'unité de récompense (ex. Crédits, Étoiles, Points)</value></data>
   <data name="Settings.Snackbar.LanguageSaved"><value>Langue enregistrée. Recharge la page.</value></data>

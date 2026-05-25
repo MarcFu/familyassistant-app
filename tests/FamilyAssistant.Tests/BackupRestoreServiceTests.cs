@@ -19,9 +19,8 @@ public class BackupRestoreServiceTests
             var dataDir = Path.Combine(root, "data");
             var dbPath = Path.Combine(dataDir, "familyassistant.db");
             var attachmentsDir = Path.Combine(dataDir, "attachments");
-            Directory.CreateDirectory(Path.Combine(attachmentsDir, "42"));
-            await File.WriteAllTextAsync(Path.Combine(attachmentsDir, "42", "photo.jpg"), "image-bytes");
             await CreateDatabaseAsync(dbPath, "source");
+            await AddAttachmentAsync(dbPath, attachmentsDir, "42/photo.jpg", ValidPngBytes);
 
             var service = CreateService(dataDir, dbPath, attachmentsDir);
             var backup = await service.CreateBackupAsync();
@@ -199,7 +198,7 @@ public class BackupRestoreServiceTests
     }
 
     [Fact]
-    public async Task PrepareRestoreAsync_RejectsUnreferencedAttachmentFile()
+    public async Task PrepareRestoreAsync_ToleratesUnreferencedAttachmentFile()
     {
         var root = CreateTempRoot();
         try
@@ -218,12 +217,12 @@ public class BackupRestoreServiceTests
             await CreateDatabaseAsync(targetDbPath, "active");
 
             await using var stream = File.OpenRead(backup.FilePath);
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                CreateService(targetDataDir, targetDbPath, Path.Combine(targetDataDir, "attachments"))
-                    .PrepareRestoreAsync(stream, backup.FileName, stream.Length));
+            // Orphaned attachment files (no DB record) should not cause restore to fail
+            var result = await CreateService(targetDataDir, targetDbPath, Path.Combine(targetDataDir, "attachments"))
+                .PrepareRestoreAsync(stream, backup.FileName, stream.Length);
 
-            Assert.Contains("Unreferenced attachment", ex.Message);
-            Assert.False(Directory.Exists(Path.Combine(targetDataDir, "restore-pending")));
+            Assert.NotNull(result);
+            Assert.True(Directory.Exists(Path.Combine(targetDataDir, "restore-pending")));
         }
         finally
         {

@@ -2,10 +2,12 @@
 @inject FamilyAssistant.Services.HaThemeService ThemeService
 @inject FamilyAssistant.Services.UserContextService UserContext
 @inject FamilyAssistant.Data.AppDbContext Db
-@inject IWebHostEnvironment Env
+@inject NavigationManager Nav
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IJSRuntime JS
 @inject IStringLocalizer<SharedResource> L
 @using Microsoft.EntityFrameworkCore
-@implements IDisposable
+@implements IAsyncDisposable
 
 <MudThemeProvider Theme="_theme" IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
@@ -18,13 +20,13 @@
                        OnClick="@ToggleDrawer" />
         <MudText Typo="Typo.h6" Class="ml-3">@L["App.Name"]</MudText>
         <MudSpacer />
-        <div class="app-current-user" title="@GetCurrentContextTitle()">
+        <div class="app-current-user" title="@GetCurrentContextTitle()" @onclick="NavigateToProfile" style="cursor:pointer;">
             @if (UserContext.CurrentPerson is { } person)
             {
                 @if (!string.IsNullOrWhiteSpace(person.EntityPicture))
                 {
                     <MudAvatar Size="Size.Small" Class="app-current-user-avatar">
-                        <img src="@($"/api/ha-image?path={Uri.EscapeDataString(person.EntityPicture)}")"
+                        <img src="@($"api/ha-image?path={Uri.EscapeDataString(person.EntityPicture)}")"
                              style="width:100%;height:100%;object-fit:cover;" alt="@person.Name" />
                     </MudAvatar>
                 }
@@ -50,23 +52,42 @@
         <NavMenu />
     </MudDrawer>
 
-    <MudMainContent Class="pa-4">
-        @Body
+    <MudMainContent Class="px-4 pb-4">
+        <div class="pt-4">
+            @Body
+        </div>
     </MudMainContent>
 </MudLayout>
 
 @code {
     private bool _drawerOpen = true;
     private bool _isDarkMode = true; // Default until HA WebSocket delivers real value
+    private MudTheme _theme = null!;
+    private DotNetObjectReference<MainLayout>? _dotNetRef;
+
+    // Default colors (used when HA doesn't provide custom values)
+    private const string DefaultPrimary = "#03a9f4";
+    private const string DefaultSecondary = "#ff9800";
 
     protected override async Task OnInitializedAsync()
     {
-        _isDarkMode = ThemeService.IsDarkMode;
+        _isDarkMode = ResolveDarkMode();
+        _theme = BuildTheme(ThemeService.EffectivePrimaryColor, ThemeService.EffectiveAccentColor);
         ThemeService.ThemeChanged += OnThemeChanged;
         UserContext.CurrentPersonChanged += OnCurrentPersonChanged;
 
-        // Auto-resolve user in Dev mode: pick first Admin/Parent if none selected
-        if (Env.IsDevelopment() && !UserContext.IsAuthenticated)
+        // Resolve user from HA Ingress header (available during prerender/initial request)
+        if (!UserContext.IsAuthenticated)
+        {
+            var haUserId = HttpContextAccessor.HttpContext?.Request.Headers["X-Remote-User-Id"].ToString();
+            if (!string.IsNullOrEmpty(haUserId))
+            {
+                await UserContext.ResolveFromHaUserIdAsync(haUserId);
+            }
+        }
+
+        // Fallback: auto-select first Admin/Parent if still not resolved
+        if (!UserContext.IsAuthenticated)
         {
             var firstPerson = await Db.Persons
                 .OrderByDescending(p => p.Role == PersonRole.Admin)
@@ -80,10 +101,54 @@
         }
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // If effective mode is "auto" (null), detect OS preference via JS
+            if (ThemeService.EffectiveDarkModePreference is null)
+            {
+                var systemDark = await JS.InvokeAsync<bool>("themeInterop.getSystemDarkMode");
+                if (systemDark != _isDarkMode)
+                {
+                    _isDarkMode = systemDark;
+                    StateHasChanged();
+                }
+
+                // Watch for OS preference changes
+                _dotNetRef = DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync("themeInterop.watchSystemDarkMode", _dotNetRef, "OnSystemDarkModeChanged");
+            }
+
+            // Sync CSS class on <html> element
+            await SyncThemeClassAsync();
+        }
+    }
+
+    /// <summary>
+    /// Called from JS when the OS dark mode preference changes (only active in "Auto" mode).
+    /// </summary>
+    [JSInvokable]
+    public async void OnSystemDarkModeChanged(bool isDark)
+    {
+        // Only apply if still in auto mode
+        if (ThemeService.EffectiveDarkModePreference is null)
+        {
+            _isDarkMode = isDark;
+            await SyncThemeClassAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
     private void OnThemeChanged()
     {
-        _isDarkMode = ThemeService.IsDarkMode;
-        InvokeAsync(StateHasChanged);
+        _isDarkMode = ResolveDarkMode();
+        _theme = BuildTheme(ThemeService.EffectivePrimaryColor, ThemeService.EffectiveAccentColor);
+        InvokeAsync(async () =>
+        {
+            await SyncThemeClassAsync();
+            StateHasChanged();
+        });
     }
 
     private void OnCurrentPersonChanged()
@@ -91,40 +156,76 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private readonly MudTheme _theme = new()
+    // ─── Theme Resolution Logic ──────────────────────────────────────
+
+    /// <summary>
+    /// Resolves the final _isDarkMode value based on effective preference.
+    /// If preference is null (auto), defaults to true until JS detects OS preference.
+    /// </summary>
+    private bool ResolveDarkMode()
     {
-        PaletteLight = new PaletteLight()
+        return ThemeService.EffectiveDarkModePreference ?? true;
+    }
+
+    /// <summary>
+    /// Syncs the CSS theme class on the HTML element via JS interop.
+    /// </summary>
+    private async Task SyncThemeClassAsync()
+    {
+        try
         {
-            Primary = "#03a9f4",
-            Secondary = "#ff9800",
-            Surface = "#f5f5f5",
-            Background = "#fafafa",
-            AppbarBackground = "#03a9f4",
-            DrawerBackground = "#ffffff",
-            TextPrimary = "#212121",
-            TextSecondary = "#616161",
-        },
-        PaletteDark = new PaletteDark()
-        {
-            Primary = "#03a9f4",
-            Secondary = "#ff9800",
-            Surface = "#1c1c1c",
-            Background = "#121212",
-            AppbarBackground = "#1e1e1e",
-            DrawerBackground = "#1c1c1c",
-            TextPrimary = "#e1e1e1",
-            TextSecondary = "#a0a0a0",
-        },
-        Typography = new Typography()
-        {
-            Default = new DefaultTypography()
-            {
-                FontFamily = ["Roboto", "Helvetica", "Arial", "sans-serif"]
-            }
+            await JS.InvokeVoidAsync("themeInterop.setThemeClass", _isDarkMode, ThemeService.DevLightBadges);
         }
-    };
+        catch (JSDisconnectedException) { }
+        catch (InvalidOperationException) { } // Prerendering — JS not available yet
+    }
+
+    // ─── Theme Builder ────────────────────────────────────────────────
+
+    private static MudTheme BuildTheme(string? primaryColor, string? accentColor)
+    {
+        var primary = primaryColor ?? DefaultPrimary;
+        var secondary = accentColor ?? DefaultSecondary;
+
+        return new MudTheme
+        {
+            PaletteLight = new PaletteLight()
+            {
+                Primary = primary,
+                Secondary = secondary,
+                Surface = "#f5f5f5",
+                Background = "#fafafa",
+                AppbarBackground = primary,
+                DrawerBackground = "#ffffff",
+                TextPrimary = "#212121",
+                TextSecondary = "#616161",
+            },
+            PaletteDark = new PaletteDark()
+            {
+                Primary = primary,
+                Secondary = secondary,
+                Surface = "#1c1c1c",
+                Background = "#121212",
+                AppbarBackground = "#1e1e1e",
+                DrawerBackground = "#1c1c1c",
+                TextPrimary = "#e1e1e1",
+                TextSecondary = "#a0a0a0",
+            },
+            Typography = new Typography()
+            {
+                Default = new DefaultTypography()
+                {
+                    FontFamily = ["Roboto", "Helvetica", "Arial", "sans-serif"]
+                }
+            }
+        };
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────────
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private void NavigateToProfile() => Nav.NavigateTo("profile");
 
     private string GetCurrentContextTitle()
     {
@@ -133,9 +234,17 @@
             : "Aktueller Kontext: Gast";
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         ThemeService.ThemeChanged -= OnThemeChanged;
         UserContext.CurrentPersonChanged -= OnCurrentPersonChanged;
+
+        try
+        {
+            await JS.InvokeVoidAsync("themeInterop.stopWatchingSystemDarkMode");
+        }
+        catch (JSDisconnectedException) { }
+
+        _dotNetRef?.Dispose();
     }
 }

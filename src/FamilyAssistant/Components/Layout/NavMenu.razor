@@ -1,26 +1,30 @@
 ﻿@inject IStringLocalizer<SharedResource> L
+@inject FamilyAssistant.Services.AddonOptionsService AddonOptions
 
 <MudNavMenu>
-    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
         @L["Nav.Dashboard"]
     </MudNavLink>
-    <MudNavLink Href="/tasks" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.TaskAlt">
+    <MudNavLink Href="tasks" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.TaskAlt">
         @L["Nav.Tasks"]
     </MudNavLink>
-    <MudNavLink Href="/chores" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CleaningServices">
+    <MudNavLink Href="chores" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CleaningServices">
         @L["Nav.Chores"]
     </MudNavLink>
-    <MudNavLink Href="/internet-rules" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Wifi">
+    <MudNavLink Href="internet-rules" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Wifi">
         @L["Nav.InternetRules"]
     </MudNavLink>
     <MudDivider Class="my-2" />
-    <MudNavLink Href="/admin" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AdminPanelSettings">
+    <MudNavLink Href="admin" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AdminPanelSettings">
         @L["Nav.Admin"]
     </MudNavLink>
-    <MudNavLink Href="/dev" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Code">
-        @L["Nav.Dev"]
-    </MudNavLink>
-    <MudNavLink Href="/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Settings">
+    @if (AddonOptions.DevMode)
+    {
+        <MudNavLink Href="dev" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Code">
+            @L["Nav.Dev"]
+        </MudNavLink>
+    }
+    <MudNavLink Href="settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Settings">
         @L["Nav.Settings"]
     </MudNavLink>
 </MudNavMenu>

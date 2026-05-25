@@ -1,3 +1,17 @@
+## 0.1.4
+
+- Fix: `dev_mode` add-on option was not read (snake_case JSON key mismatch)
+- Fix: App language now correctly synced from Home Assistant frontend settings
+- Dev page: new "HA Configuration" diagnostics table showing all values read from HA (language, theme, colors, dev_mode, timestamps)
+
+## 0.1.3
+
+- Fix: Ingress routing 404 — all NavigateTo/Href converted to relative paths
+- Fix: Avatar images not loading behind Ingress (relative API paths)
+- Fix: User detection via X-Remote-User-Id header (official HA Ingress mechanism)
+- New: HA User Mapping on Dev page for existing databases
+- New: `dev_mode` add-on config option controls Dev page visibility
+
 ## 0.1.0
 
 - Initial release

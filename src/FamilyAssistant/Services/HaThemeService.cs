@@ -1,7 +1,7 @@
 namespace FamilyAssistant.Services;
 
 /// <summary>
-/// Reads the HA frontend theme preference and exposes it to the UI.
+/// Reads the HA frontend user preferences (theme, colors, language) and exposes them to the UI.
 /// Builds on IHomeAssistantService (WebSocket proxy).
 /// </summary>
 public class HaThemeService
@@ -16,33 +16,134 @@ public class HaThemeService
     }
 
     /// <summary>
-    /// Current dark mode state. Defaults to true (dark) until WebSocket delivers real value.
+    /// Dark mode preference from HA: true=dark, false=light, null=auto (follow OS preference).
+    /// Defaults to null (auto) until WebSocket delivers real value.
     /// </summary>
-    public bool IsDarkMode { get; private set; } = true;
+    public bool? DarkModePreference { get; private set; }
 
     /// <summary>
-    /// Fired when the theme changes (e.g., after initial load from HA).
+    /// Dev override for dark mode. Has highest priority over HA preference.
+    /// null=no override (use HA/OS), true=forced dark, false=forced light.
+    /// </summary>
+    public bool? DevDarkModeOverride { get; set; }
+
+    /// <summary>
+    /// Whether to use light-styled achievement badges in light mode (Variante B).
+    /// Only applies when resolved mode is light.
+    /// </summary>
+    public bool DevLightBadges { get; set; }
+
+    /// <summary>
+    /// Dev override for primary color. Null = use HA value (or app default).
+    /// </summary>
+    public string? DevPrimaryColorOverride { get; set; }
+
+    /// <summary>
+    /// Dev override for accent/secondary color. Null = use HA value (or app default).
+    /// </summary>
+    public string? DevAccentColorOverride { get; set; }
+
+    /// <summary>
+    /// Gets the effective dark mode preference considering dev override > HA preference > null (auto).
+    /// </summary>
+    public bool? EffectiveDarkModePreference => DevDarkModeOverride ?? DarkModePreference;
+
+    /// <summary>
+    /// Resolved dark mode state for convenience (applies system default=true when auto).
+    /// Use EffectiveDarkModePreference for the raw tri-state value.
+    /// </summary>
+    public bool IsDarkMode => EffectiveDarkModePreference ?? true;
+
+    /// <summary>
+    /// Effective primary color (dev override > HA > null=app default).
+    /// </summary>
+    public string? EffectivePrimaryColor => DevPrimaryColorOverride ?? PrimaryColor;
+
+    /// <summary>
+    /// Effective accent color (dev override > HA > null=app default).
+    /// </summary>
+    public string? EffectiveAccentColor => DevAccentColorOverride ?? AccentColor;
+
+    /// <summary>
+    /// Primary color from HA user settings (hex string, e.g. "#03a9f4"). Null = use app default.
+    /// </summary>
+    public string? PrimaryColor { get; private set; }
+
+    /// <summary>
+    /// Accent color from HA user settings (hex string, e.g. "#ff9800"). Null = use app default.
+    /// </summary>
+    public string? AccentColor { get; private set; }
+
+    /// <summary>
+    /// Language from HA user settings (ISO code, e.g. "de", "en"). Null = use app default.
+    /// </summary>
+    public string? Language { get; private set; }
+
+    /// <summary>
+    /// Timestamp of the last successful refresh from HA.
+    /// </summary>
+    public DateTime? LastRefreshed { get; private set; }
+
+    /// <summary>
+    /// Fired when any preference changes (theme, colors, language, or dev override).
     /// </summary>
     public event Action? ThemeChanged;
 
     /// <summary>
-    /// Reads the theme from HA via WebSocket. Called once after WebSocket connects.
+    /// Notify subscribers that theme settings have changed (e.g. after dev override change).
+    /// </summary>
+    public void NotifyChanged() => ThemeChanged?.Invoke();
+
+    /// <summary>
+    /// Reads all frontend preferences from HA via WebSocket. Called after WebSocket connects and periodically.
     /// </summary>
     public async Task RefreshAsync(CancellationToken ct = default)
     {
         try
         {
-            var isDark = await _haService.GetUserDarkModeAsync(ct);
-            if (isDark != IsDarkMode)
+            var data = await _haService.GetUserFrontendDataAsync(ct);
+            var changed = false;
+
+            if (data.DarkMode != DarkModePreference)
             {
-                IsDarkMode = isDark;
-                _logger.LogInformation("Theme updated from HA: IsDarkMode={IsDark}", isDark);
+                DarkModePreference = data.DarkMode;
+                changed = true;
+            }
+
+            if (data.PrimaryColor != PrimaryColor)
+            {
+                PrimaryColor = data.PrimaryColor;
+                changed = true;
+            }
+
+            if (data.AccentColor != AccentColor)
+            {
+                AccentColor = data.AccentColor;
+                changed = true;
+            }
+
+            if (data.Language != Language)
+            {
+                Language = data.Language;
+                changed = true;
+            }
+
+            if (changed)
+            {
+                LastRefreshed = DateTime.Now;
+                _logger.LogInformation("Theme updated from HA: darkMode={DarkMode}, primary={Primary}, accent={Accent}, lang={Lang}",
+                    DarkModePreference?.ToString() ?? "auto", PrimaryColor, AccentColor, Language);
                 ThemeChanged?.Invoke();
+            }
+            else
+            {
+                // Even if nothing changed, record the refresh time
+                LastRefreshed ??= DateTime.Now;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to read theme from HA, keeping current: IsDarkMode={IsDark}", IsDarkMode);
+            _logger.LogWarning(ex, "Failed to read frontend data from HA, keeping current state");
         }
     }
 }

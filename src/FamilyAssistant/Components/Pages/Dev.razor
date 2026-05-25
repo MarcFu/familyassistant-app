@@ -1,70 +1,283 @@
 @page "/dev"
 @rendermode InteractiveServer
+@inject FamilyAssistant.Services.AddonOptionsService AddonOptions
 @inject FamilyAssistant.Services.UserContextService UserContext
+@inject FamilyAssistant.Services.HaThemeService ThemeService
+@inject FamilyAssistant.Services.IHomeAssistantService HaService
 @inject FamilyAssistant.Data.AppDbContext Db
 @inject ISnackbar Snackbar
 @inject IStringLocalizer<SharedResource> L
+@inject NavigationManager Navigation
+@using FamilyAssistant.Services
 @using Microsoft.EntityFrameworkCore
 
 <PageTitle>@L["PageTitle.Dev"]</PageTitle>
 
 <MudText Typo="Typo.h5" Class="mb-3">@L["Dev.Title"]</MudText>
 
-<MudCard Elevation="1" Class="pa-4 mb-4" Style="max-width:500px;">
-    <MudText Typo="Typo.h6" Class="mb-3">@L["Dev.UserContext"]</MudText>
+@* ── Top cards in responsive grid ── *@
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:16px; margin-bottom:16px;">
 
-    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
-        @L["Dev.UserContextHint"]
-    </MudText>
+    @* ── Theme Override ── *@
+    <MudCard Elevation="1" Class="pa-4">
+        <MudText Typo="Typo.h6" Class="mb-3">Theme Override</MudText>
 
-    <MudSelect T="int?" Value="_selectedPersonId" ValueChanged="OnPersonChanged"
-               Label="@L["Dev.ActivePerson"].Value" Variant="Variant.Filled" Margin="Margin.Dense"
-               Clearable="true" Class="mb-3">
-        @foreach (var person in _persons)
-        {
-            <MudSelectItem T="int?" Value="@person.Id">
-                @person.Name (@person.Role)
-            </MudSelectItem>
-        }
-    </MudSelect>
-
-    @if (UserContext.IsAuthenticated)
-    {
-        <MudAlert Severity="Severity.Success" Class="mb-3">
-            @((MarkupString)string.Format(L["Dev.LoggedIn"], $"<strong>{UserContext.CurrentPerson!.Name}</strong>", UserContext.CurrentPerson.Role, UserContext.CurrentPerson.Credits))
-        </MudAlert>
-
-        <div class="d-flex gap-2 flex-wrap">
-            <MudChip T="string" Color="@(UserContext.CanAct ? Color.Success : Color.Error)" Size="Size.Small">
-                @(UserContext.CanAct ? L["Dev.CanAct"] : L["Dev.CannotAct"])
-            </MudChip>
-            <MudChip T="string" Color="@(UserContext.IsParentOrAdmin ? Color.Info : Color.Default)" Size="Size.Small">
-                @(UserContext.IsParentOrAdmin ? L["Dev.ParentOrAdmin"] : L["Dev.NoParentAccess"])
-            </MudChip>
-            <MudChip T="string" Color="@(UserContext.IsAdmin ? Color.Warning : Color.Default)" Size="Size.Small">
-                @(UserContext.IsAdmin ? L["Role.Admin"] : L["Dev.NoAdmin"])
-            </MudChip>
+        <MudText Typo="Typo.body2" Class="mb-2">Mode</MudText>
+        <div class="d-flex gap-2 mb-3">
+            <MudButton Variant="@(_themeMode == "auto" ? Variant.Filled : Variant.Outlined)"
+                       Color="Color.Primary" Size="Size.Small" OnClick="@(() => SetThemeMode("auto"))">
+                Auto
+            </MudButton>
+            <MudButton Variant="@(_themeMode == "light" ? Variant.Filled : Variant.Outlined)"
+                       Color="Color.Primary" Size="Size.Small" OnClick="@(() => SetThemeMode("light"))">
+                Light
+            </MudButton>
+            <MudButton Variant="@(_themeMode == "dark" ? Variant.Filled : Variant.Outlined)"
+                       Color="Color.Primary" Size="Size.Small" OnClick="@(() => SetThemeMode("dark"))">
+                Dark
+            </MudButton>
         </div>
-    }
-    else
-    {
-        <MudAlert Severity="Severity.Info">
-            @L["Dev.GuestMode"]
-        </MudAlert>
-    }
-</MudCard>
 
-<MudCard Elevation="1" Class="pa-4 mb-4" Style="max-width:500px;">
-    <MudText Typo="Typo.h6" Class="mb-3">@L["Dev.Info"]</MudText>
-    <MudSimpleTable Dense="true" Elevation="0">
-        <tbody>
-            <tr><td><strong>@L["Dev.InfoMode"]</strong></td><td>@_mode</td></tr>
-            <tr><td><strong>@L["Dev.InfoDbPath"]</strong></td><td>@_dbPath</td></tr>
-            <tr><td><strong>@L["Dev.InfoPersons"]</strong></td><td>@_persons.Count</td></tr>
-            <tr><td><strong>.NET</strong></td><td>@System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription</td></tr>
-        </tbody>
-    </MudSimpleTable>
-</MudCard>
+        @if (_themeMode == "light" || (ThemeService.EffectiveDarkModePreference == false))
+        {
+            <MudText Typo="Typo.body2" Class="mb-2">Badge Style (Light Mode)</MudText>
+            <div class="d-flex gap-2 mb-3">
+                <MudButton Variant="@(!ThemeService.DevLightBadges ? Variant.Filled : Variant.Outlined)"
+                           Color="Color.Secondary" Size="Size.Small" OnClick="() => SetBadgeStyle(false)">
+                    Badges Dark
+                </MudButton>
+                <MudButton Variant="@(ThemeService.DevLightBadges ? Variant.Filled : Variant.Outlined)"
+                           Color="Color.Secondary" Size="Size.Small" OnClick="() => SetBadgeStyle(true)">
+                    Badges Light
+                </MudButton>
+            </div>
+        }
+
+        <MudText Typo="Typo.body2" Class="mb-2">Colors</MudText>
+        <div class="d-flex gap-3 align-end flex-wrap mb-3">
+            <MudColorPicker Value="_devPrimaryColor" Label="Primary" Variant="Variant.Outlined"
+                            Style="max-width:140px;" ColorPickerMode="ColorPickerMode.HEX"
+                            ValueChanged="OnPrimaryColorChanged" />
+            <MudColorPicker Value="_devAccentColor" Label="Accent" Variant="Variant.Outlined"
+                            Style="max-width:140px;" ColorPickerMode="ColorPickerMode.HEX"
+                            ValueChanged="OnAccentColorChanged" />
+            <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="ResetColors"
+                       StartIcon="@Icons.Material.Filled.RestartAlt">
+                Reset
+            </MudButton>
+        </div>
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            HA: dark=@(ThemeService.DarkModePreference?.ToString() ?? "auto"),
+            primary=@(ThemeService.PrimaryColor ?? "—"),
+            accent=@(ThemeService.AccentColor ?? "—"),
+            lang=@(ThemeService.Language ?? "—")
+        </MudText>
+    </MudCard>
+
+    @* ── User Context ── *@
+    <MudCard Elevation="1" Class="pa-4">
+        <MudText Typo="Typo.h6" Class="mb-3">@L["Dev.UserContext"]</MudText>
+
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+            @L["Dev.UserContextHint"]
+        </MudText>
+
+        <MudSelect T="int?" Value="_selectedPersonId" ValueChanged="OnPersonChanged"
+                   Label="@L["Dev.ActivePerson"].Value" Variant="Variant.Filled" Margin="Margin.Dense"
+                   Clearable="true" Class="mb-3">
+            @foreach (var person in _persons)
+            {
+                <MudSelectItem T="int?" Value="@person.Id">
+                    @person.Name (@person.Role)
+                </MudSelectItem>
+            }
+        </MudSelect>
+
+        @if (UserContext.IsAuthenticated)
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-3">
+                @((MarkupString)string.Format(L["Dev.LoggedIn"], $"<strong>{UserContext.CurrentPerson!.Name}</strong>", UserContext.CurrentPerson.Role, UserContext.CurrentPerson.Credits))
+            </MudAlert>
+
+            <div class="d-flex gap-2 flex-wrap">
+                <MudChip T="string" Color="@(UserContext.CanAct ? Color.Success : Color.Error)" Size="Size.Small">
+                    @(UserContext.CanAct ? L["Dev.CanAct"] : L["Dev.CannotAct"])
+                </MudChip>
+                <MudChip T="string" Color="@(UserContext.IsParentOrAdmin ? Color.Info : Color.Default)" Size="Size.Small">
+                    @(UserContext.IsParentOrAdmin ? L["Dev.ParentOrAdmin"] : L["Dev.NoParentAccess"])
+                </MudChip>
+                <MudChip T="string" Color="@(UserContext.IsAdmin ? Color.Warning : Color.Default)" Size="Size.Small">
+                    @(UserContext.IsAdmin ? L["Role.Admin"] : L["Dev.NoAdmin"])
+                </MudChip>
+            </div>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info">
+                @L["Dev.GuestMode"]
+            </MudAlert>
+        }
+    </MudCard>
+
+    @* ── HA Configuration (Diagnostics) ── *@
+    <MudCard Elevation="1" Class="pa-4">
+        <MudText Typo="Typo.h6" Class="mb-3">HA Configuration</MudText>
+        <MudSimpleTable Dense="true" Elevation="0" Style="table-layout:fixed;">
+            <thead>
+                <tr>
+                    <th style="width:40%;">Parameter</th>
+                    <th>Wert</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>DevMode</strong></td>
+                    <td>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(AddonOptions.DevMode ? Color.Success : Color.Error)">
+                            @(AddonOptions.DevMode ? "true" : "false")
+                        </MudChip>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>options.json (raw)</strong></td>
+                    <td style="word-break:break-all; font-family:monospace; font-size:0.8rem;">
+                        @(AddonOptions.RawJson ?? "— nicht vorhanden —")
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Sprache (HA)</strong></td>
+                    <td>@(ThemeService.Language ?? "— nicht gelesen —")</td>
+                </tr>
+                <tr>
+                    <td><strong>Dark Mode (HA)</strong></td>
+                    <td>@(ThemeService.DarkModePreference?.ToString() ?? "auto / nicht gelesen")</td>
+                </tr>
+                <tr>
+                    <td><strong>Primary Color (HA)</strong></td>
+                    <td>
+                        @if (ThemeService.PrimaryColor is not null)
+                        {
+                            <span style="display:inline-flex; align-items:center; gap:6px;">
+                                <span style="width:14px; height:14px; border-radius:3px; background:@ThemeService.PrimaryColor; display:inline-block;"></span>
+                                @ThemeService.PrimaryColor
+                            </span>
+                        }
+                        else
+                        {
+                            <span>— nicht gesetzt —</span>
+                        }
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Accent Color (HA)</strong></td>
+                    <td>
+                        @if (ThemeService.AccentColor is not null)
+                        {
+                            <span style="display:inline-flex; align-items:center; gap:6px;">
+                                <span style="width:14px; height:14px; border-radius:3px; background:@ThemeService.AccentColor; display:inline-block;"></span>
+                                @ThemeService.AccentColor
+                            </span>
+                        }
+                        else
+                        {
+                            <span>— nicht gesetzt —</span>
+                        }
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Last Refresh</strong></td>
+                    <td>@(ThemeService.LastRefreshed?.ToString("yyyy-MM-dd HH:mm:ss") ?? "— nie —")</td>
+                </tr>
+                <tr>
+                    <td><strong>SUPERVISOR_TOKEN</strong></td>
+                    <td>@(string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SUPERVISOR_TOKEN")) ? "— nicht gesetzt —" : "✓ vorhanden")</td>
+                </tr>
+            </tbody>
+        </MudSimpleTable>
+        <div class="d-flex mt-3">
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshHaConfig">
+                Refresh
+            </MudButton>
+        </div>
+    </MudCard>
+
+    @* ── Info ── *@
+    <MudCard Elevation="1" Class="pa-4">
+        <MudText Typo="Typo.h6" Class="mb-3">@L["Dev.Info"]</MudText>
+        <MudSimpleTable Dense="true" Elevation="0">
+            <tbody>
+                <tr><td><strong>@L["Dev.InfoMode"]</strong></td><td>@_mode</td></tr>
+                <tr><td><strong>@L["Dev.InfoDbPath"]</strong></td><td style="word-break:break-all;">@_dbPath</td></tr>
+                <tr><td><strong>@L["Dev.InfoPersons"]</strong></td><td>@_persons.Count</td></tr>
+                <tr><td><strong>.NET</strong></td><td>@System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription</td></tr>
+            </tbody>
+        </MudSimpleTable>
+    </MudCard>
+
+    @* ── HA User Mapping ── *@
+    <MudExpansionPanels Class="mb-4">
+        <MudExpansionPanel Text="HA User Mapping" MaxHeight="500">
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                Ordne deine FamilyAssistant-Personen den HA-Benutzerkonten zu.
+            </MudText>
+
+            @if (_haPersonsForMapping.Count == 0)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-2">
+                    Keine HA-Personen mit User-Account gefunden.
+                </MudAlert>
+            }
+
+            <MudSimpleTable Dense="true" Elevation="0">
+                <thead>
+                    <tr>
+                        <th>Person</th>
+                        <th>HA User</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var person in _persons)
+                    {
+                        <tr>
+                            <td><strong>@person.Name</strong> <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@person.Role</MudChip></td>
+                            <td>
+                                <MudSelect T="string" Value="@person.HaUserId" ValueChanged="@(v => OnUserMappingChanged(person, v))"
+                                           Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                                           Placeholder="—" Clearable="true" Style="min-width:180px;">
+                                    @foreach (var haPerson in _haPersonsForMapping)
+                                    {
+                                        <MudSelectItem T="string" Value="@haPerson.UserId">
+                                            @haPerson.FriendlyName (@haPerson.UserId![..8]...)
+                                        </MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(person.HaUserId))
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Small" />
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="RefreshHaPersons"
+                       StartIcon="@Icons.Material.Filled.Refresh" Size="Size.Small">
+                HA-Personen neu laden
+            </MudButton>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+</div>
 
 <MudPaper Outlined="true" Class="achievement-board-panel pa-4 mb-4">
     <div class="d-flex align-center justify-space-between gap-3 flex-wrap mb-3">
@@ -87,7 +300,8 @@
     <div class="d-flex align-center gap-3 mb-3 flex-wrap">
         <MudText Typo="Typo.body2" Style="min-width:90px;">Ratio 1:@(_hexHeightRatio.ToString("F2"))</MudText>
         <MudSlider T="double" Value="_hexHeightRatio" ValueChanged="v => { _hexHeightRatio = v; }" Min="1.0" Max="1.25" Step="0.01" Style="max-width:280px;" />
-        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="() => _hexHeightRatio = 1.1547">Reset (√3:2)</MudButton>
+        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="() => _hexHeightRatio = 1.05">1:1.05</MudButton>
+        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="() => _hexHeightRatio = 1.1547">1:√3:2</MudButton>
     </div>
 
     <div class="achievement-board-scroll">
@@ -98,21 +312,8 @@
                     @foreach (var achievement in row.Achievements)
                     {
                         var isLocked = IsBadgeboardLocked(achievement);
-                        var pictogram = GetCustomPictogram(achievement, isLocked);
                         <div class="achievement-board-slot" title="@GetBoardTitle(achievement, isLocked)">
-                            <div class="@GetBoardBadgeClass(achievement, isLocked)" style="@GetBadgeStyle(achievement)">
-                                <div class="achievement-hex-inner">
-                                    <div class="achievement-hex-lines"></div>
-                                    @if (pictogram is not null)
-                                    {
-                                        <span class="achievement-hex-pictogram">@((MarkupString)pictogram)</span>
-                                    }
-                                    else
-                                    {
-                                        <MudIcon Icon="@(isLocked ? Icons.Material.Filled.Lock : achievement.IsHidden ? Icons.Material.Filled.AutoAwesome : achievement.Icon)" Class="achievement-hex-icon" />
-                                    }
-                                </div>
-                            </div>
+                            <AchievementHex Definition="achievement" IsLocked="isLocked" />
                         </div>
                     }
                 </div>
@@ -137,23 +338,9 @@
     <div class="achievement-preview-grid">
         @foreach (var achievement in _achievements)
         {
-            var pictogram = GetCustomPictogram(achievement, false);
             <MudPaper Outlined="true" Class="achievement-preview-card pa-3">
                 <div class="achievement-preview-badge-wrap">
-                    <div class="@GetBadgeClass(achievement)" style="@GetBadgeStyle(achievement) @GetPreviewRatioStyle()">
-                        <div class="achievement-hex-inner">
-                            <div class="achievement-hex-lines"></div>
-                            @if (pictogram is not null)
-                            {
-                                <span class="achievement-hex-pictogram">@((MarkupString)pictogram)</span>
-                            }
-                            else
-                            {
-                                <MudIcon Icon="@(achievement.IsHidden ? Icons.Material.Filled.AutoAwesome : achievement.Icon)" Class="achievement-hex-icon" />
-                            }
-                        </div>
-                        <div class="achievement-tier-chip">@achievement.Tier</div>
-                    </div>
+                    <AchievementHex Definition="achievement" IsLocked="false" ShowTierChip="true" HeightOverride="@GetPreviewRatioStyle()" />
                 </div>
 
                 <div class="d-flex align-center gap-1 flex-wrap mb-1">
@@ -190,74 +377,90 @@
     private string _achievementSubjectName = "kein aktiver Kontext";
     private HashSet<string> _unlockedAchievementKeys = [];
     private Dictionary<string, string> _achievementFacts = new();
-    private double _hexHeightRatio = 1.1547;
+    private double _hexHeightRatio = 1.05;
+    private List<HaPerson> _haPersonsForMapping = [];
+    private string _themeMode = "auto"; // "auto", "light", "dark"
+    private MudColor _devPrimaryColor = new("#03a9f4");
+    private MudColor _devAccentColor = new("#ff9800");
 
-    private readonly List<DevAchievement> _achievements =
-    [
-        new("first_task", "Der Anfang", "Einstieg", "Erste Aufgabe erledigt", "Base", Icons.Material.Filled.CheckCircle, "#03a9f4", "#81d4fa"),
-        new("first_chore", "Routine gestartet", "Einstieg", "Erste wiederkehrende Chore erledigt", "Base", Icons.Material.Filled.TaskAlt, "#03a9f4", "#80cbc4"),
-        new("first_photo", "Beweisfoto", "Einstieg", "Erste Aufgabe mit Foto-Kommentar abgeschlossen", "Base", Icons.Material.Filled.CameraAlt, "#26a69a", "#b2dfdb"),
-        new("first_event_task", "Smart Start", "Home Assistant", "Erste eventgetriebene Aufgabe erledigt", "Base", Icons.Material.Filled.Sensors, "#00bcd4", "#80deea"),
-        new("daily_clean_sweep", "Clean Sweep", "Tagesleistung", "Alle offenen Aufgaben eines Tages erledigt", "Base", Icons.Material.Filled.CheckCircle, "#4caf50", "#a5d6a7"),
-        new("perfect_week", "Perfekte Woche", "Zuverlässigkeit", "Eine Woche ohne verpasste Aufgaben", "Base", Icons.Material.Filled.CalendarMonth, "#66bb6a", "#c5e1a5"),
-        new("no_reminder_needed", "Ohne Erinnerung", "Zuverlässigkeit", "Aufgabe erledigt, bevor Erinnerung oder Automation nötig wurde", "Base", Icons.Material.Filled.Notifications, "#8bc34a", "#dcedc8"),
-        new("comeback", "Comeback", "Motivation", "Nach längerer Pause wieder eine Aufgabe erledigt", "Base", Icons.Material.Filled.RestartAlt, "#ff9800", "#ffe0b2"),
-        new("streak_3", "Auf Kurs", "Streak", "3 Tage am Stück mindestens eine Aufgabe erledigt", "Bronze", Icons.Material.Filled.AutoAwesome, "#ff7043", "#ffccbc"),
-        new("streak_7", "Wochenserie", "Streak", "7 Tage am Stück mindestens eine Aufgabe erledigt", "Silber", Icons.Material.Filled.AutoAwesome, "#ff5722", "#ffab91"),
-        new("streak_30", "Monatsmodus", "Streak", "30 Tage am Stück mindestens eine Aufgabe erledigt", "Gold", Icons.Material.Filled.AutoAwesome, "#f4511e", "#ffd54f"),
-        new("streak_100", "Unaufhaltsam", "Streak", "100 Tage am Stück mindestens eine Aufgabe erledigt", "Legendär", Icons.Material.Filled.AutoAwesome, "#e64a19", "#ffecb3"),
-        new("task_count_10", "Angepackt", "Menge", "10 Aufgaben erledigt", "Bronze", Icons.Material.Filled.TaskAlt, "#43a047", "#a5d6a7"),
-        new("task_count_50", "Haushaltsprofi", "Menge", "50 Aufgaben erledigt", "Silber", Icons.Material.Filled.TaskAlt, "#388e3c", "#c8e6c9"),
-        new("task_count_100", "Maschinenraum", "Menge", "100 Aufgaben erledigt", "Gold", Icons.Material.Filled.TaskAlt, "#2e7d32", "#ffd54f"),
-        new("task_count_500", "Household Legend", "Menge", "500 Aufgaben erledigt", "Legendär", Icons.Material.Filled.TaskAlt, "#1b5e20", "#b9f6ca"),
-        new("chore_master_10", "Wiederholungstäter", "Chore-Mastery", "Dieselbe Chore 10x erledigt", "Bronze", Icons.Material.Filled.CleaningServices, "#7e57c2", "#d1c4e9"),
-        new("chore_master_50", "Fachkraft", "Chore-Mastery", "Dieselbe Chore 50x erledigt", "Silber", Icons.Material.Filled.CleaningServices, "#673ab7", "#b39ddb"),
-        new("chore_master_100", "Meisterschaft", "Chore-Mastery", "Dieselbe Chore 100x erledigt", "Gold", Icons.Material.Filled.CleaningServices, "#512da8", "#ffd54f"),
-        new("early_bird", "Early Bird", "Tageszeit", "Aufgabe vor 8 Uhr erledigt", "Base", Icons.Material.Filled.PlayArrow, "#fbc02d", "#fff59d"),
-        new("night_owl", "Night Owl", "Tageszeit", "Aufgabe nach 22 Uhr erledigt", "Base", Icons.Material.Filled.Settings, "#5c6bc0", "#c5cae9"),
-        new("weekend_warrior", "Weekend Warrior", "Tageszeit", "Wochenend-Aufgabe erledigt", "Base", Icons.Material.Filled.CalendarMonth, "#ff9800", "#ffe0b2"),
-        new("last_minute_hero", "Last-Minute Hero", "Timing", "Aufgabe kurz vor Deadline erledigt", "Base", Icons.Material.Filled.HourglassTop, "#ffb300", "#ffecb3"),
-        new("fast_finish", "Zackig", "Timing", "Manuell erstellte Aufgabe innerhalb kurzer Zeit erledigt", "Base", Icons.Material.Filled.Sync, "#fdd835", "#fff9c4"),
-        new("roadrunner_10", "Roadrunner", "Event-Reaktion", "Eventgetriebene Aufgabe innerhalb von 10 Minuten erledigt", "Bronze", Icons.Material.Filled.DirectionsWalk, "#00bcd4", "#ffe082"),
-        new("roadrunner_5", "Roadrunner Plus", "Event-Reaktion", "Eventgetriebene Aufgabe innerhalb von 5 Minuten erledigt", "Silber", Icons.Material.Filled.DirectionsWalk, "#00acc1", "#fff176"),
-        new("roadrunner_1", "Meep Meep!", "Event-Reaktion", "Eventgetriebene Aufgabe innerhalb von 60 Sekunden erledigt", "Gold", Icons.Material.Filled.DirectionsWalk, "#0097a7", "#ffeb3b"),
-        new("automation_whisperer", "Automation Whisperer", "Home Assistant", "10 eventgetriebene Aufgaben erledigt", "Base", Icons.Material.Filled.Sensors, "#00bcd4", "#80deea"),
-        new("sensor_sprinter", "Sensor Sprinter", "Home Assistant", "5 verschiedene Sensor- oder Event-Quellen erfolgreich erledigt", "Base", Icons.Material.Filled.Sensors, "#26c6da", "#b2ebf2"),
-        new("energy_saver", "Energy Saver", "Home Assistant", "Energie- oder Spar-Aufgabe erledigt", "Base", Icons.Material.Filled.Cable, "#4db6ac", "#b2dfdb"),
-        new("weather_ready", "Weather Ready", "Home Assistant", "Wetterbezogene Aufgabe erledigt", "Base", Icons.Material.Filled.Home, "#29b6f6", "#b3e5fc"),
-        new("helper", "Helper", "Teamplay", "Aufgabe für jemand anderen übernommen oder erledigt", "Base", Icons.Material.Filled.PersonAdd, "#ec407a", "#f8bbd0"),
-        new("team_day", "Team Day", "Familie", "Alle aktiven Familienmitglieder erledigen am selben Tag mindestens eine Aufgabe", "Base", Icons.Material.Filled.People, "#ab47bc", "#e1bee7"),
-        new("family_clean_sweep", "Family Clean Sweep", "Familie", "Familie erledigt alle offenen Aufgaben eines Tages", "Base", Icons.Material.Filled.People, "#8e24aa", "#ce93d8"),
-        new("category_boss", "Mini Boss", "Kategorie", "Alle offenen Aufgaben einer Kategorie erledigt", "Base", Icons.Material.Filled.FilterAlt, "#7cb342", "#dce775"),
-        new("category_master_25", "Kategorien-Profi", "Kategorie", "25 Aufgaben in einer Kategorie erledigt", "Silber", Icons.Material.Filled.FilterAlt, "#689f38", "#dce775"),
-        new("category_master_100", "Kategorien-Legende", "Kategorie", "100 Aufgaben in einer Kategorie erledigt", "Gold", Icons.Material.Filled.FilterAlt, "#558b2f", "#ffd54f"),
-        new("photo_journalist", "Foto-Journalist", "Kommentare", "10 Aufgaben mit Foto-Kommentar abgeschlossen", "Base", Icons.Material.Filled.PhotoLibrary, "#00897b", "#80cbc4"),
-        new("commentator", "Kommentator", "Kommentare", "25 Aufgaben mit Text-Kommentar abgeschlossen", "Base", Icons.Material.Filled.ChatBubbleOutline, "#009688", "#b2dfdb"),
-        new("quiet_hero", "Quiet Hero", "Hidden", "Aufgabe erledigt, ohne dass andere am selben Tag aktiv waren", "Hidden", Icons.Material.Filled.AutoAwesome, "#616161", "#b39ddb", true),
-        new("midnight_rescue", "Midnight Rescue", "Hidden", "Dringende oder späte Aufgabe nach Mitternacht erledigt", "Hidden", Icons.Material.Filled.AutoAwesome, "#424242", "#7e57c2", true),
-        new("same_chore_weekly_4", "Konsequent", "Konsistenz", "Gleiche Chore 4 Wochen zuverlässig erledigt", "Base", Icons.Material.Filled.CalendarMonth, "#5e97f6", "#bbdefb"),
-        new("same_chore_weekly_12", "Verlässlich", "Konsistenz", "Gleiche Chore 12 Wochen zuverlässig erledigt", "Base", Icons.Material.Filled.CalendarMonth, "#3f51b5", "#c5cae9"),
-        new("all_rounder", "Allrounder", "Vielfalt", "Aufgaben aus 5 verschiedenen Kategorien erledigt", "Base", Icons.Material.Filled.Rule, "#26a69a", "#b2dfdb"),
-        new("category_explorer", "Explorer", "Vielfalt", "Erste Aufgabe in jeder vorhandenen Kategorie erledigt", "Base", Icons.Material.Filled.Search, "#00838f", "#80deea"),
-        new("fair_share", "Fair Share", "Familie", "Eigener Anteil liegt über eine Woche nahe am Familiendurchschnitt", "Base", Icons.Material.Filled.People, "#ba68c8", "#f3e5f5"),
-        new("household_marathon", "Household Marathon", "Familie", "Familie erledigt gemeinsam 100 Aufgaben", "Base", Icons.Material.Filled.People, "#9c27b0", "#e1bee7"),
-        new("morning_routine", "Morgenroutine", "Tageszeit", "Drei Morgen-Aufgaben an einem Tag erledigt", "Base", Icons.Material.Filled.PlayArrow, "#ffca28", "#fff8e1"),
-        new("reset_day", "Reset Day", "Tagesleistung", "Einen vollen Aufgabenstapel nach Rückstand aufgeholt", "Base", Icons.Material.Filled.RestartAlt, "#ff8a65", "#ffccbc"),
-        new("confirmation_pro", "Bestätigt", "Teamplay", "10 Aufgaben anderer Personen bestätigt", "Base", Icons.Material.Filled.ThumbUp, "#ec407a", "#f8bbd0"),
-        new("pin_collector", "Angepinnt", "Vielfalt", "Erste angepinnte Aufgabe erledigt", "Base", Icons.Material.Filled.PushPin, "#26c6da", "#b2ebf2"),
-        new("dialogue", "Gute Absprache", "Kommentare", "5 Aufgaben mit Kommentarverlauf abgeschlossen", "Base", Icons.Material.Filled.ChatBubbleOutline, "#00897b", "#b2dfdb"),
-        new("deadline_dodger", "Deadline Dodger", "Timing", "Drei Aufgaben am selben Tag knapp vor Deadline erledigt", "Silber", Icons.Material.Filled.HourglassTop, "#ffa000", "#ffecb3"),
-        new("automation_chain", "Kettenreaktion", "Home Assistant", "Drei eventgetriebene Aufgaben an einem Tag erledigt", "Silber", Icons.Material.Filled.Sensors, "#00acc1", "#80deea"),
-        new("family_marathon_500", "Familien-Legende", "Familie", "Familie erledigt gemeinsam 500 Aufgaben", "Legendär", Icons.Material.Filled.People, "#7b1fa2", "#e1bee7")
-    ];
+    [Inject] private IAchievementService AchievementSvc { get; set; } = null!;
+
+    private IReadOnlyList<AchievementDefinition> _achievements => AchievementSvc.Definitions;
 
     protected override async Task OnInitializedAsync()
     {
+        // Guard: dev page only accessible when dev_mode is enabled in add-on config
+        if (!AddonOptions.DevMode)
+        {
+            Navigation.NavigateTo("");
+            return;
+        }
+
+        // Restore current override state
+        _themeMode = ThemeService.DevDarkModeOverride switch
+        {
+            true => "dark",
+            false => "light",
+            null => "auto"
+        };
+
+        // Restore color overrides
+        var effectivePrimary = ThemeService.EffectivePrimaryColor ?? "#03a9f4";
+        var effectiveAccent = ThemeService.EffectiveAccentColor ?? "#ff9800";
+        _devPrimaryColor = new MudColor(effectivePrimary);
+        _devAccentColor = new MudColor(effectiveAccent);
+
         _persons = await Db.Persons.OrderBy(p => p.Name).ToListAsync();
         _selectedPersonId = UserContext.CurrentPersonId;
         _mode = Environment.GetEnvironmentVariable("SUPERVISOR_TOKEN") is not null ? "Add-on (Production)" : "Development";
         _dbPath = Db.Database.GetDbConnection().DataSource ?? "?";
         await LoadAchievementStateAsync();
+        await RefreshHaPersons();
+    }
+
+    // ─── Theme Override ──────────────────────────────────────────────
+
+    private void SetThemeMode(string mode)
+    {
+        _themeMode = mode;
+        ThemeService.DevDarkModeOverride = mode switch
+        {
+            "dark" => true,
+            "light" => false,
+            _ => null
+        };
+        ThemeService.NotifyChanged();
+    }
+
+    private void SetBadgeStyle(bool lightBadges)
+    {
+        ThemeService.DevLightBadges = lightBadges;
+        ThemeService.NotifyChanged();
+    }
+
+    private void OnPrimaryColorChanged(MudColor color)
+    {
+        _devPrimaryColor = color;
+        ThemeService.DevPrimaryColorOverride = color.Value;
+        ThemeService.NotifyChanged();
+    }
+
+    private void OnAccentColorChanged(MudColor color)
+    {
+        _devAccentColor = color;
+        ThemeService.DevAccentColorOverride = color.Value;
+        ThemeService.NotifyChanged();
+    }
+
+    private void ResetColors()
+    {
+        ThemeService.DevPrimaryColorOverride = null;
+        ThemeService.DevAccentColorOverride = null;
+        var primary = ThemeService.PrimaryColor ?? "#03a9f4";
+        var accent = ThemeService.AccentColor ?? "#ff9800";
+        _devPrimaryColor = new MudColor(primary);
+        _devAccentColor = new MudColor(accent);
+        ThemeService.NotifyChanged();
     }
 
     private async Task OnPersonChanged(int? personId)
@@ -278,6 +481,35 @@
         StateHasChanged();
     }
 
+    private async Task OnUserMappingChanged(Person person, string? haUserId)
+    {
+        person.HaUserId = string.IsNullOrEmpty(haUserId) ? null : haUserId;
+        Db.Persons.Update(person);
+        await Db.SaveChangesAsync();
+
+        var displayName = _haPersonsForMapping.FirstOrDefault(p => p.UserId == haUserId)?.FriendlyName;
+        if (haUserId is not null)
+        {
+            Snackbar.Add($"{person.Name} → {displayName ?? haUserId}", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add($"{person.Name}: Mapping entfernt", Severity.Info);
+        }
+    }
+
+    private async Task RefreshHaPersons()
+    {
+        var allHaPersons = await HaService.GetPersonsAsync();
+        _haPersonsForMapping = allHaPersons.Where(p => !string.IsNullOrEmpty(p.UserId)).ToList();
+    }
+
+    private async Task RefreshHaConfig()
+    {
+        await ThemeService.RefreshAsync();
+        StateHasChanged();
+    }
+
     private async Task LoadAchievementStateAsync()
     {
         _unlockedAchievementKeys = [];
@@ -286,130 +518,26 @@
         if (UserContext.CurrentPersonId is not int personId)
         {
             _achievementSubjectName = "kein aktiver Kontext";
-            foreach (var achievement in _achievements)
+            foreach (var a in _achievements)
             {
-                _achievementFacts[achievement.Key] = "Kein aktiver Benutzer im Kontext.";
+                _achievementFacts[a.Key] = "Kein aktiver Benutzer im Kontext.";
             }
             return;
         }
 
-        var person = await Db.Persons.AsNoTracking().FirstOrDefaultAsync(p => p.Id == personId);
+        var person = _persons.FirstOrDefault(p => p.Id == personId);
         _achievementSubjectName = person?.Name ?? $"Person #{personId}";
 
-        var tasks = await Db.ChoreTasks
-            .AsNoTracking()
-            .Include(t => t.Chore)
-            .Include(t => t.Comments)
-                .ThenInclude(c => c.Attachments)
-            .ToListAsync();
-
-        var today = DateOnly.FromDateTime(DateTime.Today);
-        var completedByPerson = tasks
-            .Where(t => t.CompletedAt is not null && (t.CompletedByPersonId == personId || t.ClaimedByPersonId == personId))
-            .ToList();
-        var confirmedByPerson = completedByPerson
-            .Where(t => t.Status == ChoreTaskStatus.Confirmed)
-            .ToList();
-        var eventTasks = completedByPerson.Where(IsTriggeredTask).ToList();
-        var allConfirmed = tasks.Where(t => t.Status == ChoreTaskStatus.Confirmed).ToList();
-
-        var completedCount = completedByPerson.Count;
-        var confirmedCount = confirmedByPerson.Count;
-        var eventCount = eventTasks.Count;
-        var streak = GetLongestStreak(completedByPerson);
-        var bestChoreCount = completedByPerson.GroupBy(t => t.ChoreId).Select(g => g.Count()).DefaultIfEmpty(0).Max();
-        var uniqueChores = completedByPerson.Select(t => t.ChoreId).Distinct().Count();
-        var activeChores = await Db.Chores.AsNoTracking().CountAsync(c => c.IsActive);
-        var photoCount = completedByPerson.Count(t => t.Comments.Any(c => c.Attachments.Count > 0));
-        var commentCount = completedByPerson.Count(t => t.Comments.Any(c => c.PersonId == personId && !string.IsNullOrWhiteSpace(c.Text)));
-        var dialogueCount = completedByPerson.Count(t => t.Comments.Count >= 2);
-        var confirmationCount = tasks.Count(t => t.ConfirmedByPersonId == personId);
-        var helperCount = completedByPerson.Count(t => t.CompletedByPersonId == personId && t.DefaultPersonId is not null && t.DefaultPersonId != personId);
-        var fastFinishCount = completedByPerson.Count(t => !IsTriggeredTask(t) && t.ScheduleId is null && t.CompletedAt is not null && t.CompletedAt.Value - t.CreatedAt <= TimeSpan.FromMinutes(30));
-        var roadrunnerSeconds = eventTasks
-            .Where(t => t.CompletedAt is not null)
-            .Select(t => (t.CompletedAt!.Value - t.CreatedAt).TotalSeconds)
-            .Where(s => s >= 0)
-            .DefaultIfEmpty(double.PositiveInfinity)
-            .Min();
-
-        Unlock("first_task", completedCount >= 1, $"{completedCount} erledigte Aufgaben im aktuellen Kontext.");
-        Unlock("first_chore", completedByPerson.Any(t => t.ScheduleId is not null), $"{completedByPerson.Count(t => t.ScheduleId is not null)} erledigte wiederkehrende Aufgaben.");
-        Unlock("first_photo", photoCount >= 1, $"{photoCount} erledigte Aufgaben mit Foto-Anhang.");
-        Unlock("first_event_task", eventCount >= 1, $"{eventCount} erledigte Trigger-Aufgaben.");
-        Unlock("daily_clean_sweep", HasDailyCleanSweep(tasks, personId, today), "Heute sind keine sichtbaren eigenen Aufgaben mehr offen.");
-        Unlock("perfect_week", HasPerfectWeek(tasks, personId), "Diese Woche: eigene Aufgaben erledigt und keine eigenen Missed/Cancelled-Einträge.");
-        Unlock("no_reminder_needed", completedByPerson.Any(t => t.CompletedAt is not null && t.CompletedAt.Value.ToLocalTime().Hour < 12), "Mindestens eine Aufgabe vor Mittag erledigt.");
-        Unlock("comeback", HasComeback(completedByPerson), "Zwischen zwei erledigten Aufgaben lag mindestens eine Woche Pause.");
-        Unlock("streak_3", streak >= 3, $"Beste Serie: {streak} Tage.");
-        Unlock("streak_7", streak >= 7, $"Beste Serie: {streak} Tage.");
-        Unlock("streak_30", streak >= 30, $"Beste Serie: {streak} Tage.");
-        Unlock("streak_100", streak >= 100, $"Beste Serie: {streak} Tage.");
-        Unlock("task_count_10", completedCount >= 10, $"{completedCount}/10 Aufgaben erledigt.");
-        Unlock("task_count_50", completedCount >= 50, $"{completedCount}/50 Aufgaben erledigt.");
-        Unlock("task_count_100", completedCount >= 100, $"{completedCount}/100 Aufgaben erledigt.");
-        Unlock("task_count_500", completedCount >= 500, $"{completedCount}/500 Aufgaben erledigt.");
-        Unlock("chore_master_10", bestChoreCount >= 10, $"Beste einzelne Chore: {bestChoreCount}/10.");
-        Unlock("chore_master_50", bestChoreCount >= 50, $"Beste einzelne Chore: {bestChoreCount}/50.");
-        Unlock("chore_master_100", bestChoreCount >= 100, $"Beste einzelne Chore: {bestChoreCount}/100.");
-        Unlock("early_bird", completedByPerson.Any(t => t.CompletedAt is not null && t.CompletedAt.Value.ToLocalTime().Hour < 8), "Mindestens eine Aufgabe vor 8 Uhr erledigt.");
-        Unlock("night_owl", completedByPerson.Any(t => t.CompletedAt is not null && t.CompletedAt.Value.ToLocalTime().Hour >= 22), "Mindestens eine Aufgabe nach 22 Uhr erledigt.");
-        Unlock("weekend_warrior", completedByPerson.Any(t => t.CompletedAt is not null && t.CompletedAt.Value.ToLocalTime().DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday), "Mindestens eine Wochenend-Aufgabe erledigt.");
-        Unlock("last_minute_hero", completedByPerson.Any(IsLastMinute), "Mindestens eine Aufgabe abends am Fälligkeitstag erledigt.");
-        Unlock("fast_finish", fastFinishCount >= 1, $"{fastFinishCount} Ad-hoc-Aufgaben innerhalb von 30 Minuten erledigt.");
-        Unlock("roadrunner_10", roadrunnerSeconds <= 600, GetRoadrunnerFact(roadrunnerSeconds));
-        Unlock("roadrunner_5", roadrunnerSeconds <= 300, GetRoadrunnerFact(roadrunnerSeconds));
-        Unlock("roadrunner_1", roadrunnerSeconds <= 60, GetRoadrunnerFact(roadrunnerSeconds));
-        Unlock("automation_whisperer", eventCount >= 10, $"{eventCount}/10 Trigger-Aufgaben erledigt.");
-        Unlock("sensor_sprinter", eventTasks.Select(t => t.OccurrenceLabel).Where(l => !string.IsNullOrWhiteSpace(l)).Distinct().Count() >= 5, $"{eventTasks.Select(t => t.OccurrenceLabel).Where(l => !string.IsNullOrWhiteSpace(l)).Distinct().Count()}/5 Trigger-Quellen erledigt.");
-        Unlock("energy_saver", completedByPerson.Any(t => HasAnyKeyword(t.Chore.Name, "strom", "energie", "licht", "standby", "heizung")), "Keyword-Auswertung: Strom/Energie/Licht/Standby/Heizung.");
-        Unlock("weather_ready", completedByPerson.Any(t => HasAnyKeyword(t.Chore.Name, "regen", "wetter", "pflanze", "garten", "fenster")), "Keyword-Auswertung: Regen/Wetter/Pflanzen/Garten/Fenster.");
-        Unlock("helper", helperCount >= 1, $"{helperCount} Aufgaben fuer andere erledigt.");
-        Unlock("team_day", HasTeamDay(tasks), "Alle aktiven Personen haben an einem Tag mindestens eine Aufgabe erledigt.");
-        Unlock("family_clean_sweep", HasFamilyCleanSweep(tasks, today), "Heute sind keine sichtbaren Familien-Aufgaben mehr offen.");
-        Unlock("category_boss", false, "Keine Kategorie-Daten im Modell vorhanden.");
-        Unlock("category_master_25", false, "Keine Kategorie-Daten im Modell vorhanden.");
-        Unlock("category_master_100", false, "Keine Kategorie-Daten im Modell vorhanden.");
-        Unlock("photo_journalist", photoCount >= 10, $"{photoCount}/10 Foto-Aufgaben erledigt.");
-        Unlock("commentator", commentCount >= 25, $"{commentCount}/25 Aufgaben mit eigenem Text-Kommentar.");
-        Unlock("quiet_hero", HasQuietHero(tasks, personId), "An einem Tag war nur diese Person mit erledigten Aufgaben aktiv.");
-        Unlock("midnight_rescue", completedByPerson.Any(t => t.CompletedAt is not null && t.CompletedAt.Value.ToLocalTime().Hour is >= 0 and < 5), "Mindestens eine Aufgabe nach Mitternacht erledigt.");
-        Unlock("same_chore_weekly_4", HasWeeklyChoreRun(completedByPerson, 4), "Gleiche Chore in mindestens 4 Wochen erledigt.");
-        Unlock("same_chore_weekly_12", HasWeeklyChoreRun(completedByPerson, 12), "Gleiche Chore in mindestens 12 Wochen erledigt.");
-        Unlock("all_rounder", uniqueChores >= 5, $"{uniqueChores}/5 verschiedene Chores erledigt.");
-        Unlock("category_explorer", activeChores > 0 && uniqueChores >= activeChores, $"{uniqueChores}/{activeChores} aktive Chores erledigt.");
-        Unlock("fair_share", HasFairShare(tasks, personId), "Eigener Wochenanteil liegt nahe am Familiendurchschnitt.");
-        Unlock("household_marathon", allConfirmed.Count >= 100, $"Familie: {allConfirmed.Count}/100 bestätigte Aufgaben.");
-        Unlock("morning_routine", HasTasksInDay(completedByPerson, t => t.CompletedAt is not null && t.CompletedAt.Value.ToLocalTime().Hour < 10, 3), "An einem Tag mindestens 3 Morgen-Aufgaben erledigt.");
-        Unlock("reset_day", HasTasksInDay(completedByPerson, _ => true, 5), "An einem Tag mindestens 5 Aufgaben erledigt.");
-        Unlock("confirmation_pro", confirmationCount >= 10, $"{confirmationCount}/10 Aufgaben bestätigt.");
-        Unlock("pin_collector", false, "Pinned-Tasks werden aktuell nicht persistiert.");
-        Unlock("dialogue", dialogueCount >= 5, $"{dialogueCount}/5 Aufgaben mit Kommentarverlauf.");
-        Unlock("deadline_dodger", HasTasksInDay(completedByPerson, IsLastMinute, 3), "An einem Tag mindestens 3 Last-Minute-Aufgaben erledigt.");
-        Unlock("automation_chain", HasTasksInDay(eventTasks, _ => true, 3), "An einem Tag mindestens 3 Trigger-Aufgaben erledigt.");
-        Unlock("family_marathon_500", allConfirmed.Count >= 500, $"Familie: {allConfirmed.Count}/500 bestätigte Aufgaben.");
+        var evaluation = await AchievementSvc.EvaluateAsync(personId);
+        _unlockedAchievementKeys = evaluation.UnlockedKeys;
+        _achievementFacts = evaluation.Facts;
     }
 
-    private void Unlock(string key, bool isUnlocked, string fact)
-    {
-        if (isUnlocked)
-        {
-            _unlockedAchievementKeys.Add(key);
-        }
+    private bool IsBadgeboardLocked(AchievementDefinition achievement) => !_unlockedAchievementKeys.Contains(achievement.Key);
 
-        _achievementFacts[key] = fact;
-    }
-
-    private static string GetBadgeClass(DevAchievement achievement)
+    private string GetAchievementFact(AchievementDefinition achievement)
     {
-        var tierClass = achievement.Tier.ToLowerInvariant().Replace("ä", "ae");
-        return $"achievement-hex achievement-hex-{tierClass}{(achievement.IsHidden ? " achievement-hex-hidden" : "")}";
-    }
-
-    private static string GetBoardBadgeClass(DevAchievement achievement, bool isLocked)
-    {
-        var baseClass = GetBadgeClass(achievement);
-        return isLocked ? $"{baseClass} achievement-hex-locked" : baseClass;
+        return _achievementFacts.TryGetValue(achievement.Key, out var fact) ? fact : "Noch nicht ausgewertet.";
     }
 
     private string GetBoardRatioStyle()
@@ -422,301 +550,15 @@
     private string GetPreviewRatioStyle()
     {
         var h = Math.Round(104 * _hexHeightRatio, 1);
-        return $"height: {h}px;";
+        return $"{h}px";
     }
 
-    private bool IsBadgeboardLocked(DevAchievement achievement) => !_unlockedAchievementKeys.Contains(achievement.Key);
-
-    private string GetAchievementFact(DevAchievement achievement)
-    {
-        return _achievementFacts.TryGetValue(achievement.Key, out var fact)
-            ? fact
-            : "Noch nicht ausgewertet.";
-    }
-
-    private string GetBoardTitle(DevAchievement achievement, bool isLocked)
+    private string GetBoardTitle(AchievementDefinition achievement, bool isLocked)
     {
         if (isLocked && achievement.IsHidden)
-        {
             return "Hidden Achievement";
-        }
-
         var state = isLocked ? "Locked" : "Unlocked";
         return $"{state}: {achievement.Name} - {GetAchievementFact(achievement)}";
-    }
-
-    private static bool IsTriggeredTask(ChoreTask task)
-    {
-        return task.ScheduleId is null
-            && task.OccurrenceLabel?.StartsWith("Trigger:", StringComparison.OrdinalIgnoreCase) == true;
-    }
-
-    private static bool HasDailyCleanSweep(List<ChoreTask> tasks, int personId, DateOnly today)
-    {
-        var visibleToday = tasks.Where(t => t.DueDate == today && IsRelevantToPerson(t, personId)).ToList();
-        return visibleToday.Any(t => t.CompletedAt is not null)
-            && visibleToday.All(t => t.Status is ChoreTaskStatus.Confirmed or ChoreTaskStatus.Missed or ChoreTaskStatus.Cancelled);
-    }
-
-    private static bool HasPerfectWeek(List<ChoreTask> tasks, int personId)
-    {
-        var start = WeekStart(DateOnly.FromDateTime(DateTime.Today));
-        var end = start.AddDays(7);
-        var weekTasks = tasks.Where(t => t.DueDate >= start && t.DueDate < end && IsRelevantToPerson(t, personId)).ToList();
-        return weekTasks.Any(t => t.Status == ChoreTaskStatus.Confirmed)
-            && weekTasks.All(t => t.Status is not ChoreTaskStatus.Missed and not ChoreTaskStatus.Cancelled);
-    }
-
-    private static int GetLongestStreak(List<ChoreTask> tasks)
-    {
-        var days = tasks
-            .Where(t => t.CompletedAt is not null)
-            .Select(t => DateOnly.FromDateTime(t.CompletedAt!.Value.ToLocalTime()))
-            .Distinct()
-            .OrderBy(d => d)
-            .ToList();
-
-        var best = 0;
-        var current = 0;
-        DateOnly? previous = null;
-
-        foreach (var day in days)
-        {
-            current = previous is not null && day == previous.Value.AddDays(1) ? current + 1 : 1;
-            best = Math.Max(best, current);
-            previous = day;
-        }
-
-        return best;
-    }
-
-    private static bool HasComeback(List<ChoreTask> tasks)
-    {
-        var days = tasks
-            .Where(t => t.CompletedAt is not null)
-            .Select(t => DateOnly.FromDateTime(t.CompletedAt!.Value.ToLocalTime()))
-            .Distinct()
-            .OrderBy(d => d)
-            .ToList();
-
-        return days.Zip(days.Skip(1), (a, b) => b.DayNumber - a.DayNumber).Any(gap => gap >= 7);
-    }
-
-    private static bool IsLastMinute(ChoreTask task)
-    {
-        if (task.CompletedAt is null)
-        {
-            return false;
-        }
-
-        var completed = task.CompletedAt.Value.ToLocalTime();
-        return DateOnly.FromDateTime(completed) == task.DueDate && completed.Hour >= 18;
-    }
-
-    private static string GetRoadrunnerFact(double seconds)
-    {
-        return double.IsPositiveInfinity(seconds)
-            ? "Noch keine erledigte Trigger-Aufgabe."
-            : $"Schnellste Trigger-Reaktion: {TimeSpan.FromSeconds(seconds):mm\\:ss}.";
-    }
-
-    private static bool HasAnyKeyword(string value, params string[] keywords)
-    {
-        return keywords.Any(keyword => value.Contains(keyword, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private bool HasTeamDay(List<ChoreTask> tasks)
-    {
-        var activePersonIds = _persons
-            .Where(p => p.Role != PersonRole.Guest && !p.IsPaused)
-            .Select(p => p.Id)
-            .ToHashSet();
-
-        return activePersonIds.Count > 0 && tasks
-            .Where(t => t.CompletedAt is not null && t.CompletedByPersonId is not null)
-            .GroupBy(t => DateOnly.FromDateTime(t.CompletedAt!.Value.ToLocalTime()))
-            .Any(g => activePersonIds.All(id => g.Any(t => t.CompletedByPersonId == id || t.ClaimedByPersonId == id)));
-    }
-
-    private static bool HasFamilyCleanSweep(List<ChoreTask> tasks, DateOnly today)
-    {
-        var todayTasks = tasks.Where(t => t.DueDate == today).ToList();
-        return todayTasks.Any(t => t.CompletedAt is not null)
-            && todayTasks.All(t => t.Status is ChoreTaskStatus.Confirmed or ChoreTaskStatus.Missed or ChoreTaskStatus.Cancelled);
-    }
-
-    private static bool HasQuietHero(List<ChoreTask> tasks, int personId)
-    {
-        return tasks
-            .Where(t => t.CompletedAt is not null && (t.CompletedByPersonId is not null || t.ClaimedByPersonId is not null))
-            .GroupBy(t => DateOnly.FromDateTime(t.CompletedAt!.Value.ToLocalTime()))
-            .Any(g => g.Any(t => t.CompletedByPersonId == personId || t.ClaimedByPersonId == personId)
-                && g.All(t => t.CompletedByPersonId == personId || t.ClaimedByPersonId == personId));
-    }
-
-    private static bool HasWeeklyChoreRun(List<ChoreTask> tasks, int requiredWeeks)
-    {
-        return tasks
-            .Where(t => t.CompletedAt is not null)
-            .GroupBy(t => t.ChoreId)
-            .Any(g => g.Select(t => WeekStart(DateOnly.FromDateTime(t.CompletedAt!.Value.ToLocalTime()))).Distinct().Count() >= requiredWeeks);
-    }
-
-    private static bool HasFairShare(List<ChoreTask> tasks, int personId)
-    {
-        var start = WeekStart(DateOnly.FromDateTime(DateTime.Today));
-        var end = start.AddDays(7);
-        var counts = tasks
-            .Where(t => t.CompletedAt is not null)
-            .Where(t => DateOnly.FromDateTime(t.CompletedAt!.Value.ToLocalTime()) >= start && DateOnly.FromDateTime(t.CompletedAt!.Value.ToLocalTime()) < end)
-            .GroupBy(t => t.CompletedByPersonId ?? t.ClaimedByPersonId)
-            .Where(g => g.Key is not null)
-            .ToDictionary(g => g.Key!.Value, g => g.Count());
-
-        if (!counts.TryGetValue(personId, out var ownCount) || counts.Count < 2)
-        {
-            return false;
-        }
-
-        var average = counts.Values.Average();
-        return ownCount >= Math.Max(1, average * 0.8);
-    }
-
-    private static bool HasTasksInDay(List<ChoreTask> tasks, Func<ChoreTask, bool> predicate, int requiredCount)
-    {
-        return tasks
-            .Where(t => t.CompletedAt is not null && predicate(t))
-            .GroupBy(t => DateOnly.FromDateTime(t.CompletedAt!.Value.ToLocalTime()))
-            .Any(g => g.Count() >= requiredCount);
-    }
-
-    private static DateOnly WeekStart(DateOnly date)
-    {
-        var offset = date.DayOfWeek == DayOfWeek.Sunday ? 6 : (int)date.DayOfWeek - 1;
-        return date.AddDays(-offset);
-    }
-
-    private static bool IsRelevantToPerson(ChoreTask task, int personId)
-    {
-        return task.CompletedByPersonId == personId
-            || task.ClaimedByPersonId == personId
-            || task.DefaultPersonId == personId
-            || (task.DefaultPersonId is null && task.ClaimedByPersonId is null);
-    }
-
-    private static string? GetCustomPictogram(DevAchievement achievement, bool isLocked)
-    {
-        if (isLocked)
-        {
-            return Svg(
-                "<rect x=\"18\" y=\"29\" width=\"28\" height=\"22\" rx=\"4\" />",
-                "<path d=\"M24 29v-8c0-6 4-10 8-10s8 4 8 10v8\" />",
-                "<path d=\"M32 38v5\" />");
-        }
-
-        var pictogram = achievement.Key switch
-        {
-            "first_task" or "daily_clean_sweep" => "check-burst",
-            "first_chore" or "chore_master_10" or "chore_master_50" or "chore_master_100" => "broom",
-            "first_photo" or "photo_journalist" => "photo",
-            "first_event_task" or "automation_whisperer" or "sensor_sprinter" or "automation_chain" => "signal",
-            "perfect_week" or "same_chore_weekly_4" or "same_chore_weekly_12" => "calendar-check",
-            "no_reminder_needed" => "bell-slash",
-            "comeback" or "reset_day" => "comeback",
-            "streak_3" or "streak_7" or "streak_30" or "streak_100" => "flame",
-            "task_count_10" or "task_count_50" or "task_count_100" or "task_count_500" => "stack-check",
-            "early_bird" or "morning_routine" => "sunrise",
-            "night_owl" => "owl-moon",
-            "weekend_warrior" => "weekend",
-            "last_minute_hero" or "deadline_dodger" => "hourglass-bolt",
-            "fast_finish" => "bolt-flag",
-            "roadrunner_10" or "roadrunner_5" or "roadrunner_1" => "runner-speed",
-            "energy_saver" => "plug-leaf",
-            "weather_ready" => "weather",
-            "helper" or "confirmation_pro" => "helping-hand",
-            "team_day" or "family_clean_sweep" or "fair_share" or "household_marathon" or "family_marathon_500" => "family",
-            "category_boss" or "category_master_25" or "category_master_100" => "category-crown",
-            "commentator" or "dialogue" => "chat-lines",
-            "quiet_hero" => "quiet-hero",
-            "midnight_rescue" => "midnight",
-            "all_rounder" => "compass",
-            "category_explorer" => "map-compass",
-            "pin_collector" => "pin",
-            _ => null
-        };
-
-        return pictogram is null ? null : PictogramSvg(pictogram);
-    }
-
-    private static string PictogramSvg(string pictogram) => pictogram switch
-    {
-        "check-burst" => Svg("<circle cx=\"32\" cy=\"33\" r=\"18\" />", "<path d=\"M22 33l7 7 14-16\" />", "<path d=\"M13 18l5 2M47 14l-3 5M51 44l-5-2\" />"),
-        "broom" => Svg("<path d=\"M39 10L21 28\" />", "<path d=\"M17 32l14 14\" />", "<path d=\"M24 25l15 15\" />", "<path d=\"M13 36l15 15 8-8-15-15z\" />", "<path d=\"M13 48h16\" />"),
-        "photo" => Svg("<rect x=\"14\" y=\"18\" width=\"36\" height=\"30\" rx=\"4\" />", "<path d=\"M22 18l3-6h14l3 6\" />", "<circle cx=\"32\" cy=\"33\" r=\"8\" />", "<path d=\"M46 24h.1\" />"),
-        "signal" => Svg("<path d=\"M25 42c-5-5-5-15 0-20\" />", "<path d=\"M18 49c-9-9-9-25 0-34\" />", "<path d=\"M39 42c5-5 5-15 0-20\" />", "<path d=\"M46 49c9-9 9-25 0-34\" />", "<circle cx=\"32\" cy=\"32\" r=\"5\" fill=\"currentColor\" />"),
-        "calendar-check" => Svg("<rect x=\"14\" y=\"16\" width=\"36\" height=\"36\" rx=\"5\" />", "<path d=\"M22 10v10M42 10v10M14 26h36\" />", "<path d=\"M23 39l6 6 13-15\" />"),
-        "bell-slash" => Svg("<path d=\"M15 13l34 38\" />", "<path d=\"M25 49h21l-4-6V31c0-7-4-12-10-13\" />", "<path d=\"M23 22c-2 2-3 5-3 9v12l-4 6h12\" />", "<path d=\"M28 54c2 3 6 3 8 0\" />"),
-        "comeback" => Svg("<path d=\"M18 24h17c8 0 14 6 14 14s-6 14-14 14H22\" />", "<path d=\"M24 14l-10 10 10 10\" />", "<path d=\"M30 38l6 6 10-14\" />"),
-        "flame" => Svg("<path d=\"M34 8c2 9-8 11-6 21 3-4 7-6 11-7-2 9 7 12 7 21 0 9-7 15-15 15s-15-6-15-15c0-11 11-17 18-35z\" />", "<path d=\"M31 43c-3 4-2 9 2 11 4-2 6-6 4-11-2 2-4 3-6 0z\" />"),
-        "stack-check" => Svg("<path d=\"M17 20h25l6 6v24H17z\" />", "<path d=\"M22 14h22M26 8h22\" />", "<path d=\"M23 37l6 6 13-15\" />"),
-        "sunrise" => Svg("<path d=\"M12 46h40\" />", "<path d=\"M20 46a12 12 0 0 1 24 0\" />", "<path d=\"M32 10v10M15 24l7 7M49 24l-7 7\" />", "<path d=\"M24 54h16\" />"),
-        "owl-moon" => Svg("<path d=\"M45 13c-7 1-12 7-12 14s5 13 12 14c-4 5-12 8-20 4-8-4-11-14-7-22s14-13 27-10z\" />", "<path d=\"M24 32l8 8 8-8\" />", "<circle cx=\"26\" cy=\"29\" r=\"2\" fill=\"currentColor\" />", "<circle cx=\"38\" cy=\"29\" r=\"2\" fill=\"currentColor\" />"),
-        "weekend" => Svg("<path d=\"M17 25h30v23H17z\" />", "<path d=\"M24 18v10M40 18v10M17 32h30\" />", "<path d=\"M28 42l4-3 4 3-2-5 4-3h-5l-1-5-2 5h-5l4 3z\" fill=\"currentColor\" />"),
-        "hourglass-bolt" => Svg("<path d=\"M21 12h22M21 52h22\" />", "<path d=\"M24 12c0 12 16 12 16 20S24 40 24 52\" />", "<path d=\"M40 12c0 12-16 12-16 20s16 8 16 20\" />", "<path d=\"M35 25l-7 10h7l-6 10\" />"),
-        "bolt-flag" => Svg("<path d=\"M22 52V14\" />", "<path d=\"M22 16h24l-7 9 7 9H22\" />", "<path d=\"M34 24l-8 12h8l-6 10\" />"),
-        "runner-speed" => Svg("<path d=\"M13 23h14M10 33h12M15 43h10\" />", "<circle cx=\"38\" cy=\"15\" r=\"5\" />", "<path d=\"M35 23l-8 9 9 4 7 11\" />", "<path d=\"M42 25l9 5\" />", "<path d=\"M32 37l-8 11\" />"),
-        "plug-leaf" => Svg("<path d=\"M23 14v12M39 14v12\" />", "<path d=\"M20 26h24v8c0 7-5 12-12 12s-12-5-12-12z\" />", "<path d=\"M32 46v8\" />", "<path d=\"M36 42c8-2 13-8 14-18-10 1-17 6-20 14\" />"),
-        "weather" => Svg("<path d=\"M19 43h26a9 9 0 0 0 0-18 14 14 0 0 0-27-3 11 11 0 0 0 1 21z\" />", "<path d=\"M24 49l-3 5M34 49l-3 5M44 49l-3 5\" />"),
-        "helping-hand" => Svg("<circle cx=\"41\" cy=\"18\" r=\"7\" />", "<path d=\"M29 42l8 8c3 3 8 1 8-3V31\" />", "<path d=\"M13 41h12l8-8c3-3 8 1 5 5l-6 6\" />", "<path d=\"M13 50h20\" />", "<path d=\"M50 42v-8c0-5-4-9-9-9\" />"),
-        "family" => Svg("<circle cx=\"32\" cy=\"20\" r=\"7\" />", "<circle cx=\"18\" cy=\"28\" r=\"5\" />", "<circle cx=\"46\" cy=\"28\" r=\"5\" />", "<path d=\"M20 50c1-8 6-13 12-13s11 5 12 13\" />", "<path d=\"M8 50c1-6 5-10 10-10M56 50c-1-6-5-10-10-10\" />"),
-        "category-crown" => Svg("<path d=\"M16 43h32l-4-20-9 9-7-13-7 13-9-9z\" />", "<path d=\"M18 51h28\" />", "<path d=\"M22 14h.1M42 14h.1\" />"),
-        "chat-lines" => Svg("<path d=\"M14 18h36v26H31l-11 9v-9h-6z\" />", "<path d=\"M23 28h18M23 36h12\" />"),
-        "quiet-hero" => Svg("<path d=\"M18 36c7-13 21-13 28 0\" />", "<circle cx=\"32\" cy=\"26\" r=\"8\" />", "<path d=\"M17 48h30\" />", "<path d=\"M14 18l6 6M50 18l-6 6\" />"),
-        "midnight" => Svg("<path d=\"M45 12c-9 1-16 9-16 18s7 17 16 18c-5 5-13 7-21 3-10-5-14-17-9-27 5-9 16-15 30-12z\" />", "<path d=\"M43 38l4 3 4-3-2 5 4 3h-5l-1 5-2-5h-5l4-3z\" fill=\"currentColor\" />"),
-        "compass" => Svg("<circle cx=\"32\" cy=\"32\" r=\"21\" />", "<path d=\"M39 18l-5 18-9 10 5-18z\" />", "<circle cx=\"32\" cy=\"32\" r=\"2\" fill=\"currentColor\" />"),
-        "map-compass" => Svg("<path d=\"M13 17l13-5 12 5 13-5v35l-13 5-12-5-13 5z\" />", "<path d=\"M26 12v35M38 17v35\" />", "<path d=\"M43 26l-4 11-7 5 4-11z\" />"),
-        "pin" => Svg("<path d=\"M24 12h16l-4 18 8 8v5H20v-5l8-8z\" />", "<path d=\"M32 43v11\" />"),
-        _ => string.Empty
-    };
-
-    private static string Svg(params string[] elements)
-    {
-        return "<svg viewBox=\"0 0 64 64\" aria-hidden=\"true\" focusable=\"false\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\">"
-            + string.Concat(elements)
-            + "</svg>";
-    }
-
-    private static (string Primary, string Accent) GetCategoryPalette(string category) => category switch
-    {
-        "Einstieg"                          => ("#0277bd", "#4fc3f7"),  // Blue
-        "Streak" or "Motivation"            => ("#bf360c", "#ff8a65"),  // Burnt Orange
-        "Menge" or "Tagesleistung"
-            or "Zuverlässigkeit"            => ("#2e7d32", "#81c784"),  // Green
-        "Chore-Mastery"                     => ("#6a1b9a", "#ce93d8"),  // Purple
-        "Tageszeit" or "Timing"             => ("#e65100", "#ffcc80"),  // Amber
-        "Event-Reaktion" or "Home Assistant" => ("#006064", "#4dd0e1"), // Cyan
-        "Familie" or "Teamplay"             => ("#880e4f", "#f48fb1"),  // Magenta
-        "Kategorie" or "Vielfalt"           => ("#33691e", "#aed581"),  // Lime
-        "Kommentare"                        => ("#004d40", "#80cbc4"),  // Teal
-        "Konsistenz"                        => ("#1a237e", "#7986cb"),  // Indigo
-        "Hidden"                            => ("#37474f", "#90a4ae"),  // Blue Grey
-        _                                   => ("#0277bd", "#4fc3f7")
-    };
-
-    private static string GetBadgeStyle(DevAchievement achievement)
-    {
-        var (primary, accent) = GetCategoryPalette(achievement.Category);
-        var ring = achievement.Tier switch
-        {
-            "Bronze" => "#cd7f32",
-            "Silber" => "#c0c0c0",
-            "Gold" => "#ffd700",
-            "Legendär" => "#b388ff",
-            "Hidden" => "#546e7a",
-            _ => accent
-        };
-
-        return $"--achievement-primary: {primary}; --achievement-accent: {accent}; --achievement-ring: {ring};";
     }
 
     private static Color GetCategoryColor(string category) => category switch
@@ -731,15 +573,4 @@
         "Hidden" => Color.Default,
         _ => Color.Primary
     };
-
-    private sealed record DevAchievement(
-        string Key,
-        string Name,
-        string Category,
-        string Condition,
-        string Tier,
-        string Icon,
-        string PrimaryColor,
-        string AccentColor,
-        bool IsHidden = false);
 }

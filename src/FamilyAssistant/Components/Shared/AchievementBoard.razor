@@ -1,0 +1,63 @@
+@using FamilyAssistant.Services
+
+<MudPaper Outlined="true" Class="achievement-board-panel pa-4">
+    <div class="achievement-board-scroll">
+        <div class="achievement-board" style="@_boardStyle">
+            @foreach (var row in Definitions.Chunk(10).Select((Achievements, Index) => new { Achievements, Index }))
+            {
+                <div class="achievement-board-row @(row.Index % 2 == 1 ? "achievement-board-row-offset" : null)">
+                    @foreach (var achievement in row.Achievements)
+                    {
+                        var isLocked = !UnlockedKeys.Contains(achievement.Key);
+                        var title = GetTitle(achievement, isLocked);
+                        <div class="achievement-board-slot" title="@title" @onclick="() => OnBadgeClick.InvokeAsync(achievement)">
+                            <AchievementHex Definition="achievement" IsLocked="isLocked" />
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<AchievementDefinition> Definitions { get; set; } = [];
+    [Parameter, EditorRequired] public HashSet<string> UnlockedKeys { get; set; } = [];
+    [Parameter] public Dictionary<string, string>? Facts { get; set; }
+    [Parameter] public EventCallback<AchievementDefinition> OnBadgeClick { get; set; }
+
+    /// <summary>
+    /// Optional height ratio override for dev slider (e.g., "59px").
+    /// When null, uses the CSS default.
+    /// </summary>
+    [Parameter] public string? BoardHexHeightOverride { get; set; }
+
+    private string? _boardStyle;
+
+    protected override void OnParametersSet()
+    {
+        if (BoardHexHeightOverride is not null)
+        {
+            // Parse px value for row-step calculation
+            if (double.TryParse(BoardHexHeightOverride.Replace("px", ""), out var h))
+            {
+                var step = Math.Round(h * 0.75 + 5, 1);
+                _boardStyle = $"--achievement-board-hex-h: {h}px; --achievement-board-row-step: {step}px;";
+            }
+        }
+        else
+        {
+            _boardStyle = null;
+        }
+    }
+
+    private string GetTitle(AchievementDefinition achievement, bool isLocked)
+    {
+        if (isLocked && achievement.IsHidden)
+            return "Hidden Achievement";
+
+        var state = isLocked ? "Locked" : "Unlocked";
+        var fact = Facts?.GetValueOrDefault(achievement.Key) ?? achievement.Condition;
+        return $"{state}: {achievement.Name} - {fact}";
+    }
+}

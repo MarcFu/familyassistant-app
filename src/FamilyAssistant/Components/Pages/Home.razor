@@ -30,7 +30,7 @@ else
     {
         <MudAlert Severity="Severity.Info" Class="mb-4">
             @L["Home.NoPersons"]
-            <MudLink Href="/settings" Color="Color.Primary">@L["Home.SetupLink"]</MudLink>
+            <MudLink Href="settings" Color="Color.Primary">@L["Home.SetupLink"]</MudLink>
         </MudAlert>
     }
     else
@@ -43,7 +43,7 @@ else
                     @if (_currentPerson.EntityPicture is not null)
                     {
                         <MudAvatar Size="Size.Large">
-                            <img src="@($"/api/ha-image?path={Uri.EscapeDataString(_currentPerson.EntityPicture)}")"
+                            <img src="@($"api/ha-image?path={Uri.EscapeDataString(_currentPerson.EntityPicture)}")"
                                  style="width:100%;height:100%;object-fit:cover;" alt="@_currentPerson.Name" />
                         </MudAvatar>
                     }
@@ -112,7 +112,7 @@ else
                     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
                         @L["Home.NoRecentTasks"]
                     </MudText>
-                    <MudLink Href="/tasks" Color="Color.Primary" Typo="Typo.body2" Class="mt-1">
+                    <MudLink Href="tasks" Color="Color.Primary" Typo="Typo.body2" Class="mt-1">
                         @L["Home.GoToTasks"]
                     </MudLink>
                 }
@@ -122,7 +122,7 @@ else
         @* ── Parent/Admin extras: pending confirmations ── *@
         @if (UserContext.IsParentOrAdmin && _pendingConfirmationCount > 0)
         {
-            <MudLink Href="/tasks?filter=Pending" Underline="Underline.None">
+            <MudLink Href="tasks?filter=Pending" Underline="Underline.None">
                 <MudPaper Outlined="true" Class="pa-4 mb-4 d-flex align-center" Style="border-color: var(--mud-palette-warning);">
                     <MudIcon Icon="@Icons.Material.Filled.HourglassTop" Color="Color.Warning" Class="mr-3" />
                     <div style="flex: 1;">
@@ -148,7 +148,7 @@ else
                                 @if (person.EntityPicture is not null)
                                 {
                                     <MudAvatar Size="Size.Medium">
-                                        <img src="@($"/api/ha-image?path={Uri.EscapeDataString(person.EntityPicture)}")"
+                                        <img src="@($"api/ha-image?path={Uri.EscapeDataString(person.EntityPicture)}")"
                                              style="width:100%;height:100%;object-fit:cover;" alt="@person.Name" />
                                     </MudAvatar>
                                 }
@@ -218,7 +218,7 @@ else
             // Redirect to setup if no persons configured yet
             if (_persons.Count == 0)
             {
-                Navigation.NavigateTo("/setup");
+                Navigation.NavigateTo("setup");
                 return;
             }
 

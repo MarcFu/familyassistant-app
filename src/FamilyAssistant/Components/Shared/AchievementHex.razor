@@ -1,0 +1,174 @@
+@using FamilyAssistant.Services
+
+<div class="@CssClass" style="@StyleString">
+    <div class="achievement-hex-inner">
+        <div class="achievement-hex-lines"></div>
+        @if (_pictogram is not null)
+        {
+            <span class="achievement-hex-pictogram">@((MarkupString)_pictogram)</span>
+        }
+        else
+        {
+            <MudIcon Icon="@FallbackIcon" Class="achievement-hex-icon" />
+        }
+    </div>
+    @if (ShowTierChip)
+    {
+        <div class="achievement-tier-chip">@Definition.Tier</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public AchievementDefinition Definition { get; set; } = null!;
+    [Parameter] public bool IsLocked { get; set; }
+    [Parameter] public bool ShowTierChip { get; set; }
+    [Parameter] public string? HeightOverride { get; set; }
+
+    private string? _pictogram;
+
+    private string CssClass
+    {
+        get
+        {
+            var tierClass = Definition.Tier.ToLowerInvariant().Replace("ä", "ae");
+            var cls = $"achievement-hex achievement-hex-{tierClass}";
+            if (Definition.IsHidden) cls += " achievement-hex-hidden";
+            if (IsLocked) cls += " achievement-hex-locked";
+            return cls;
+        }
+    }
+
+    private string StyleString
+    {
+        get
+        {
+            var (primary, accent) = GetCategoryPalette(Definition.Category);
+            var ring = IsLocked ? "#163c3e" : Definition.Tier switch
+            {
+                "Bronze" => "#cd7f32",
+                "Silber" => "#c0c0c0",
+                "Gold" => "#ffd700",
+                "Legendär" => "#b388ff",
+                "Hidden" => "#546e7a",
+                _ => accent
+            };
+            var style = $"--achievement-primary: {primary}; --achievement-accent: {accent}; --achievement-ring: {ring};";
+            if (HeightOverride is not null) style += $" height: {HeightOverride};";
+            return style;
+        }
+    }
+
+    private string FallbackIcon => IsLocked
+        ? Icons.Material.Filled.Lock
+        : Definition.IsHidden
+            ? Icons.Material.Filled.AutoAwesome
+            : $"{Icons.Material.Filled.CheckCircle}"; // will be overridden by pictogram in most cases
+
+    protected override void OnParametersSet()
+    {
+        _pictogram = GetCustomPictogram(Definition, IsLocked);
+    }
+
+    // ─── Category colors ────────────────────────────────────────────────────────
+
+    public static (string Primary, string Accent) GetCategoryPalette(string category) => category switch
+    {
+        "Einstieg"                          => ("#0277bd", "#4fc3f7"),
+        "Streak" or "Motivation"            => ("#bf360c", "#ff8a65"),
+        "Menge" or "Tagesleistung"
+            or "Zuverlässigkeit"            => ("#2e7d32", "#81c784"),
+        "Chore-Mastery"                     => ("#6a1b9a", "#ce93d8"),
+        "Tageszeit" or "Timing"             => ("#e65100", "#ffcc80"),
+        "Event-Reaktion" or "Home Assistant" => ("#006064", "#4dd0e1"),
+        "Familie" or "Teamplay"             => ("#880e4f", "#f48fb1"),
+        "Kategorie" or "Vielfalt"           => ("#33691e", "#aed581"),
+        "Kommentare"                        => ("#004d40", "#80cbc4"),
+        "Konsistenz"                        => ("#1a237e", "#7986cb"),
+        "Hidden"                            => ("#37474f", "#90a4ae"),
+        _                                   => ("#0277bd", "#4fc3f7")
+    };
+
+    // ─── Pictograms ─────────────────────────────────────────────────────────────
+
+    private static string? GetCustomPictogram(AchievementDefinition achievement, bool isLocked)
+    {
+        if (isLocked)
+        {
+            return Svg(
+                "<rect x=\"18\" y=\"29\" width=\"28\" height=\"22\" rx=\"4\" />",
+                "<path d=\"M24 29v-8c0-6 4-10 8-10s8 4 8 10v8\" />",
+                "<path d=\"M32 38v5\" />");
+        }
+
+        var pictogram = achievement.Key switch
+        {
+            "first_task" or "daily_clean_sweep" => "check-burst",
+            "first_chore" or "chore_master_10" or "chore_master_50" or "chore_master_100" => "broom",
+            "first_photo" or "photo_journalist" => "photo",
+            "first_event_task" or "automation_whisperer" or "sensor_sprinter" or "automation_chain" => "signal",
+            "perfect_week" or "same_chore_weekly_4" or "same_chore_weekly_12" => "calendar-check",
+            "no_reminder_needed" => "bell-slash",
+            "comeback" or "reset_day" => "comeback",
+            "streak_3" or "streak_7" or "streak_30" or "streak_100" => "flame",
+            "task_count_10" or "task_count_50" or "task_count_100" or "task_count_500" => "stack-check",
+            "early_bird" or "morning_routine" => "sunrise",
+            "night_owl" => "owl-moon",
+            "weekend_warrior" => "weekend",
+            "last_minute_hero" or "deadline_dodger" => "hourglass-bolt",
+            "fast_finish" => "bolt-flag",
+            "roadrunner_10" or "roadrunner_5" or "roadrunner_1" => "runner-speed",
+            "energy_saver" => "plug-leaf",
+            "weather_ready" => "weather",
+            "helper" or "confirmation_pro" => "helping-hand",
+            "team_day" or "family_clean_sweep" or "fair_share" or "household_marathon" or "family_marathon_500" => "family",
+            "category_boss" or "category_master_25" or "category_master_100" => "category-crown",
+            "commentator" or "dialogue" => "chat-lines",
+            "quiet_hero" => "quiet-hero",
+            "midnight_rescue" => "midnight",
+            "all_rounder" => "compass",
+            "category_explorer" => "map-compass",
+            "pin_collector" => "pin",
+            _ => null
+        };
+
+        return pictogram is null ? null : PictogramSvg(pictogram);
+    }
+
+    private static string PictogramSvg(string pictogram) => pictogram switch
+    {
+        "check-burst" => Svg("<circle cx=\"32\" cy=\"33\" r=\"18\" />", "<path d=\"M22 33l7 7 14-16\" />", "<path d=\"M13 18l5 2M47 14l-3 5M51 44l-5-2\" />"),
+        "broom" => Svg("<path d=\"M39 10L21 28\" />", "<path d=\"M17 32l14 14\" />", "<path d=\"M24 25l15 15\" />", "<path d=\"M13 36l15 15 8-8-15-15z\" />", "<path d=\"M13 48h16\" />"),
+        "photo" => Svg("<rect x=\"14\" y=\"18\" width=\"36\" height=\"30\" rx=\"4\" />", "<path d=\"M22 18l3-6h14l3 6\" />", "<circle cx=\"32\" cy=\"33\" r=\"8\" />", "<path d=\"M46 24h.1\" />"),
+        "signal" => Svg("<path d=\"M25 42c-5-5-5-15 0-20\" />", "<path d=\"M18 49c-9-9-9-25 0-34\" />", "<path d=\"M39 42c5-5 5-15 0-20\" />", "<path d=\"M46 49c9-9 9-25 0-34\" />", "<circle cx=\"32\" cy=\"32\" r=\"5\" fill=\"currentColor\" />"),
+        "calendar-check" => Svg("<rect x=\"14\" y=\"16\" width=\"36\" height=\"36\" rx=\"5\" />", "<path d=\"M22 10v10M42 10v10M14 26h36\" />", "<path d=\"M23 39l6 6 13-15\" />"),
+        "bell-slash" => Svg("<path d=\"M15 13l34 38\" />", "<path d=\"M25 49h21l-4-6V31c0-7-4-12-10-13\" />", "<path d=\"M23 22c-2 2-3 5-3 9v12l-4 6h12\" />", "<path d=\"M28 54c2 3 6 3 8 0\" />"),
+        "comeback" => Svg("<path d=\"M18 24h17c8 0 14 6 14 14s-6 14-14 14H22\" />", "<path d=\"M24 14l-10 10 10 10\" />", "<path d=\"M30 38l6 6 10-14\" />"),
+        "flame" => Svg("<path d=\"M34 8c2 9-8 11-6 21 3-4 7-6 11-7-2 9 7 12 7 21 0 9-7 15-15 15s-15-6-15-15c0-11 11-17 18-35z\" />", "<path d=\"M31 43c-3 4-2 9 2 11 4-2 6-6 4-11-2 2-4 3-6 0z\" />"),
+        "stack-check" => Svg("<path d=\"M17 20h25l6 6v24H17z\" />", "<path d=\"M22 14h22M26 8h22\" />", "<path d=\"M23 37l6 6 13-15\" />"),
+        "sunrise" => Svg("<path d=\"M12 46h40\" />", "<path d=\"M20 46a12 12 0 0 1 24 0\" />", "<path d=\"M32 10v10M15 24l7 7M49 24l-7 7\" />", "<path d=\"M24 54h16\" />"),
+        "owl-moon" => Svg("<path d=\"M45 13c-7 1-12 7-12 14s5 13 12 14c-4 5-12 8-20 4-8-4-11-14-7-22s14-13 27-10z\" />", "<path d=\"M24 32l8 8 8-8\" />", "<circle cx=\"26\" cy=\"29\" r=\"2\" fill=\"currentColor\" />", "<circle cx=\"38\" cy=\"29\" r=\"2\" fill=\"currentColor\" />"),
+        "weekend" => Svg("<path d=\"M17 25h30v23H17z\" />", "<path d=\"M24 18v10M40 18v10M17 32h30\" />", "<path d=\"M28 42l4-3 4 3-2-5 4-3h-5l-1-5-2 5h-5l4 3z\" fill=\"currentColor\" />"),
+        "hourglass-bolt" => Svg("<path d=\"M21 12h22M21 52h22\" />", "<path d=\"M24 12c0 12 16 12 16 20S24 40 24 52\" />", "<path d=\"M40 12c0 12-16 12-16 20s16 8 16 20\" />", "<path d=\"M35 25l-7 10h7l-6 10\" />"),
+        "bolt-flag" => Svg("<path d=\"M22 52V14\" />", "<path d=\"M22 16h24l-7 9 7 9H22\" />", "<path d=\"M34 24l-8 12h8l-6 10\" />"),
+        "runner-speed" => Svg("<path d=\"M13 23h14M10 33h12M15 43h10\" />", "<circle cx=\"38\" cy=\"15\" r=\"5\" />", "<path d=\"M35 23l-8 9 9 4 7 11\" />", "<path d=\"M42 25l9 5\" />", "<path d=\"M32 37l-8 11\" />"),
+        "plug-leaf" => Svg("<path d=\"M23 14v12M39 14v12\" />", "<path d=\"M20 26h24v8c0 7-5 12-12 12s-12-5-12-12z\" />", "<path d=\"M32 46v8\" />", "<path d=\"M36 42c8-2 13-8 14-18-10 1-17 6-20 14\" />"),
+        "weather" => Svg("<path d=\"M19 43h26a9 9 0 0 0 0-18 14 14 0 0 0-27-3 11 11 0 0 0 1 21z\" />", "<path d=\"M24 49l-3 5M34 49l-3 5M44 49l-3 5\" />"),
+        "helping-hand" => Svg("<circle cx=\"41\" cy=\"18\" r=\"7\" />", "<path d=\"M29 42l8 8c3 3 8 1 8-3V31\" />", "<path d=\"M13 41h12l8-8c3-3 8 1 5 5l-6 6\" />", "<path d=\"M13 50h20\" />", "<path d=\"M50 42v-8c0-5-4-9-9-9\" />"),
+        "family" => Svg("<circle cx=\"32\" cy=\"20\" r=\"7\" />", "<circle cx=\"18\" cy=\"28\" r=\"5\" />", "<circle cx=\"46\" cy=\"28\" r=\"5\" />", "<path d=\"M20 50c1-8 6-13 12-13s11 5 12 13\" />", "<path d=\"M8 50c1-6 5-10 10-10M56 50c-1-6-5-10-10-10\" />"),
+        "category-crown" => Svg("<path d=\"M16 43h32l-4-20-9 9-7-13-7 13-9-9z\" />", "<path d=\"M18 51h28\" />", "<path d=\"M22 14h.1M42 14h.1\" />"),
+        "chat-lines" => Svg("<path d=\"M14 18h36v26H31l-11 9v-9h-6z\" />", "<path d=\"M23 28h18M23 36h12\" />"),
+        "quiet-hero" => Svg("<path d=\"M18 36c7-13 21-13 28 0\" />", "<circle cx=\"32\" cy=\"26\" r=\"8\" />", "<path d=\"M17 48h30\" />", "<path d=\"M14 18l6 6M50 18l-6 6\" />"),
+        "midnight" => Svg("<path d=\"M45 12c-9 1-16 9-16 18s7 17 16 18c-5 5-13 7-21 3-10-5-14-17-9-27 5-9 16-15 30-12z\" />", "<path d=\"M43 38l4 3 4-3-2 5 4 3h-5l-1 5-2-5h-5l4-3z\" fill=\"currentColor\" />"),
+        "compass" => Svg("<circle cx=\"32\" cy=\"32\" r=\"21\" />", "<path d=\"M39 18l-5 18-9 10 5-18z\" />", "<circle cx=\"32\" cy=\"32\" r=\"2\" fill=\"currentColor\" />"),
+        "map-compass" => Svg("<path d=\"M13 17l13-5 12 5 13-5v35l-13 5-12-5-13 5z\" />", "<path d=\"M26 12v35M38 17v35\" />", "<path d=\"M43 26l-4 11-7 5 4-11z\" />"),
+        "pin" => Svg("<path d=\"M24 12h16l-4 18 8 8v5H20v-5l8-8z\" />", "<path d=\"M32 43v11\" />"),
+        _ => string.Empty
+    };
+
+    private static string Svg(params string[] elements)
+    {
+        return "<svg viewBox=\"0 0 64 64\" aria-hidden=\"true\" focusable=\"false\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\">"
+            + string.Concat(elements)
+            + "</svg>";
+    }
+}

@@ -3,7 +3,7 @@ namespace FamilyAssistant.Services;
 /// <summary>
 /// DTO representing a Home Assistant person entity
 /// </summary>
-public record HaPerson(string EntityId, string FriendlyName, string? State, string? EntityPicture);
+public record HaPerson(string EntityId, string FriendlyName, string? State, string? EntityPicture, string? UserId);
 
 /// <summary>
 /// DTO representing a Home Assistant entity state
@@ -25,6 +25,18 @@ public record HaEntityRegistryInfo(
 /// A single captured WebSocket event for the live event log.
 /// </summary>
 public record HaEventLogEntry(DateTime Timestamp, string EventType, string EntityId, string? OldState, string? NewState, string? RawData);
+
+/// <summary>
+/// DTO containing the user's frontend preferences from HA (theme, language, colors).
+/// Retrieved via WebSocket command: frontend/get_user_data (key: "core").
+/// DarkMode: true=forced dark, false=forced light, null=auto (follow OS preference).
+/// </summary>
+public record HaUserFrontendData(
+    bool? DarkMode,
+    string? Language,
+    string? PrimaryColor,
+    string? AccentColor
+);
 
 /// <summary>
 /// Callback for state change subscriptions.
@@ -108,6 +120,12 @@ public interface IHomeAssistantService
     /// Returns ISO language code (e.g., "de", "en") or null if unavailable.
     /// </summary>
     Task<string?> GetUserLanguageAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Get all user frontend preferences (dark mode, language, colors) in a single WebSocket call.
+    /// Uses WebSocket command: frontend/get_user_data (key: "core").
+    /// </summary>
+    Task<HaUserFrontendData> GetUserFrontendDataAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Subscribe to state changes for a specific entity.

@@ -234,7 +234,7 @@ else
         if (_persons is not null && newIndex >= 0 && newIndex < _persons.Count)
         {
             var personId = _persons[newIndex].Id;
-            Navigation.NavigateTo($"/internet-rules/{personId}", replace: true, forceLoad: false);
+            Navigation.NavigateTo($"internet-rules/{personId}", replace: true, forceLoad: false);
         }
     }
 

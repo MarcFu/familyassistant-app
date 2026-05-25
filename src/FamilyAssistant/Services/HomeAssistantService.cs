@@ -83,7 +83,8 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
                     s.EntityId,
                     s.Attributes.TryGetValue("friendly_name", out var name) ? name?.ToString() ?? s.EntityId : s.EntityId,
                     s.State,
-                    s.Attributes.TryGetValue("entity_picture", out var pic) ? pic?.ToString() : null))
+                    s.Attributes.TryGetValue("entity_picture", out var pic) ? pic?.ToString() : null,
+                    s.Attributes.TryGetValue("user_id", out var userId) ? userId?.ToString() : null))
                 .ToList();
         }
         catch (Exception ex)
@@ -498,6 +499,86 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
         {
             _logger.LogWarning(ex, "Failed to get user language preference");
             return null;
+        }
+    }
+
+    public async Task<HaUserFrontendData> GetUserFrontendDataAsync(CancellationToken ct = default)
+    {
+        var defaultData = new HaUserFrontendData(DarkMode: null, Language: null, PrimaryColor: null, AccentColor: null);
+
+        if (!IsWebSocketConnected)
+        {
+            _logger.LogWarning("WebSocket not connected, returning default frontend data");
+            return defaultData;
+        }
+
+        try
+        {
+            var id = Interlocked.Increment(ref _messageId);
+            var tcs = new TaskCompletionSource<JsonElement>();
+            _pendingRequests[id] = tcs;
+
+            await SendMessageAsync(new { type = "frontend/get_user_data", id, key = "core" }, ct);
+
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(10));
+            timeoutCts.Token.Register(() => tcs.TrySetCanceled());
+
+            var result = await tcs.Task;
+
+            // Response: {"result": {"selectedLanguage": "de", "selectedTheme": {"theme": "...", "dark": true/false (missing=auto), "primaryColor": "#03a9f4", "accentColor": "#ff9800"}}}
+            bool? darkMode = null; // null = Auto (follow OS preference)
+            string? language = null;
+            string? primaryColor = null;
+            string? accentColor = null;
+
+            if (result.TryGetProperty("result", out var resultObj) && resultObj.ValueKind == JsonValueKind.Object)
+            {
+                // Language
+                if (resultObj.TryGetProperty("selectedLanguage", out var lang) && lang.ValueKind == JsonValueKind.String)
+                {
+                    language = lang.GetString();
+                }
+
+                // Theme
+                if (resultObj.TryGetProperty("selectedTheme", out var theme) && theme.ValueKind == JsonValueKind.Object)
+                {
+                    // dark: true = forced dark, false = forced light, missing/null = auto
+                    if (theme.TryGetProperty("dark", out var dark) && dark.ValueKind == JsonValueKind.True)
+                    {
+                        darkMode = true;
+                    }
+                    else if (theme.TryGetProperty("dark", out _) && dark.ValueKind == JsonValueKind.False)
+                    {
+                        darkMode = false;
+                    }
+                    // else: darkMode remains null (Auto)
+
+                    if (theme.TryGetProperty("primaryColor", out var pc) && pc.ValueKind == JsonValueKind.String)
+                    {
+                        primaryColor = pc.GetString();
+                    }
+                    if (theme.TryGetProperty("accentColor", out var ac) && ac.ValueKind == JsonValueKind.String)
+                    {
+                        accentColor = ac.GetString();
+                    }
+                }
+            }
+
+            _logger.LogInformation("HA frontend data: darkMode={DarkMode}, lang={Language}, primary={Primary}, accent={Accent}",
+                darkMode?.ToString() ?? "auto", language, primaryColor, accentColor);
+
+            return new HaUserFrontendData(darkMode, language, primaryColor, accentColor);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("GetUserFrontendData timed out");
+            return defaultData;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get user frontend data");
+            return defaultData;
         }
     }
 

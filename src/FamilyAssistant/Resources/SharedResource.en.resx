@@ -96,6 +96,7 @@
 
   <!-- ═══ Nav ═══ -->
   <data name="Nav.Dashboard"><value>Dashboard</value></data>
+  <data name="Nav.Profile"><value>Profile</value></data>
   <data name="Nav.Tasks"><value>Tasks</value></data>
   <data name="Nav.Chores"><value>Chores</value></data>
   <data name="Nav.InternetRules"><value>Internet Rules</value></data>
@@ -150,6 +151,8 @@
   <data name="Setup.ChoreCreated"><value>Chore created! You can create more anytime under "Chores".</value></data>
   <data name="Setup.CreateChore"><value>Create chore</value></data>
   <data name="Setup.ToDashboard"><value>Go to Dashboard</value></data>
+  <data name="Setup.RestoreBackup"><value>Restore Backup</value></data>
+  <data name="Setup.RestoreHint"><value>Have an existing backup? Upload it here to restore all data. After restarting, everything will be back as before.</value></data>
 
   <!-- ═══ Tasks ═══ -->
   <data name="Tasks.Title"><value>Tasks</value></data>
@@ -292,7 +295,8 @@
   <data name="Settings.Snackbar.RestFailed"><value>REST API unreachable</value></data>
   <data name="Settings.Snackbar.EventMonitorFailed"><value>Event monitor could not be started: {0}</value></data>
   <data name="Settings.System.Language"><value>Language</value></data>
-  <data name="Settings.System.LanguageHelper"><value>UI language. Change requires page reload.</value></data>
+  <data name="Settings.System.LanguageHelper"><value>Fallback language (only used when HA is not connected).</value></data>
+  <data name="Settings.System.LanguageFromHA"><value>Language is automatically synced from Home Assistant: {0}</value></data>
   <data name="Settings.System.PointsUnitName"><value>Unit name</value></data>
   <data name="Settings.System.PointsUnitNameHelper"><value>Name for the reward unit (e.g. Credits, Stars, Points)</value></data>
   <data name="Settings.Snackbar.LanguageSaved"><value>Language saved. Please reload the page.</value></data>

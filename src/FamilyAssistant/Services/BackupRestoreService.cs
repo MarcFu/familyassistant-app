@@ -114,7 +114,10 @@ public sealed class BackupRestoreService
                 archive.CreateEntryFromFile(backupDbPath, BackupDbFileName, CompressionLevel.NoCompression);
 
                 if (Directory.Exists(_attachmentsPath))
-                    AddDirectoryToArchive(archive, _attachmentsPath, AttachmentsDirectoryName);
+                {
+                    var referencedFiles = await GetReferencedAttachmentFilesAsync(backupDbPath, ct);
+                    AddReferencedAttachmentsToArchive(archive, _attachmentsPath, AttachmentsDirectoryName, referencedFiles, _logger);
+                }
             }
 
             File.Move(tempZipPath, zipPath);
@@ -201,17 +204,26 @@ public sealed class BackupRestoreService
                 var extractedDbPath = Path.Combine(extractDir, BackupDbFileName);
                 await ExtractEntryAsync(dbEntry, extractedDbPath, ct);
 
+                // Query DB for referenced attachments before extracting — skip orphans
+                var referencedInBackup = await GetReferencedAttachmentFilesAsync(extractedDbPath, ct);
+
                 foreach (var entry in archive.Entries.Where(e => IsAttachmentEntry(e.FullName)))
                 {
                     var relativeName = NormalizeEntryName(entry.FullName)[(AttachmentsDirectoryName.Length + 1)..];
                     if (string.IsNullOrWhiteSpace(relativeName))
                         continue;
 
+                    if (!referencedInBackup.Contains(relativeName))
+                    {
+                        _logger.LogWarning("Skipping orphaned attachment during restore (no DB record): {File}", relativeName);
+                        continue;
+                    }
+
                     await ExtractEntryAsync(entry, Path.Combine(extractDir, AttachmentsDirectoryName, relativeName), ct);
                 }
 
                 await ValidateDatabaseAsync(extractedDbPath, ct);
-                await ValidateAttachmentReferencesAsync(extractedDbPath, Path.Combine(extractDir, AttachmentsDirectoryName), ct);
+                await ValidateAttachmentReferencesAsync(extractedDbPath, Path.Combine(extractDir, AttachmentsDirectoryName), _logger, ct);
                 await ValidateDatabaseCanMigrateAsync(extractedDbPath, ct);
             }
 
@@ -343,7 +355,7 @@ public sealed class BackupRestoreService
         }
     }
 
-    private static async Task ValidateAttachmentReferencesAsync(string dbPath, string attachmentsDir, CancellationToken ct)
+    private static async Task ValidateAttachmentReferencesAsync(string dbPath, string attachmentsDir, ILogger logger, CancellationToken ct)
     {
         var builder = new SqliteConnectionStringBuilder { DataSource = dbPath, Mode = SqliteOpenMode.ReadOnly, Pooling = false };
         await using var connection = new SqliteConnection(builder.ToString());
@@ -414,7 +426,7 @@ public sealed class BackupRestoreService
         foreach (var actualFile in attachmentFiles)
         {
             if (!expectedFiles.ContainsKey(actualFile))
-                throw new InvalidOperationException($"Unreferenced attachment in backup: attachments/{actualFile}");
+                logger.LogWarning("Orphaned attachment in backup (no DB record): attachments/{File} — will be ignored", actualFile);
         }
     }
 
@@ -526,13 +538,40 @@ public sealed class BackupRestoreService
         return fullPath;
     }
 
-    private static void AddDirectoryToArchive(ZipArchive archive, string sourceDir, string archiveRoot)
+    private static void AddReferencedAttachmentsToArchive(
+        ZipArchive archive, string sourceDir, string archiveRoot, HashSet<string> referencedFiles, ILogger logger)
     {
         foreach (var file in Directory.EnumerateFiles(sourceDir, "*", SearchOption.AllDirectories))
         {
             var relativePath = Path.GetRelativePath(sourceDir, file).Replace(Path.DirectorySeparatorChar, '/');
-            archive.CreateEntryFromFile(file, $"{archiveRoot}/{relativePath}", CompressionLevel.Fastest);
+            if (referencedFiles.Contains(relativePath))
+            {
+                archive.CreateEntryFromFile(file, $"{archiveRoot}/{relativePath}", CompressionLevel.Fastest);
+            }
+            else
+            {
+                logger.LogWarning("Skipping orphaned attachment (no DB record): {File}", relativePath);
+            }
         }
+    }
+
+    private static async Task<HashSet<string>> GetReferencedAttachmentFilesAsync(string dbPath, CancellationToken ct)
+    {
+        var builder = new SqliteConnectionStringBuilder { DataSource = dbPath, Mode = SqliteOpenMode.ReadOnly, Pooling = false };
+        await using var connection = new SqliteConnection(builder.ToString());
+        await connection.OpenAsync(ct);
+
+        var files = new HashSet<string>(StringComparer.Ordinal);
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT FilePath FROM TaskAttachments;";
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            files.Add(reader.GetString(0));
+        }
+
+        return files;
     }
 
     private static string GetPendingRestoreDirectory(string dataDir) => Path.Combine(dataDir, PendingRestoreDirectoryName);

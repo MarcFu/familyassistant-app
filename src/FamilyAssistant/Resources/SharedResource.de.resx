@@ -96,6 +96,7 @@
 
   <!-- ═══ Nav ═══ -->
   <data name="Nav.Dashboard"><value>Dashboard</value></data>
+  <data name="Nav.Profile"><value>Profil</value></data>
   <data name="Nav.Tasks"><value>Aufgaben</value></data>
   <data name="Nav.Chores"><value>Hausarbeiten</value></data>
   <data name="Nav.InternetRules"><value>Internetregeln</value></data>
@@ -150,6 +151,8 @@
   <data name="Setup.ChoreCreated"><value>Aufgabe erstellt! Du kannst weitere jederzeit unter "Hausarbeiten" anlegen.</value></data>
   <data name="Setup.CreateChore"><value>Aufgabe erstellen</value></data>
   <data name="Setup.ToDashboard"><value>Zum Dashboard</value></data>
+  <data name="Setup.RestoreBackup"><value>Backup wiederherstellen</value></data>
+  <data name="Setup.RestoreHint"><value>Du hast ein bestehendes Backup? Lade es hier hoch, um alle Daten wiederherzustellen. Nach dem Neustart ist alles wie vorher.</value></data>
 
   <!-- ═══ Tasks ═══ -->
   <data name="Tasks.Title"><value>Aufgaben</value></data>
@@ -292,7 +295,8 @@
   <data name="Settings.Snackbar.RestFailed"><value>REST API nicht erreichbar</value></data>
   <data name="Settings.Snackbar.EventMonitorFailed"><value>Event-Monitor konnte nicht gestartet werden: {0}</value></data>
   <data name="Settings.System.Language"><value>Sprache</value></data>
-  <data name="Settings.System.LanguageHelper"><value>Sprache der Benutzeroberfläche. Änderung erfordert Seitenreload.</value></data>
+  <data name="Settings.System.LanguageHelper"><value>Fallback-Sprache (wird nur verwendet wenn HA nicht verbunden ist).</value></data>
+  <data name="Settings.System.LanguageFromHA"><value>Sprache wird automatisch aus Home Assistant übernommen: {0}</value></data>
   <data name="Settings.System.PointsUnitName"><value>Einheitenname</value></data>
   <data name="Settings.System.PointsUnitNameHelper"><value>Name für die Belohnungseinheit (z.B. Credits, Sterne, Punkte)</value></data>
   <data name="Settings.Snackbar.LanguageSaved"><value>Sprache gespeichert. Bitte Seite neu laden.</value></data>

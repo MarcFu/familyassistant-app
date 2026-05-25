@@ -26,6 +26,7 @@ builder.Services.Configure<HomeAssistantOptions>(
 
 // --- Services ---
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<AddonOptionsService>();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -59,6 +60,9 @@ builder.Services.AddScoped<TaskGenerator>();
 
 // Task query service (scoped — filter logic for tasks page + dashboard)
 builder.Services.AddScoped<IChoreTaskQueryService, ChoreTaskQueryService>();
+
+// Achievement evaluation (scoped — needs DbContext)
+builder.Services.AddScoped<IAchievementService, AchievementService>();
 
 // Icon generation (Ollama + keyword fallback)
 builder.Services.AddHttpClient<OllamaIconService>(client =>
@@ -108,6 +112,15 @@ app.Use(async (context, next) =>
     {
         context.Request.PathBase = ingressPath.ToString().TrimEnd('/');
     }
+
+    // Temporary diagnostic logging for ingress debugging
+    var logger = context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Ingress");
+    if (context.Request.Path == "/" || context.Request.Path == "")
+    {
+        var headers = string.Join(", ", context.Request.Headers.Select(h => $"{h.Key}={h.Value}"));
+        logger.LogInformation("Initial request headers: {Headers}", headers);
+    }
+
     await next();
 });
 

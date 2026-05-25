@@ -9,6 +9,12 @@ public class Person
     /// </summary>
     public required string HaEntityId { get; set; }
 
+    /// <summary>
+    /// The Home Assistant user ID (UUID) linked to this person.
+    /// Used to identify the logged-in user via X-Remote-User-Id ingress header.
+    /// </summary>
+    public string? HaUserId { get; set; }
+
     public required string Name { get; set; }
 
     /// <summary>

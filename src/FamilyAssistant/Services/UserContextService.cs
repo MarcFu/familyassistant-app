@@ -79,7 +79,7 @@ public class UserContextService
 
     /// <summary>
     /// Resolve the current user from HA Ingress header (X-Remote-User-Id).
-    /// Called on connection init in Add-on mode.
+    /// Matches on Person.HaUserId (the HA user UUID).
     /// </summary>
     public async Task ResolveFromHaUserIdAsync(string? haUserId)
     {
@@ -94,20 +94,18 @@ public class UserContextService
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        // HA sends the user ID; we match on the entity_id (person.<name>)
-        // The header might be the raw user ID — we try matching both formats
         _currentPerson = await db.Persons.AsNoTracking()
-            .FirstOrDefaultAsync(p => p.HaEntityId == haUserId || p.HaEntityId == $"person.{haUserId}");
+            .FirstOrDefaultAsync(p => p.HaUserId == haUserId);
 
         _currentPersonId = _currentPerson?.Id;
 
         if (_currentPerson is null)
         {
-            _logger.LogInformation("HA user '{UserId}' not found in managed persons — treating as Guest", haUserId);
+            _logger.LogInformation("HA user '{UserId}' not mapped to any person — treating as Guest", haUserId);
         }
         else
         {
-            _logger.LogInformation("Resolved HA user '{UserId}' to person '{Name}' (Role: {Role})",
+            _logger.LogDebug("Resolved HA user '{UserId}' to person '{Name}' (Role: {Role})",
                 haUserId, _currentPerson.Name, _currentPerson.Role);
         }
 

@@ -2,6 +2,7 @@
 @page "/settings/{Tab?}"
 @rendermode InteractiveServer
 @inject IHomeAssistantService HaService
+@inject FamilyAssistant.Services.HaThemeService ThemeService
 @inject FamilyAssistant.Data.AppDbContext Db
 @inject FamilyAssistant.Services.ChoreIconGenerator IconGenerator
 @inject FamilyAssistant.Services.OllamaIconService OllamaService
@@ -48,7 +49,7 @@
                             @if (person.EntityPicture is not null)
                             {
                                 <MudAvatar Size="Size.Small">
-                                    <img src="@($"/api/ha-image?path={Uri.EscapeDataString(person.EntityPicture)}")"
+                                    <img src="@($"api/ha-image?path={Uri.EscapeDataString(person.EntityPicture)}")"
                                          style="width:100%;height:100%;object-fit:cover;" alt="@person.Name" />
                                 </MudAvatar>
                             }
@@ -108,7 +109,7 @@
                                 @if (person.EntityPicture is not null)
                                 {
                                     <MudAvatar Size="Size.Small">
-                                        <img src="@($"/api/ha-image?path={Uri.EscapeDataString(person.EntityPicture)}")"
+                                        <img src="@($"api/ha-image?path={Uri.EscapeDataString(person.EntityPicture)}")"
                                              style="width:100%;height:100%;object-fit:cover;" alt="@person.Name" />
                                     </MudAvatar>
                                 }
@@ -172,7 +173,7 @@
                                 @if (person.EntityPicture is not null)
                                 {
                                     <MudAvatar>
-                                        <img src="@($"/api/ha-image?path={Uri.EscapeDataString(person.EntityPicture)}")"
+                                        <img src="@($"api/ha-image?path={Uri.EscapeDataString(person.EntityPicture)}")"
                                              style="width:100%;height:100%;object-fit:cover;" alt="@person.FriendlyName" />
                                     </MudAvatar>
                                 }
@@ -431,9 +432,17 @@
         <MudDivider Class="my-4" />
         <MudText Typo="Typo.h6" Class="mb-3">@L["Settings.System.Language"]</MudText>
 
+        @if (!string.IsNullOrEmpty(ThemeService.Language))
+        {
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3" Style="max-width:600px;">
+                @L["Settings.System.LanguageFromHA", ThemeService.Language]
+            </MudAlert>
+        }
+
         <div class="d-flex gap-3 align-end flex-wrap mb-3" style="max-width:600px;">
             <MudSelect T="string" @bind-Value="_selectedLanguage" Label="@L["Settings.System.Language"].Value" Variant="Variant.Filled"
-                       Dense="true" Style="min-width:150px; flex:1;" HelperText="@L["Settings.System.LanguageHelper"].Value">
+                       Dense="true" Style="min-width:150px; flex:1;" HelperText="@L["Settings.System.LanguageHelper"].Value"
+                       Disabled="@(!string.IsNullOrEmpty(ThemeService.Language))">
                 <MudSelectItem Value="@("en")">English</MudSelectItem>
                 <MudSelectItem Value="@("de")">Deutsch</MudSelectItem>
                 <MudSelectItem Value="@("fr")">Français</MudSelectItem>
@@ -582,7 +591,7 @@
     {
         _activePanelIndex = index;
         var tabName = index >= 0 && index < TabNames.Length ? TabNames[index] : TabNames[0];
-        Navigation.NavigateTo($"/settings/{tabName}", replace: true);
+        Navigation.NavigateTo($"settings/{tabName}", replace: true);
     }
 
     private static int TabNameToIndex(string? tab)
@@ -673,6 +682,7 @@
             HaEntityId = haPerson.EntityId,
             Name = haPerson.FriendlyName,
             EntityPicture = haPerson.EntityPicture,
+            HaUserId = haPerson.UserId,
             Role = PersonRole.Child, // Default, can be changed
             Credits = 0
         };
