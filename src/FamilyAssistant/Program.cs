@@ -25,6 +25,8 @@ builder.Services.Configure<HomeAssistantOptions>(
     builder.Configuration.GetSection(HomeAssistantOptions.SectionName));
 
 // --- Services ---
+builder.Services.AddHttpContextAccessor();
+
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
@@ -97,6 +99,18 @@ BackupRestoreService.ApplyPendingRestore(
     app.Services.GetRequiredService<ILogger<BackupRestoreService>>());
 
 // --- Middleware ---
+// HA Ingress support: read X-Ingress-Path header and set PathBase so Blazor
+// generates correct URLs for assets, SignalR, and navigation.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Headers.TryGetValue("X-Ingress-Path", out var ingressPath)
+        && !string.IsNullOrEmpty(ingressPath))
+    {
+        context.Request.PathBase = ingressPath.ToString().TrimEnd('/');
+    }
+    await next();
+});
+
 // Database migration error page (must be first — short-circuits everything if DB is broken)
 app.UseMiddleware<DatabaseMigrationErrorMiddleware>();
 
