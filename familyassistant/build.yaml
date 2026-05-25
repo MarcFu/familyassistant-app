@@ -1,0 +1,8 @@
+build_from:
+  amd64: "ghcr.io/marcfu/familyassistant-amd64"
+  aarch64: "ghcr.io/marcfu/familyassistant-aarch64"
+labels:
+  org.opencontainers.image.title: "FamilyAssistant"
+  org.opencontainers.image.description: "Household management for Home Assistant"
+  org.opencontainers.image.source: "https://github.com/MarcFu/familyassistant-app"
+  org.opencontainers.image.licenses: "MIT"

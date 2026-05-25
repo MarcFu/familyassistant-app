@@ -32,8 +32,8 @@ USER appuser
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD wget -q --spider http://localhost:8099/ || exit 1
 
-LABEL org.opencontainers.image.source="https://github.com/your-repo/familyassistant" \
-      org.opencontainers.image.description="FamilyAssistant - Home Assistant Add-on for household management" \
+LABEL org.opencontainers.image.source="https://github.com/MarcFu/familyassistant-app" \
+      org.opencontainers.image.description="FamilyAssistant - Home Assistant App for household management" \
       org.opencontainers.image.licenses="MIT"
 
 ENTRYPOINT ["dotnet", "FamilyAssistant.dll"]
