@@ -1,0 +1,188 @@
+@* ResponsiveList<TItem> — Renders items as a CSS-grid (desktop) or free-form cards (mobile).
+   - Desktop (>= Breakpoint): Grid with HeaderTemplate + GridTemplate per item
+   - Mobile (< Breakpoint): CardTemplate per item with full layout freedom
+   - Grouped=true: Single outlined container with dividers between items (HA "list card" pattern)
+   - Grouped=false (default): Each item gets its own outlined card
+   Uses IBrowserViewportService to only render the active template (no double DOM). *@
+
+@typeparam TItem
+@inject IBrowserViewportService ViewportService
+@implements IBrowserViewportObserver
+@implements IAsyncDisposable
+
+@if (_initialized)
+{
+    @if (_isDesktop)
+    {
+        @* ── Grid Mode ── *@
+        @if (Grouped)
+        {
+            <MudPaper Outlined="true" Class="@GroupedContainerClass">
+                @if (HeaderTemplate is not null)
+                {
+                    <div class="@GridItemInnerClass" style="display: grid; grid-template-columns: @GridColumns; column-gap: @ColumnGap; align-items: center;">
+                        @HeaderTemplate
+                    </div>
+                    <MudDivider />
+                }
+                @{ var gridItems = Items.ToList(); }
+                @for (var i = 0; i < gridItems.Count; i++)
+                {
+                    @if (i > 0)
+                    {
+                        <MudDivider />
+                    }
+                    <div class="@GridItemInnerClass" style="display: grid; grid-template-columns: @GridColumns; column-gap: @ColumnGap; align-items: center;">
+                        @GridTemplate!(gridItems[i])
+                    </div>
+                }
+            </MudPaper>
+        }
+        else
+        {
+            @if (HeaderTemplate is not null)
+            {
+                <div class="responsive-list-header" style="display: grid; grid-template-columns: @GridColumns; column-gap: @ColumnGap; padding: 0 9px; margin-bottom: 4px; align-items: center;">
+                    @HeaderTemplate
+                </div>
+            }
+            @foreach (var item in Items)
+            {
+                <MudPaper Outlined="true" Class="@GridItemClass">
+                    <div style="display: grid; grid-template-columns: @GridColumns; column-gap: @ColumnGap; align-items: center;">
+                        @GridTemplate!(item)
+                    </div>
+                </MudPaper>
+            }
+        }
+    }
+    else
+    {
+        @* ── Card Mode ── *@
+        @if (Grouped)
+        {
+            <MudPaper Outlined="true" Class="@GroupedContainerClass">
+                @{ var cardItems = Items.ToList(); }
+                @for (var i = 0; i < cardItems.Count; i++)
+                {
+                    @if (i > 0)
+                    {
+                        <MudDivider />
+                    }
+                    <div class="@CardItemInnerClass">
+                        @CardTemplate!(cardItems[i])
+                    </div>
+                }
+            </MudPaper>
+        }
+        else
+        {
+            @foreach (var item in Items)
+            {
+                <MudPaper Outlined="true" Class="@CardItemClass">
+                    @CardTemplate!(item)
+                </MudPaper>
+            }
+        }
+    }
+}
+else
+{
+    @* Initial render before viewport detection completes *@
+    <MudProgressLinear Indeterminate="true" Class="mb-2" />
+}
+
+@code {
+    /// <summary>The items to render.</summary>
+    [Parameter, EditorRequired] public IEnumerable<TItem> Items { get; set; } = [];
+
+    /// <summary>CSS grid-template-columns value for desktop mode (e.g. "2fr 1fr auto 120px").</summary>
+    [Parameter, EditorRequired] public string GridColumns { get; set; } = "1fr";
+
+    /// <summary>Breakpoint at which to switch from card to grid. Default: Md (960px).</summary>
+    [Parameter] public Breakpoint Breakpoint { get; set; } = Breakpoint.Md;
+
+    /// <summary>When true, wraps all items in a single outlined card with dividers (HA list-card pattern).</summary>
+    [Parameter] public bool Grouped { get; set; }
+
+    /// <summary>Header row for grid mode (child elements become grid cells).</summary>
+    [Parameter] public RenderFragment? HeaderTemplate { get; set; }
+
+    /// <summary>Grid row template per item. Child elements become grid cells aligned to GridColumns.</summary>
+    [Parameter] public RenderFragment<TItem>? GridTemplate { get; set; }
+
+    /// <summary>Card template per item. Absolute layout freedom.</summary>
+    [Parameter] public RenderFragment<TItem>? CardTemplate { get; set; }
+
+    /// <summary>CSS class for each card in grid mode (non-grouped). Default: "pa-2 mb-1".</summary>
+    [Parameter] public string GridItemClass { get; set; } = "pa-2 mb-1";
+
+    /// <summary>CSS class for each card in card mode (non-grouped). Default: "pa-3 mb-2".</summary>
+    [Parameter] public string CardItemClass { get; set; } = "pa-3 mb-2";
+
+    /// <summary>CSS class for the outer container in grouped mode. Default: "mb-3".</summary>
+    [Parameter] public string GroupedContainerClass { get; set; } = "mb-3";
+
+    /// <summary>CSS class for each grid row inside the grouped container. Default: "pa-2".</summary>
+    [Parameter] public string GridItemInnerClass { get; set; } = "pa-2";
+
+    /// <summary>CSS class for each card item inside the grouped container. Default: "pa-3".</summary>
+    [Parameter] public string CardItemInnerClass { get; set; } = "pa-3";
+
+    /// <summary>Column gap in grid mode. Default: "16px".</summary>
+    [Parameter] public string ColumnGap { get; set; } = "16px";
+
+    private bool _isDesktop = true;
+    private bool _initialized;
+
+    // ── IBrowserViewportObserver ──
+    public Guid Id { get; } = Guid.NewGuid();
+
+    public MudBlazor.Services.ResizeOptions ResizeOptions => new()
+    {
+        ReportRate = 250,
+        NotifyOnBreakpointOnly = true
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ViewportService.SubscribeAsync(this, fireImmediately: true);
+        }
+    }
+
+    public Task NotifyBrowserViewportChangeAsync(BrowserViewportEventArgs args)
+    {
+        var isDesktop = IsDesktopBreakpoint(args.Breakpoint);
+
+        if (!_initialized || isDesktop != _isDesktop)
+        {
+            _isDesktop = isDesktop;
+            _initialized = true;
+            return InvokeAsync(StateHasChanged);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private bool IsDesktopBreakpoint(Breakpoint current)
+    {
+        // Desktop = current breakpoint >= configured breakpoint
+        return current switch
+        {
+            MudBlazor.Breakpoint.Xs => false,
+            MudBlazor.Breakpoint.Sm => Breakpoint <= MudBlazor.Breakpoint.Sm,
+            MudBlazor.Breakpoint.Md => Breakpoint <= MudBlazor.Breakpoint.Md,
+            MudBlazor.Breakpoint.Lg => Breakpoint <= MudBlazor.Breakpoint.Lg,
+            MudBlazor.Breakpoint.Xl => Breakpoint <= MudBlazor.Breakpoint.Xl,
+            MudBlazor.Breakpoint.Xxl => true,
+            _ => true
+        };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await ViewportService.UnsubscribeAsync(this);
+    }
+}

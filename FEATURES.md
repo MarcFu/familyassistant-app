@@ -1,4 +1,4 @@
-# FamilyAssist — Feature List
+# FamilyAssistant — Feature List
 
 Dev-facing overview of implemented and planned features.
 Status: `done` | `partial` | `planned`
@@ -18,6 +18,7 @@ Status: `done` | `partial` | `planned`
 | Task Comments | done | Threaded text comments on tasks, per-person |
 | Task Attachments | done | Image attachments (camera + gallery), resized to 2048px JPEG Q85, stored on disk |
 | Attachment Retention | done | Auto-delete attachments X days after task completion (admin-configurable, default 30d) |
+| Backup / Restore | done | Admin ZIP backup with SQLite online copy + attachments; local backup list with download/delete; restore validation checks migration compatibility and attachment image references; restore is applied safely on restart |
 
 ## Credits & Rewards
 
@@ -86,6 +87,10 @@ Status: `done` | `partial` | `planned`
 | `/api/ha-image?path=...` | GET | Proxies HA images with auth header (1h cache) |
 | `/api/attachment/{id}` | GET | Serves task attachments from disk (24h cache) |
 | `/api/upload-attachment` | POST | Direct file upload (multipart, bypasses SignalR) |
+| `/api/backup/list` | GET | Lists locally stored backup ZIPs |
+| `/api/backup/file/{fileName}` | GET | Downloads a locally stored backup ZIP |
+| `/api/backup/file/{fileName}` | DELETE | Deletes a locally stored backup ZIP |
+| `/api/backup/restore` | POST | Uploads and validates ZIP backup; schedules restore for next restart |
 | `/api/debug/simulate-state-change` | POST | Simulate HA state_changed event for testing |
 
 ## Background Services
@@ -102,7 +107,8 @@ Status: `done` | `partial` | `planned`
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| SQLite DB | done | EF Core with migrations, persistent at `/data/hasscompanion.db` |
+| SQLite DB | done | EF Core with migrations, persistent at `/data/familyassistant.db` |
+| Backup / Restore | done | ZIP backup format with manifest, local backup storage, startup restore, and pre-restore safety backup |
 | Docker / Add-on | done | Dockerfile with `/data` volume, `config.yaml` for HA Add-on |
 | Dev Page | done | User switching, testing tools |
 | Settings Page | done | Admin configuration UI (Ollama, HA, schedules) |

@@ -1,4 +1,4 @@
-# Contributing to FamilyAssist
+# Contributing to FamilyAssistant
 
 Thanks for considering a contribution! This document explains how to get started.
 
@@ -12,11 +12,11 @@ Thanks for considering a contribution! This document explains how to get started
 
 ```bash
 # Clone the repo
-git clone https://github.com/your-repo/familyassist.git
-cd familyassist
+git clone https://github.com/your-repo/familyassistant.git
+cd familyassistant
 
 # Restore and run
-cd src/FamilyAssist
+cd src/FamilyAssistant
 dotnet run
 ```
 
@@ -27,7 +27,7 @@ The app starts at `http://localhost:5115`.
 Use .NET User Secrets for sensitive config:
 
 ```bash
-cd src/FamilyAssist
+cd src/FamilyAssistant
 dotnet user-secrets init
 dotnet user-secrets set "HomeAssistant:BaseUrl" "http://your-ha-instance:8123"
 dotnet user-secrets set "HomeAssistant:Token" "your-long-lived-access-token"
@@ -44,13 +44,13 @@ Tests use an in-memory database (no HA instance required).
 ## Project Structure
 
 ```
-src/FamilyAssist/          # Main application
+src/FamilyAssistant/          # Main application
   Components/              # Blazor pages, dialogs, layout
   Data/                    # EF Core context
   Models/                  # Domain models
   Services/                # Business logic + HA integration
   Migrations/              # EF Core migrations
-tests/FamilyAssist.Tests/  # Unit tests (xUnit)
+tests/FamilyAssistant.Tests/  # Unit tests (xUnit)
 ```
 
 ## Coding Conventions

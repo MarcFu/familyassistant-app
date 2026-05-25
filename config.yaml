@@ -1,8 +1,8 @@
-name: "FamilyAssist"
+name: "FamilyAssistant"
 description: "Home Assistant Add-on for household management: chore tracking, credits, and internet rules"
 version: "0.1.0"
-slug: "familyassist"
-url: "https://github.com/your-repo/familyassist"
+slug: "familyassistant"
+url: "https://github.com/your-repo/familyassistant"
 arch:
   - amd64
   - aarch64
@@ -10,7 +10,7 @@ homeassistant_api: true
 ingress: true
 ingress_port: 8099
 panel_icon: "mdi:home-assistant"
-panel_title: "FamilyAssist"
+panel_title: "FamilyAssistant"
 map:
   - type: data
     read_only: false

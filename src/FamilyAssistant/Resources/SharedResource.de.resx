@@ -1,0 +1,525 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute name="space" use="optional" ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- ═══ Common ═══ -->
+  <data name="Common.Save"><value>Speichern</value></data>
+  <data name="Common.Cancel"><value>Abbrechen</value></data>
+  <data name="Common.Create"><value>Erstellen</value></data>
+  <data name="Common.Delete"><value>Löschen</value></data>
+  <data name="Common.Confirm"><value>Bestätigen</value></data>
+  <data name="Common.Close"><value>Schließen</value></data>
+  <data name="Common.Apply"><value>Übernehmen</value></data>
+  <data name="Common.Submit"><value>Absenden</value></data>
+  <data name="Common.Refresh"><value>Aktualisieren</value></data>
+  <data name="Common.Remove"><value>Entfernen</value></data>
+  <data name="Common.Clear"><value>Leeren</value></data>
+  <data name="Common.Load"><value>Laden</value></data>
+  <data name="Common.Loading"><value>Lade Daten...</value></data>
+  <data name="Common.Search"><value>Suche...</value></data>
+  <data name="Common.All"><value>Alle</value></data>
+  <data name="Common.Active"><value>Aktiv</value></data>
+  <data name="Common.Inactive"><value>Inaktiv</value></data>
+  <data name="Common.Paused"><value>Pause</value></data>
+  <data name="Common.Optional"><value>optional</value></data>
+  <data name="Common.Name"><value>Name</value></data>
+  <data name="Common.Description"><value>Beschreibung</value></data>
+  <data name="Common.Status"><value>Status</value></data>
+  <data name="Common.Actions"><value>Aktionen</value></data>
+  <data name="Common.Person"><value>Person</value></data>
+  <data name="Common.Filter"><value>Filter</value></data>
+  <data name="Common.Done"><value>Erledigt</value></data>
+  <data name="Common.Type"><value>Typ</value></data>
+  <data name="Common.Date"><value>Datum</value></data>
+  <data name="Common.Time"><value>Zeit</value></data>
+  <data name="Common.Days"><value>Tage</value></data>
+  <data name="Common.PerDay"><value>Tag</value></data>
+  <data name="Common.Task"><value>Aufgabe</value></data>
+  <data name="Common.Role"><value>Rolle</value></data>
+  <data name="Common.Credits"><value>Credits</value><comment>Configurable via PointsUnitName AppSetting</comment></data>
+  <data name="Common.SelectedCount"><value>{0} ausgewählt</value></data>
+  <data name="EntityPicker.SearchPlaceholder"><value>Suchen (Name oder Entity-ID)...</value></data>
+  <data name="EntityPicker.NoEntities"><value>Keine Entitäten für diese Domain gefunden.</value></data>
+  <data name="EntityPicker.NoMatch"><value>Kein Treffer für diese Suche.</value></data>
+  <data name="EntityPicker.CountInfo"><value>{0} von {1} angezeigt</value></data>
+  <data name="Common.InactivePrefix"><value>[inaktiv] {0}</value></data>
+  <data name="Common.ConnectionError"><value>Verbindungsfehler: {0}</value></data>
+  <data name="Common.Snackbar.Error"><value>Fehler: {0}</value></data>
+  <data name="Common.Date.Today"><value>Heute</value></data>
+  <data name="Common.Date.Yesterday"><value>Gestern</value></data>
+  <data name="Common.Date.Tomorrow"><value>Morgen</value></data>
+
+  <!-- ═══ Roles ═══ -->
+  <data name="Role.Admin"><value>Admin</value></data>
+  <data name="Role.Parent"><value>Elternteil</value></data>
+  <data name="Role.Child"><value>Kind</value></data>
+
+  <!-- ═══ Validation ═══ -->
+  <data name="Validation.NameRequired"><value>Name ist erforderlich</value></data>
+  <data name="Validation.EntityIdRequired"><value>Entity ID ist erforderlich</value></data>
+  <data name="Validation.StateRequired"><value>Zustand ist erforderlich</value></data>
+  <data name="Validation.ChoreRequired"><value>Aufgabe auswählen</value></data>
+
+  <!-- ═══ App ═══ -->
+  <data name="App.Name"><value>FamilyAssistant</value></data>
+
+  <!-- ═══ Nav ═══ -->
+  <data name="Nav.Dashboard"><value>Dashboard</value></data>
+  <data name="Nav.Tasks"><value>Aufgaben</value></data>
+  <data name="Nav.Chores"><value>Hausarbeiten</value></data>
+  <data name="Nav.InternetRules"><value>Internetregeln</value></data>
+  <data name="Nav.Admin"><value>Admin</value></data>
+  <data name="Nav.Dev"><value>Dev</value></data>
+  <data name="Nav.Settings"><value>Einstellungen</value></data>
+
+  <!-- ═══ PageTitles ═══ -->
+  <data name="PageTitle.Dashboard"><value>Dashboard - FamilyAssistant</value></data>
+  <data name="PageTitle.Tasks"><value>Aufgaben - FamilyAssistant</value></data>
+  <data name="PageTitle.Chores"><value>Hausarbeiten - FamilyAssistant</value></data>
+  <data name="PageTitle.Settings"><value>Einstellungen - FamilyAssistant</value></data>
+  <data name="PageTitle.Admin"><value>Admin - FamilyAssistant</value></data>
+  <data name="PageTitle.Dev"><value>Dev - FamilyAssistant</value></data>
+  <data name="PageTitle.Setup"><value>Einrichtung - FamilyAssistant</value></data>
+
+  <!-- ═══ Home / Dashboard ═══ -->
+  <data name="Home.Title"><value>Dashboard</value></data>
+  <data name="Home.NoConnection"><value>Keine Verbindung zu Home Assistant. Bitte Konfiguration prüfen.</value></data>
+  <data name="Home.NoPersons"><value>Noch keine Personen konfiguriert.</value></data>
+  <data name="Home.SetupLink"><value>Jetzt einrichten</value></data>
+  <data name="Home.Stats.Open"><value>Offen</value></data>
+  <data name="Home.Stats.CompletedThisWeek"><value>Erledigt (Woche)</value></data>
+  <data name="Home.Stats.MissedThisWeek"><value>Verpasst (Woche)</value></data>
+  <data name="Home.State.Home"><value>Zuhause</value></data>
+  <data name="Home.State.Away"><value>Unterwegs</value></data>
+  <data name="Home.RecentTasks"><value>Zuletzt erledigt</value></data>
+  <data name="Home.ShowAllCompleted"><value>Alle anzeigen</value></data>
+  <data name="Home.NoRecentTasks"><value>Diese Woche noch nichts erledigt.</value></data>
+  <data name="Home.GoToTasks"><value>Zu den Aufgaben</value></data>
+  <data name="Home.PendingConfirmations"><value>{0} Aufgabe(n) warten auf Bestätigung</value></data>
+  <data name="Home.Family"><value>Familie</value></data>
+  <data name="Home.Stats.CompletedShort"><value>Erledigt</value></data>
+
+  <!-- ═══ Setup ═══ -->
+  <data name="Setup.Welcome"><value>Willkommen bei FamilyAssistant!</value></data>
+  <data name="Setup.Subtitle"><value>Richte dein Haushaltssystem in wenigen Schritten ein.</value></data>
+  <data name="Setup.HaConnection"><value>Home Assistant Verbindung</value></data>
+  <data name="Setup.Connected"><value>Verbunden • Token erkannt</value></data>
+  <data name="Setup.NoConnection"><value>Keine Verbindung. Bitte Add-on-Konfiguration prüfen und Seite neu laden.</value></data>
+  <data name="Setup.ImportPersons"><value>Personen importieren</value></data>
+  <data name="Setup.HaRequired"><value>Zuerst muss die HA-Verbindung stehen.</value></data>
+  <data name="Setup.NoHaPersons"><value>Keine Personen in Home Assistant gefunden.</value></data>
+  <data name="Setup.SelectPersons"><value>Wähle die Personen aus, die FamilyAssistant verwalten soll:</value></data>
+  <data name="Setup.SelectButton"><value>Personen auswählen</value></data>
+  <data name="Setup.ImportButton"><value>{0} importieren</value></data>
+  <data name="Setup.AssignRoles"><value>Rollen zuweisen</value></data>
+  <data name="Setup.AdminRequired"><value>Mindestens eine Person muss Admin sein.</value></data>
+  <data name="Setup.AdminWarning"><value>Bitte weise mindestens einer Person die Rolle "Admin" zu.</value></data>
+  <data name="Setup.FirstChore"><value>Erste Aufgabe anlegen</value></data>
+  <data name="Setup.FirstChoreHint"><value>Erstelle eine Hausarbeit mit Zeitplan — oder mach das später unter "Hausarbeiten".</value></data>
+  <data name="Setup.ChoreCreated"><value>Aufgabe erstellt! Du kannst weitere jederzeit unter "Hausarbeiten" anlegen.</value></data>
+  <data name="Setup.CreateChore"><value>Aufgabe erstellen</value></data>
+  <data name="Setup.ToDashboard"><value>Zum Dashboard</value></data>
+
+  <!-- ═══ Tasks ═══ -->
+  <data name="Tasks.Title"><value>Aufgaben</value></data>
+  <data name="Tasks.PermanentHeader"><value>Jederzeit verfügbar ({0})</value></data>
+  <data name="Tasks.Filter.Today"><value>Heute</value></data>
+  <data name="Tasks.Filter.Open"><value>Offen</value></data>
+  <data name="Tasks.Filter.Permanent"><value>Permanent (Detail)</value></data>
+  <data name="Tasks.Filter.Pending"><value>Wartet auf Bestätigung</value></data>
+  <data name="Tasks.Filter.ThisWeek"><value>Diese Woche</value></data>
+  <data name="Tasks.Filter.Overdue"><value>Überfällig</value></data>
+  <data name="Tasks.Filter.Completed"><value>Erledigt</value></data>
+  <data name="Tasks.Search.Placeholder"><value>Aufgabe suchen…</value></data>
+  <data name="Tasks.AllDone.Title"><value>Alles erledigt!</value></data>
+  <data name="Tasks.AllDone.BonusHint"><value>Es gibt noch {0} offene Aufgaben, die du übernehmen kannst.</value></data>
+  <data name="Tasks.AllDone.ShowOpen"><value>Offene Aufgaben anzeigen</value></data>
+  <data name="Tasks.Generate"><value>Aufgaben generieren</value></data>
+  <data name="Tasks.NoResults"><value>Keine Aufgaben für den gewählten Filter.</value></data>
+  <data name="Tasks.CommentsTooltip"><value>Kommentare / Fotos</value></data>
+  <data name="Tasks.Claim"><value>Übernehmen</value></data>
+  <data name="Tasks.Confirm"><value>Bestätigen</value></data>
+  <data name="Tasks.NoUser"><value>Kein Benutzer angemeldet. Bitte unter Dev eine Person wählen.</value></data>
+  <data name="Tasks.LoggedInAs"><value>Angemeldet als: {0} ({1})</value></data>
+  <data name="Tasks.AdHocTooltip"><value>Ad-hoc Aufgabe</value></data>
+  <data name="Tasks.Snackbar.Generated"><value>{0} neue Aufgaben generiert.</value></data>
+  <data name="Tasks.Snackbar.AdHocCreated"><value>Ad-hoc Aufgabe erstellt!</value></data>
+  <data name="Tasks.Snackbar.Claimed"><value>Aufgabe übernommen!</value></data>
+  <data name="Tasks.Snackbar.Completed"><value>Erledigt! +{0} Credits für {1}</value></data>
+  <data name="Tasks.Snackbar.PendingConfirmation"><value>Erledigt! Wartet auf Bestätigung durch Eltern.</value></data>
+  <data name="Tasks.Snackbar.Confirmed"><value>Bestätigt! +{0} Credits für {1}</value></data>
+  <data name="Tasks.Snackbar.Cancelled"><value>Aufgabe "{0}" abgebrochen.</value></data>
+  <data name="Tasks.CreditReason.Completed"><value>Erledigt: {0}</value></data>
+  <data name="Tasks.CreditReason.Confirmed"><value>Bestätigt: {0}</value></data>
+  <data name="Tasks.Assignment.CompletedAt"><value>Erledigt von {0} — {1}</value></data>
+  <data name="Tasks.Assignment.Completed"><value>Erledigt von {0}</value></data>
+  <data name="Tasks.Assignment.PendingAt"><value>Erledigt von {0} — {1} (unbestätigt)</value></data>
+  <data name="Tasks.Assignment.Pending"><value>Erledigt von {0} (unbestätigt)</value></data>
+  <data name="Tasks.Assignment.Claimed"><value>Übernommen von {0}</value></data>
+  <data name="Tasks.Assignment.Assigned"><value>Zugewiesen: {0}</value></data>
+  <data name="Tasks.Assignment.OpenForAll"><value>Offen für alle</value></data>
+
+  <!-- ═══ Chores ═══ -->
+  <data name="Chores.Title"><value>Hausarbeiten</value></data>
+  <data name="Chores.Empty"><value>Noch keine Hausarbeiten angelegt. Erstelle die erste!</value></data>
+  <data name="Chores.Filter.Inactive"><value>Inaktiv</value></data>
+  <data name="Chores.Filter.NoSchedule"><value>Ohne Zeitplan</value></data>
+  <data name="Chores.Column.Schedule"><value>Zeitplan</value></data>
+  <data name="Chores.CreateTooltip"><value>Neue Aufgabe</value></data>
+  <data name="Chores.NoSchedule"><value>Kein Zeitplan</value></data>
+
+  <!-- ═══ Schedule ═══ -->
+  <data name="Schedule.Daily"><value>Täglich</value></data>
+  <data name="Schedule.Weekdays"><value>Mo-Fr</value></data>
+  <data name="Schedule.Weekend"><value>Sa+So</value></data>
+  <data name="Schedule.XTimesPerWeek"><value>{0}x/Wo</value></data>
+  <data name="Schedule.Weekly"><value>Wöchentl.</value></data>
+  <data name="Schedule.Monthly"><value>Monatl.</value></data>
+  <data name="Schedule.EveryXMonths"><value>Alle {0} Mon.</value></data>
+  <data name="Schedule.EveryXWeeks"><value>Alle {0} Wo</value></data>
+  <data name="Schedule.Permanent"><value>Permanent</value></data>
+  <data name="Schedule.NoDays"><value>Keine Tage</value></data>
+  <data name="Schedule.SpecificDays"><value>Bestimmte Tage</value></data>
+  <data name="Schedule.XTimesPerWeekLabel"><value>X mal pro Woche</value></data>
+  <data name="Schedule.WeeklyLabel"><value>Wöchentlich</value></data>
+  <data name="Schedule.MonthlyLabel"><value>Monatlich</value></data>
+  <data name="Schedule.EveryXMonthsLabel"><value>Alle X Monate</value></data>
+  <data name="Schedule.EveryXWeeksLabel"><value>Alle X Wochen</value></data>
+  <data name="Schedule.PermanentLabel"><value>Permanent (immer verfügbar)</value></data>
+
+  <!-- ═══ DayShort ═══ -->
+  <data name="DayShort.Monday"><value>Mo</value></data>
+  <data name="DayShort.Tuesday"><value>Di</value></data>
+  <data name="DayShort.Wednesday"><value>Mi</value></data>
+  <data name="DayShort.Thursday"><value>Do</value></data>
+  <data name="DayShort.Friday"><value>Fr</value></data>
+  <data name="DayShort.Saturday"><value>Sa</value></data>
+  <data name="DayShort.Sunday"><value>So</value></data>
+
+  <!-- ═══ Settings ═══ -->
+  <data name="Settings.Title"><value>Einstellungen</value></data>
+  <data name="Settings.Tab.Persons"><value>Personen</value></data>
+  <data name="Settings.Tab.Icons"><value>Icons</value></data>
+  <data name="Settings.Tab.Storage"><value>Speicher</value></data>
+  <data name="Settings.Tab.Trigger"><value>Trigger</value></data>
+  <data name="Settings.Tab.System"><value>System</value></data>
+  <data name="Settings.Persons.Managed"><value>Verwaltete Personen</value></data>
+  <data name="Settings.Persons.Links"><value>Verknüpfungen</value></data>
+  <data name="Settings.Persons.EditLinks"><value>Verknüpfungen bearbeiten</value></data>
+  <data name="Settings.Persons.Activate"><value>Aktivieren</value></data>
+  <data name="Settings.Persons.Pause"><value>Pausieren</value></data>
+  <data name="Settings.Persons.Available"><value>Verfügbare HA-Personen</value></data>
+  <data name="Settings.Persons.ImportHint"><value>Klicke auf eine Person um sie ins System aufzunehmen.</value></data>
+  <data name="Settings.Persons.AllImported"><value>Alle HA-Personen sind bereits im System.</value></data>
+  <data name="Settings.Persons.LinkTodo"><value>1 Todo</value></data>
+  <data name="Settings.Persons.LinkDevices"><value>{0} Gerät(e)</value></data>
+  <data name="Settings.Icons.Title"><value>Icon-Generierung für Hausarbeiten</value></data>
+  <data name="Settings.Icons.Mode"><value>Modus</value></data>
+  <data name="Settings.Icons.Mode.Keyword"><value>Keyword-Matching (offline, schnell)</value></data>
+  <data name="Settings.Icons.Mode.OllamaMaterial"><value>Ollama → Material Icons</value></data>
+  <data name="Settings.Icons.Mode.OllamaEmoji"><value>Ollama → Emoji</value></data>
+  <data name="Settings.Icons.OllamaUrl"><value>Ollama URL</value></data>
+  <data name="Settings.Icons.Model"><value>Modell</value></data>
+  <data name="Settings.Icons.ModelManual"><value>Modell (manuell)</value></data>
+  <data name="Settings.Icons.NoModels"><value>Keine Modelle gefunden – URL prüfen oder manuell eingeben</value></data>
+  <data name="Settings.Icons.TestConnection"><value>Verbindung testen</value></data>
+  <data name="Settings.Storage.Title"><value>Foto-Aufbewahrung</value></data>
+  <data name="Settings.Storage.Description"><value>Fotos in Aufgaben-Kommentaren werden automatisch gelöscht, wenn die Aufgabe seit X Tagen abgeschlossen ist. Text-Kommentare bleiben erhalten.</value></data>
+  <data name="Settings.Storage.RetentionLabel"><value>Aufbewahrungsdauer (Tage)</value></data>
+  <data name="Settings.Storage.RetentionHelper"><value>Min. 7, Max. 365 Tage nach Aufgaben-Abschluss</value></data>
+  <data name="Settings.Trigger.Title"><value>Event-Trigger</value></data>
+  <data name="Settings.Trigger.Description"><value>Wenn ein HA-Sensor einen bestimmten Zustand erreicht, wird automatisch eine Aufgabe erstellt.</value></data>
+  <data name="Settings.Trigger.State"><value>Zustand</value></data>
+  <data name="Settings.Trigger.Debounce"><value>Debounce</value></data>
+  <data name="Settings.Trigger.None"><value>Noch keine Trigger konfiguriert.</value></data>
+  <data name="Settings.Trigger.Create"><value>Neuer Trigger</value></data>
+  <data name="Settings.System.HaConnection"><value>Home Assistant Verbindung</value></data>
+  <data name="Settings.System.Reachable"><value>Erreichbar ({0}ms)</value></data>
+  <data name="Settings.System.Unreachable"><value>Nicht erreichbar</value></data>
+  <data name="Settings.System.WsConnected"><value>Verbunden</value></data>
+  <data name="Settings.System.WsDisconnected"><value>Getrennt</value></data>
+  <data name="Settings.System.Testing"><value>Teste...</value></data>
+  <data name="Settings.System.EventLog"><value>Event-Log</value></data>
+  <data name="Settings.System.EventLogLive"><value>Live</value></data>
+  <data name="Settings.System.EventLogOff"><value>Aus</value></data>
+  <data name="Settings.System.EventLogFilter"><value>Filter (Entity)</value></data>
+  <data name="Settings.System.EventLogFilterPlaceholder"><value>z.B. sensor. oder light.wohnzimmer</value></data>
+  <data name="Settings.System.EntityInfo"><value>Entity / Info</value></data>
+  <data name="Settings.System.Old"><value>Alt</value></data>
+  <data name="Settings.System.New"><value>Neu</value></data>
+  <data name="Settings.System.WaitingForEvents"><value>Warte auf Events... (WebSocket muss verbunden sein)</value></data>
+  <data name="Settings.System.NoEventsForFilter"><value>Keine Events für Filter "{0}"</value></data>
+  <data name="Settings.System.TokenEmpty"><value>(leer)</value></data>
+  <data name="Settings.Snackbar.IconsSaved"><value>Icon-Einstellungen gespeichert.</value></data>
+  <data name="Settings.Snackbar.OllamaConnected"><value>Verbunden! {0} Modelle verfügbar: {1}</value></data>
+  <data name="Settings.Snackbar.OllamaFailed"><value>Keine Verbindung zu {0}</value></data>
+  <data name="Settings.Snackbar.RetentionSaved"><value>Aufbewahrungsdauer gespeichert.</value></data>
+  <data name="Settings.Snackbar.TriggerCreated"><value>Trigger '{0}' erstellt.</value></data>
+  <data name="Settings.Snackbar.TriggerSaved"><value>Trigger '{0}' gespeichert.</value></data>
+  <data name="Settings.Snackbar.TriggerDeleted"><value>Trigger '{0}' gelöscht.</value></data>
+  <data name="Settings.Snackbar.RestOk"><value>REST API erreichbar ({0}ms)</value></data>
+  <data name="Settings.Snackbar.RestFailed"><value>REST API nicht erreichbar</value></data>
+  <data name="Settings.Snackbar.EventMonitorFailed"><value>Event-Monitor konnte nicht gestartet werden: {0}</value></data>
+  <data name="Settings.System.Language"><value>Sprache</value></data>
+  <data name="Settings.System.LanguageHelper"><value>Sprache der Benutzeroberfläche. Änderung erfordert Seitenreload.</value></data>
+  <data name="Settings.System.PointsUnitName"><value>Einheitenname</value></data>
+  <data name="Settings.System.PointsUnitNameHelper"><value>Name für die Belohnungseinheit (z.B. Credits, Sterne, Punkte)</value></data>
+  <data name="Settings.Snackbar.LanguageSaved"><value>Sprache gespeichert. Bitte Seite neu laden.</value></data>
+  <data name="Settings.Snackbar.PointsUnitSaved"><value>Einheitenname gespeichert.</value></data>
+
+  <!-- ═══ Admin ═══ -->
+  <data name="Admin.Title"><value>Admin — Buchungskorrekturen</value></data>
+  <data name="Admin.Tab.Correction"><value>Korrektur buchen</value></data>
+  <data name="Admin.Tab.Log"><value>Transaktions-Log</value></data>
+  <data name="Admin.Tab.Reset"><value>Credits zurücksetzen</value></data>
+  <data name="Admin.Tab.Backup"><value>Backup</value></data>
+  <data name="Admin.AmountLabel"><value>Betrag (positiv = gutschreiben, negativ = abziehen)</value></data>
+  <data name="Admin.ReasonLabel"><value>Grund</value></data>
+  <data name="Admin.ReasonPlaceholder"><value>z.B. Korrektur Spülmaschine doppelt gebucht</value></data>
+  <data name="Admin.Submit"><value>Buchen</value></data>
+  <data name="Admin.NoTransactions"><value>Keine Transaktionen gefunden.</value></data>
+  <data name="Admin.Amount"><value>Betrag</value></data>
+  <data name="Admin.ResetWarning"><value>Setzt die Credits einer Person auf einen bestimmten Wert. Erstellt eine Korrektur-Buchung.</value></data>
+  <data name="Admin.NewBalance"><value>Neuer Credit-Stand</value></data>
+  <data name="Admin.ResetButton"><value>Auf {0} setzen</value></data>
+  <data name="Admin.Type.ChoreCompleted"><value>Chore erledigt</value></data>
+  <data name="Admin.Type.Bonus"><value>Bonus</value></data>
+  <data name="Admin.Type.Penalty"><value>Abzug</value></data>
+  <data name="Admin.Type.Internet"><value>Internet</value></data>
+  <data name="Admin.Snackbar.Booked"><value>{0} Credits für {1} gebucht.</value></data>
+  <data name="Admin.Snackbar.NoChange"><value>Keine Änderung nötig.</value></data>
+  <data name="Admin.ResetReason"><value>Admin-Reset: Credits auf {0} gesetzt (vorher: {1})</value></data>
+  <data name="Admin.Snackbar.Reset"><value>Credits von {0} auf {1} gesetzt.</value></data>
+  <data name="Admin.Backup.Title"><value>Backup &amp; Wiederherstellung</value></data>
+  <data name="Admin.Backup.Description"><value>Sichert die SQLite-Datenbank und Task-Anhänge als ZIP-Datei. Wiederherstellungen werden vorbereitet und beim nächsten Neustart angewendet.</value></data>
+  <data name="Admin.Backup.DownloadTitle"><value>Backup herunterladen</value></data>
+  <data name="Admin.Backup.DownloadHint"><value>Erstellt lokale Backup-Sätze und listet sie wie in Home Assistant zur Verwaltung auf.</value></data>
+  <data name="Admin.Backup.Download"><value>Backup herunterladen</value></data>
+  <data name="Admin.Backup.Create"><value>Backup erstellen</value></data>
+  <data name="Admin.Backup.None"><value>Noch keine lokalen Backups vorhanden.</value></data>
+  <data name="Admin.Backup.FileName"><value>Dateiname</value></data>
+  <data name="Admin.Backup.Size"><value>Größe</value></data>
+  <data name="Admin.Backup.Created"><value>Backup erstellt: {0}</value></data>
+  <data name="Admin.Backup.Deleted"><value>Backup gelöscht: {0}</value></data>
+  <data name="Admin.Backup.RestoreTitle"><value>Backup wiederherstellen</value></data>
+  <data name="Admin.Backup.RestoreWarning"><value>Wiederherstellung ersetzt die aktuellen Daten beim nächsten Neustart. Vorher wird automatisch ein Sicherheitsbackup im Datenverzeichnis abgelegt.</value></data>
+  <data name="Admin.Backup.RestorePrepared"><value>Backup vorbereitet. Starte das Add-on bzw. die App neu, um die Wiederherstellung anzuwenden.</value></data>
+
+  <!-- ═══ Dev ═══ -->
+  <data name="Dev.Title"><value>Entwickler-Tools</value></data>
+  <data name="Dev.UserContext"><value>Benutzerkontext</value></data>
+  <data name="Dev.UserContextHint"><value>Simuliert den angemeldeten HA-Benutzer. Im Add-on-Modus wird dies automatisch aus dem Ingress-Header gelesen.</value></data>
+  <data name="Dev.ActivePerson"><value>Aktive Person</value></data>
+  <data name="Dev.LoggedIn"><value>Angemeldet als: {0} (Rolle: {1}, Credits: {2})</value></data>
+  <data name="Dev.CanAct"><value>Kann handeln</value></data>
+  <data name="Dev.CannotAct"><value>Kann nicht handeln</value></data>
+  <data name="Dev.ParentOrAdmin"><value>Eltern/Admin</value></data>
+  <data name="Dev.NoParentAccess"><value>Kein Eltern-Zugriff</value></data>
+  <data name="Dev.NoAdmin"><value>Kein Admin</value></data>
+  <data name="Dev.GuestMode"><value>Kein Benutzer gewählt — Gast-Modus (nur lesen).</value></data>
+  <data name="Dev.Info"><value>Info</value></data>
+  <data name="Dev.InfoMode"><value>Modus</value></data>
+  <data name="Dev.InfoDbPath"><value>DB-Pfad</value></data>
+  <data name="Dev.InfoPersons"><value>Personen</value></data>
+  <data name="Dev.Snackbar.Cleared"><value>Benutzerkontext gelöscht — Gast-Modus.</value></data>
+  <data name="Dev.Snackbar.Set"><value>Benutzerkontext: {0}</value></data>
+
+  <!-- ═══ Dialogs ═══ -->
+  <data name="Dialog.ChoreCreate.Title"><value>Neue Hausarbeit</value></data>
+  <data name="Dialog.ChoreEdit.Title"><value>Hausarbeit bearbeiten</value></data>
+  <data name="Dialog.Chore.CreditsLabel"><value>Credits (Belohnung)</value></data>
+  <data name="Dialog.Chore.IconLabel"><value>Icon:</value></data>
+  <data name="Dialog.Chore.NoIcon"><value>Kein Icon</value></data>
+  <data name="Dialog.Chore.Generate"><value>Generieren</value></data>
+  <data name="Dialog.Chore.SelectIcon"><value>Auswählen</value></data>
+  <data name="Dialog.Chore.UnknownIcon"><value>(unbekannt)</value></data>
+  <data name="Dialog.Schedule.Title"><value>Zeitplan: {0}</value></data>
+  <data name="Dialog.Schedule.Description"><value>Zeitpläne definieren, wann und wie oft "{0}" erledigt werden muss.</value></data>
+  <data name="Dialog.Schedule.Rhythm"><value>Rhythmus</value></data>
+  <data name="Dialog.Schedule.DefaultPerson"><value>Standard-Person</value></data>
+  <data name="Dialog.Schedule.OpenPlaceholder"><value>Offen</value></data>
+  <data name="Dialog.Schedule.TimesPerWeek"><value>Mal pro Woche</value></data>
+  <data name="Dialog.Schedule.IntervalMonths"><value>Alle X Monate</value></data>
+  <data name="Dialog.Schedule.IntervalMonthsHelper"><value>z.B. 3 = alle 3 Monate</value></data>
+  <data name="Dialog.Schedule.IntervalWeeks"><value>Alle X Wochen</value></data>
+  <data name="Dialog.Schedule.IntervalWeeksHelper"><value>z.B. 2 = alle 2 Wochen</value></data>
+  <data name="Dialog.Schedule.TimesPerDay"><value>Wiederholungen pro Tag (z.B. morgens + abends = 2)</value></data>
+  <data name="Dialog.Schedule.Add"><value>Zeitplan hinzufügen</value></data>
+  <data name="Dialog.Trigger.TitleNew"><value>Neuer Trigger</value></data>
+  <data name="Dialog.Trigger.TitleEdit"><value>Trigger bearbeiten</value></data>
+  <data name="Dialog.Trigger.EntityId"><value>Entity ID</value></data>
+  <data name="Dialog.Trigger.NamePlaceholder"><value>z.B. Geschirrspüler fertig</value></data>
+  <data name="Dialog.Trigger.State"><value>Trigger-Zustand</value></data>
+  <data name="Dialog.Trigger.StatePlaceholder"><value>z.B. on, fertig, open</value></data>
+  <data name="Dialog.Trigger.StateHelper"><value>Zustand bei dem die Aufgabe erstellt wird</value></data>
+  <data name="Dialog.Trigger.Debounce"><value>Debounce (Minuten)</value></data>
+  <data name="Dialog.Trigger.DebounceHelper"><value>Mindestabstand zwischen zwei Auslösungen (0 = kein Debounce)</value></data>
+  <data name="Dialog.PersonEntity.Title"><value>Verknüpfungen: {0}</value></data>
+  <data name="Dialog.PersonEntity.Description"><value>Verknüpfe Home-Assistant-Entitäten mit dieser Person.</value></data>
+  <data name="Dialog.PersonEntity.TodoList"><value>Todo-Liste</value></data>
+  <data name="Dialog.PersonEntity.TodoHint"><value>Aufgaben werden in diese HA-Todo-Liste synchronisiert.</value></data>
+  <data name="Dialog.PersonEntity.TodoLabel"><value>Todo-Entität</value></data>
+  <data name="Dialog.PersonEntity.Devices"><value>Geräte (Internet-Steuerung)</value></data>
+  <data name="Dialog.PersonEntity.DevicesHint"><value>Switch-Entitäten die den Internetzugang für die Geräte dieser Person steuern.</value></data>
+  <data name="Dialog.PersonEntity.SwitchLabel"><value>Switch-Entitäten</value></data>
+  <data name="Dialog.PersonEntity.Notify"><value>Benachrichtigungen</value></data>
+  <data name="Dialog.PersonEntity.NotifyHint"><value>HA Notify-Dienst für Push-Benachrichtigungen (z.B. Budget-Warnungen).</value></data>
+  <data name="Dialog.PersonEntity.NotifyLabel"><value>Notify-Entität</value></data>
+  <data name="Dialog.AdHocTask.Title"><value>Ad-hoc Aufgabe erstellen</value></data>
+  <data name="Dialog.AdHoc.Description"><value>Erstellt eine einmalige Aufgabe (ohne wiederkehrenden Zeitplan).</value></data>
+  <data name="Dialog.AdHoc.ForWhom"><value>Für wen?</value></data>
+  <data name="Dialog.AdHoc.ForMyself"><value>Für mich (direkt übernehmen)</value></data>
+  <data name="Dialog.AdHoc.ForSomeone"><value>Für jemand anderen</value></data>
+  <data name="Dialog.AdHoc.OpenForAll"><value>Offen für alle</value></data>
+  <data name="Dialog.AdHoc.ExistingChore"><value>Bestehende Hausarbeit</value></data>
+  <data name="Dialog.AdHoc.Custom"><value>Eigene Aufgabe</value></data>
+  <data name="Dialog.AdHoc.ChoreLabel"><value>Hausarbeit</value></data>
+  <data name="Dialog.AdHoc.TaskName"><value>Aufgabenname</value></data>
+  <data name="Dialog.AdHoc.AssignTo"><value>Zuweisen an</value></data>
+  <data name="Dialog.AdHoc.DueDate"><value>Fällig am (optional)</value></data>
+  <data name="Dialog.Comments.Title"><value>Kommentare — {0}</value></data>
+  <data name="Dialog.Comments.Empty"><value>Noch keine Kommentare. Schreib den ersten!</value></data>
+  <data name="Dialog.Comments.Label"><value>Kommentar</value></data>
+  <data name="Dialog.Comments.Placeholder"><value>Nachricht eingeben...</value></data>
+  <data name="Dialog.Comments.Camera"><value>Kamera</value></data>
+  <data name="Dialog.Comments.Gallery"><value>Galerie</value></data>
+  <data name="Dialog.Comments.FileCount"><value>{0} Bild(er)</value></data>
+  <data name="Dialog.Comments.NoUser"><value>Kein Benutzer ausgewählt. Bitte zuerst unter /dev einen Benutzer wählen.</value></data>
+  <data name="Dialog.Comments.UploadError"><value>Upload-Fehler: {0}</value></data>
+  <data name="Dialog.Comments.Snackbar.Posted"><value>Kommentar gepostet!</value></data>
+  <data name="Dialog.IconPicker.Title"><value>Icon auswählen</value></data>
+  <data name="Dialog.IconPicker.SearchLabel"><value>Suchen (DE/EN)...</value></data>
+  <data name="Dialog.IconPicker.Tab.Favorites"><value>★ Favoriten</value></data>
+  <data name="Dialog.IconPicker.Tab.Material"><value>Material</value></data>
+  <data name="Dialog.IconPicker.Tab.Emoji"><value>Emoji</value></data>
+  <data name="Dialog.IconPicker.Tab.AI"><value>KI</value></data>
+  <data name="Dialog.IconPicker.ColorLabel"><value>Farbe (optional)</value></data>
+  <data name="Dialog.IconPicker.CollapseColor"><value>Einklappen</value></data>
+  <data name="Dialog.IconPicker.OtherColor"><value>Andere Farbe...</value></data>
+  <data name="Dialog.IconPicker.TypeAI"><value>KI-generiert (SVG)</value></data>
+  <data name="Dialog.IconPicker.TypeEmoji"><value>Emoji</value></data>
+  <data name="Dialog.IconPicker.TypeMaterial"><value>Material Icon</value></data>
+  <data name="Dialog.IconPicker.RecentlyUsed"><value>Zuletzt verwendet</value></data>
+  <data name="Dialog.IconPicker.HouseholdFavorites"><value>Haushalt-Favoriten</value></data>
+  <data name="Dialog.IconPicker.AllCount"><value>Alle ({0})</value></data>
+  <data name="Dialog.IconPicker.SearchHint"><value>Tipp: Suchfeld nutzen um schneller zu finden!</value></data>
+  <data name="Dialog.IconPicker.SearchResults"><value>Suchergebnisse ({0})</value></data>
+  <data name="Dialog.IconPicker.MaterialResults"><value>Material Icons ({0} Treffer)</value></data>
+  <data name="Dialog.IconPicker.EmojiResults"><value>Emojis ({0} Treffer)</value></data>
+  <data name="Dialog.IconPicker.NoResults"><value>Keine Treffer für "{0}"</value></data>
+  <data name="Dialog.IconPicker.AI.Description"><value>Beschreibe das gewünschte Icon – die KI generiert ein SVG-Piktogramm.</value></data>
+  <data name="Dialog.IconPicker.AI.Label"><value>Beschreibung</value></data>
+  <data name="Dialog.IconPicker.AI.Placeholder"><value>z.B. Auto mit Staubsauger, Katze füttern, Müll rausbringen...</value></data>
+  <data name="Dialog.IconPicker.AI.Generating"><value>Generiere...</value></data>
+  <data name="Dialog.IconPicker.AI.Generate"><value>Icon generieren</value></data>
+  <data name="Dialog.IconPicker.AI.Result"><value>Ergebnis:</value></data>
+  <data name="Dialog.IconPicker.AI.Retry"><value>Nochmal</value></data>
+  <data name="Dialog.IconPicker.AI.HidePrompt"><value>Prompt ausblenden</value></data>
+  <data name="Dialog.IconPicker.AI.ShowPrompt"><value>Prompt anzeigen</value></data>
+  <data name="Dialog.IconPicker.AI.NoSvg"><value>Kein gültiges SVG erhalten. Versuche eine andere Beschreibung oder prüfe die Ollama-Verbindung.</value></data>
+  <data name="Dialog.IconPicker.AI.Timeout"><value>Timeout (>3 Min). {0}</value></data>
+  <data name="Dialog.IconPicker.AI.HintSmall"><value>Das Modell (≤4B) ist für SVG-Generierung sehr klein. Versuche ein 7B+ Modell.</value></data>
+  <data name="Dialog.IconPicker.AI.HintMedium"><value>Versuche eine kürzere Beschreibung oder ein größeres Modell (13B+).</value></data>
+  <data name="Dialog.IconPicker.AI.HintLarge"><value>Versuche eine kürzere Beschreibung.</value></data>
+
+  <!-- ═══ Internet Rules ═══ -->
+  <data name="Internet.Devices"><value>Geräte</value></data>
+  <data name="Internet.NoDevices"><value>Noch keine Geräte angelegt. Füge zuerst Geräte hinzu.</value></data>
+  <data name="Internet.AddDevice"><value>Gerät hinzufügen</value></data>
+  <data name="Internet.Rules"><value>Regeln</value></data>
+  <data name="Internet.NoRules"><value>Noch keine Regeln angelegt.</value></data>
+  <data name="Internet.AddRule"><value>Regel hinzufügen</value></data>
+  <data name="Internet.ConfirmDeleteDevice"><value>Gerät "{0}" wirklich löschen? Zugehörige Regel-Verknüpfungen werden ebenfalls entfernt.</value></data>
+  <data name="Internet.ConfirmDeleteRule"><value>Regel "{0}" wirklich löschen?</value></data>
+  <data name="Device.Role.Shared"><value>Gemischt</value></data>
+  <data name="Device.Role.SchoolOnly"><value>Nur Schule</value></data>
+  <data name="Device.Role.GamingOnly"><value>Nur Gaming</value></data>
+  <data name="Dialog.Device.TitleNew"><value>Neues Gerät</value></data>
+  <data name="Dialog.Device.TitleEdit"><value>Gerät bearbeiten</value></data>
+  <data name="Dialog.Device.Label"><value>Bezeichnung</value></data>
+  <data name="Dialog.Device.Role"><value>Geräte-Rolle</value></data>
+  <data name="Dialog.Device.InternetControl"><value>Internet-Steuerung</value></data>
+  <data name="Dialog.Device.InternetSwitch"><value>Internet Switch-Entität</value></data>
+  <data name="Dialog.Device.InvertInternet"><value>Invertiert (ON = blockiert)</value></data>
+  <data name="Dialog.Device.GamingControl"><value>Gaming-Erkennung &amp; Blockierung</value></data>
+  <data name="Dialog.Device.GamingHint"><value>Optional: Für DPI-basierte Gaming-Erkennung und selektive Blockierung.</value></data>
+  <data name="Dialog.Device.DetectionEntity"><value>Detection-Sensor (binary_sensor)</value></data>
+  <data name="Dialog.Device.GamingBlockEntity"><value>Gaming-Block Switch</value></data>
+  <data name="Dialog.Device.InvertGaming"><value>Invertiert (ON = Gaming erlaubt)</value></data>
+  <data name="Dialog.Rule.TitleNew"><value>Neue Regel</value></data>
+  <data name="Dialog.Rule.TitleEdit"><value>Regel bearbeiten</value></data>
+  <data name="Dialog.Rule.Mode"><value>Regel-Modus</value></data>
+  <data name="Dialog.Rule.Target"><value>Steuert</value></data>
+  <data name="Dialog.Rule.Devices"><value>Betroffene Geräte</value></data>
+  <data name="Dialog.Rule.NoDevices"><value>Keine Geräte vorhanden. Bitte zuerst Geräte anlegen.</value></data>
+  <data name="Dialog.Rule.TimeWindow"><value>Zeitfenster</value></data>
+  <data name="Dialog.Rule.WindowStart"><value>Erlaubt ab</value></data>
+  <data name="Dialog.Rule.WindowEnd"><value>Erlaubt bis</value></data>
+  <data name="Dialog.Rule.Budget"><value>Tagesbudget</value></data>
+  <data name="Dialog.Rule.DailyMinutes"><value>Minuten pro Tag</value></data>
+  <data name="Dialog.Rule.DailyMinutesHelper"><value>Gesamtes Gaming-Budget für den Tag</value></data>
+  <data name="Dialog.Rule.BudgetWindowStart"><value>Frühestens ab</value></data>
+  <data name="Dialog.Rule.BudgetWindowEnd"><value>Spätestens bis</value></data>
+  <data name="Dialog.Rule.DetectionThreshold"><value>Erkennungs-Schwelle (Min)</value></data>
+  <data name="Dialog.Rule.DetectionThresholdHelper"><value>Minuten Gaming-Traffic bevor Budget belastet wird</value></data>
+  <data name="Dialog.Rule.GracePeriod"><value>Karenzzeit (Min)</value></data>
+  <data name="Dialog.Rule.GracePeriodHelper"><value>Minuten nach Budget-Ende bevor Sperre greift</value></data>
+  <data name="Dialog.Rule.Days"><value>Gültig an</value></data>
+  <data name="Dialog.Rule.Weekdays"><value>Werktage</value></data>
+  <data name="Dialog.Rule.Weekend"><value>Wochenende</value></data>
+  <data name="Dialog.Rule.AllDays"><value>Alle Tage</value></data>
+  <data name="Rule.Mode.TimeWindow"><value>Zeitfenster</value></data>
+  <data name="Rule.Mode.DetectionBudget"><value>Erkennungs-Budget</value></data>
+  <data name="Rule.Target.Internet"><value>Internet</value></data>
+  <data name="Rule.Target.Gaming"><value>Gaming</value></data>
+  <data name="Days.All"><value>Täglich</value></data>
+  <data name="Days.Weekdays"><value>Mo–Fr</value></data>
+  <data name="Days.Weekend"><value>Sa–So</value></data>
+
+  <!-- ═══ MudBlazor internal ═══ -->
+  <data name="MudBlazor.MudDataGrid.is empty"><value>ist leer</value></data>
+  <data name="MudBlazor.MudDataGrid.is not empty"><value>ist nicht leer</value></data>
+  <data name="MudBlazor.MudDataGrid.contains"><value>enthält</value></data>
+  <data name="MudBlazor.MudDataGrid.not contains"><value>enthält nicht</value></data>
+  <data name="MudBlazor.MudDataGrid.equals"><value>ist gleich</value></data>
+  <data name="MudBlazor.MudDataGrid.not equals"><value>ist ungleich</value></data>
+  <data name="MudBlazor.MudDataGrid.starts with"><value>beginnt mit</value></data>
+  <data name="MudBlazor.MudDataGrid.ends with"><value>endet mit</value></data>
+  <data name="MudBlazor.MudDataGrid.&gt;"><value>größer als</value></data>
+  <data name="MudBlazor.MudDataGrid.&gt;="><value>größer oder gleich</value></data>
+  <data name="MudBlazor.MudDataGrid.&lt;"><value>kleiner als</value></data>
+  <data name="MudBlazor.MudDataGrid.&lt;="><value>kleiner oder gleich</value></data>
+  <data name="MudBlazor.MudTablePager.All"><value>Alle</value></data>
+  <data name="MudBlazor.MudTablePager.Rows per page:"><value>Zeilen pro Seite:</value></data>
+</root>

@@ -1,4 +1,4 @@
-# FamilyAssist
+# FamilyAssistant
 
 Home Assistant Add-on for household management — chore tracking, credit system, and HA entity sync.
 
@@ -33,7 +33,7 @@ Built with C# Blazor Server (.NET 9), MudBlazor v9, EF Core + SQLite.
 
 ### Home Assistant Integration
 - Import persons from HA (with avatar images via proxy endpoint)
-- Sync credits to HA sensors (`sensor.familyassist_<name>_credits`)
+- Sync credits to HA sensors (`sensor.familyassistant_<name>_credits`)
 - Sync open tasks to HA todo lists (configurable per person)
 - Auto-detects Add-on mode (SUPERVISOR_TOKEN) vs dev mode (Long-Lived Token)
 
@@ -46,7 +46,7 @@ Built with C# Blazor Server (.NET 9), MudBlazor v9, EF Core + SQLite.
 ## Architecture
 
 ```
-src/FamilyAssist/
+src/FamilyAssistant/
 ├── Components/
 │   ├── Pages/          # Blazor pages (Home, Chores, Tasks, Settings)
 │   ├── Dialogs/        # AdHocTaskDialog, ChoreDialog, ScheduleDialog, IconPickerDialog, PersonEntityDialog
@@ -69,7 +69,7 @@ src/FamilyAssist/
 
 ### Development (User Secrets)
 ```bash
-cd src/FamilyAssist
+cd src/FamilyAssistant
 dotnet user-secrets set "HomeAssistant:BaseUrl" "http://your-ha:8123"
 dotnet user-secrets set "HomeAssistant:Token" "your-long-lived-access-token"
 ```
@@ -90,7 +90,7 @@ Ollama URL default: `http://localhost:11434`, Model default: `llama3.2:1b`
 
 ### Development
 ```bash
-cd src/FamilyAssist
+cd src/FamilyAssistant
 dotnet run
 # or
 dotnet watch
@@ -99,15 +99,28 @@ Opens at `http://localhost:5115`
 
 ### Docker / HA Add-on
 ```bash
-docker build -t familyassist .
-docker run -p 8099:8099 -e SUPERVISOR_TOKEN=... familyassist
+docker build -t familyassistant .
+docker run -p 8099:8099 -e SUPERVISOR_TOKEN=... familyassistant
 ```
 
 ## Database
 
-- SQLite at `./data/familyassist.db` (dev) or `/data/familyassist.db` (production)
+- SQLite at `./data/familyassistant.db` (dev) or `/data/familyassistant.db` (production)
 - Managed via EF Core Migrations (`dotnet ef migrations add <Name>`)
 - On startup: `MigrateAsync()` applies pending migrations automatically
+
+### Backup / Restore
+
+- Admin UI: `Admin -> Backup`
+- Backup creates a local ZIP set under `/data/backups/` (or `./data/backups/` in development)
+- The Admin UI lists local backups with date, size, download, and delete actions
+- Browser download folders are not scanned; only server-side backup sets in the app data directory appear in the overview
+- Each ZIP contains `manifest.json`, a consistent SQLite copy (`familyassistant.db`), and task attachments
+- Restore validates the ZIP and prepares a pending restore
+- Restore validation checks ZIP paths, manifest, SQLite integrity, known migrations, migration compatibility on a temporary DB copy, attachment DB references, and image validity
+- The pending restore is applied on the next app/Add-on restart before EF Core opens the database
+- Existing data is saved first under `/data/pre-restore-backups/` (or `./data/pre-restore-backups/` in development)
+- API endpoints: `GET /api/backup/list`, `GET /api/backup/file/{fileName}`, `DELETE /api/backup/file/{fileName}`, `POST /api/backup/restore`
 
 ## Design Decisions
 

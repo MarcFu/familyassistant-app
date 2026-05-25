@@ -21,7 +21,7 @@
 ## Build
 
 - Die App läuft oft im Hintergrund. Build-Fehler vom Typ MSB3027 (File-Lock) sind keine Code-Fehler.
-- Bei echtem Build-Test: App vorher stoppen (`Stop-Process -Name "FamilyAssist"`).
+- Bei echtem Build-Test: App vorher stoppen (`Stop-Process -Name "FamilyAssistant"`).
 
 ## API-Endpoints & Sicherheit
 
@@ -37,8 +37,29 @@
 - **Admin-Tabellen** (viele Spalten, dichte Daten) bleiben als `MudTable`.
 - **CSS-Basis:** `border-radius: 12px`, `border-color: rgba(255,255,255,0.12)`
 - **Buttons:** Pill-shaped (`border-radius: 9999px`), primäre Aktionen mit Label, sekundäre/destruktive als Icon-only mit Tooltip.
-- **FAB (Floating Action Button):** Nur auf **Listen-Seiten** (Tasks, Chores) für die primäre Create-Aktion. Immer `position: fixed; bottom: 24px; right: 24px; z-index: 100;`, `Size.Large`, mit `MudTooltip`. Nie inline in einer Toolbar. **Nicht** auf Multi-Tab-Seiten (Settings) — dort normaler Button im Tab-Panel.
+- **FAB (Floating Action Button):** Nur auf **Listen-Seiten** (Tasks, Chores) für die primäre Create-Aktion. Immer als **Extended FAB** (Icon + Label), wie in HA üblich: `<MudFab StartIcon="..." Label="..." />`. Position: `position: fixed; bottom: 24px; right: 24px; z-index: 100;`, `Size.Large`. Kein `MudTooltip` nötig (Label ist selbsterklärend). Nie inline in einer Toolbar. **Nicht** auf Multi-Tab-Seiten (Settings) — dort normaler Button im Tab-Panel.
 - **Farben:** Primary `#03a9f4`, Secondary `#ff9800`, Surface `#1c1c1c`, Background `#121212`.
+
+## UI-Pattern: ResponsiveList (Standard für alle Listen)
+
+- **Immer `Grouped="true"`** verwenden — eine Outlined Card umschließt Header + alle Items, Divider zwischen Items (HA "List Card" Pattern).
+- **Grid-Spalten:** Feste `px` für Chips/Toggles/Icons, `minmax()` oder `fr` für variablen Text. **Nie `auto` für Content-Spalten** (verursacht ungleiche Ausrichtung). `auto` nur für die Actions-Spalte (identische Buttons pro Zeile).
+- **Breakpoint:** Default `Md` (960px). Bei 7+ Spalten: `Breakpoint="Breakpoint.Lg"` (1280px) setzen.
+- **Card-Mode (mobile):** Zeile 1 = `justify-space-between` → Identität links, Status-Badge rechts (nur bei Abweichung).
+
+## UI-Pattern: Tabs & URL-Sync
+
+- **Tabs auf Seiten-Ebene** (z.B. Settings, Admin, InternetRules) MÜSSEN im Query-String reflektiert werden (`?tab=log`).
+- Beim Laden der Seite wird `?tab=…` geparst und der aktive Tab gesetzt. Beim Tab-Wechsel wird die URL aktualisiert (ohne Navigation/Reload).
+- Tab-Werte sind lesbare Slugs (z.B. `correction`, `log`, `reset`), NICHT numerische Indizes.
+- Pattern: `NavigationManager.NavigateTo($"?tab={slug}", replace: true, forceLoad: false)` + `ActivePanelIndexChanged` / `ActivePanelIndex`.
+- **Dialoge** mit Tabs (z.B. IconPicker) brauchen KEINE URL-Sync.
+
+## UI-Pattern: Filter
+
+- **Dropdowns** verwenden `Value` + `ValueChanged` (reaktiv, sofortige Aktualisierung). Kein manueller Refresh-Button.
+- **Textfelder** verwenden `DebouncedTextField` (400ms Verzögerung, Client-Side-Filterung auf bereits geladenen Daten).
+- Filter-Zustand darf über Query-Parameter deep-linkbar sein (z.B. `?filter=Completed&person=3`).
 
 ## UI-Pattern: Editierbare Entitäten
 
@@ -60,6 +81,28 @@
 - Bild-/Datei-Serving an den Client läuft über dedizierte API-Endpoints (Proxy-Pattern):
   - `/api/ha-image` — HA-Bilder (Entity-Pictures)
   - `/api/attachment/{id}` — Task-Kommentar-Bilder von Disk
+
+## Architektur: QueryService-Pattern
+
+- **Read-Only-Queries** (Filter, Listen, Dashboard-Daten) leben in dedizierten QueryServices (z.B. `IChoreTaskQueryService`).
+- QueryServices sind die **Single Source of Truth** für Business-Filter-Logik — keine doppelte Where-Clause in Razor-Pages.
+- **Mutationen** (Create, Update, Status-Wechsel, Credits) bleiben direkt auf `AppDbContext` in der Page/Component — kein Repository-Pattern nötig.
+- QueryServices werden als `Scoped` registriert und sind Unit-Test-fähig (InMemory-DB).
+
+## UX-Prinzip: Tasks-Seite
+
+- **Sichtbar = erfordert Aktion.** Die Tasks-Seite zeigt nur offene, beanspruchte oder zu bestätigende Aufgaben.
+- Erledigte Tasks verschwinden sofort aus "Heute"/"Offen" — Feedback über Snackbar, sichtbar im "Erledigt"-Filter und auf dem Dashboard.
+- **PendingConfirmation** bleibt sichtbar (erfordert Eltern-Aktion).
+- **Dashboard** = Übersicht/Motivation ("Was wurde geschafft?"). Deep-Links von Dashboard → Tasks-Seite mit passenden Query-Parametern.
+- Dieses Prinzip gilt für alle Rhythmen (täglich, wöchentlich, monatlich): nach Erledigung verschwindet der Task aus der operativen Ansicht.
+
+## EF Core: InMemory-Provider & Null-Guards
+
+- Der **InMemory-Provider** wertet OR-Expressions client-seitig aus und short-circuited NICHT wie SQL.
+- Bei nullable Navigation-Properties (z.B. `t.Schedule`) in komplexen OR-Bedingungen **immer** `t.ScheduleId != null &&` vor dem Zugriff auf `t.Schedule!.Rhythm` setzen.
+- Pattern `(t.ScheduleId == null || t.Schedule!.Rhythm != X)` funktioniert (short-circuit innerhalb eines AND), aber in OR-Branches muss explizit gegen null geprüft werden.
+- Betrifft alle Queries, die auch in InMemory-Tests laufen.
 
 ## Geplant: Foto-Retention
 
@@ -88,3 +131,17 @@
 - Konfigurierbar: Entity + Trigger-Zustand + Ziel-Chore.
 - `HaEventTriggerService` subscribt via WebSocket auf `state_changed`.
 - Debouncing gegen State-Flatter.
+
+## Review Points (visuell zu validieren)
+
+- **Card Status-Badge (oben rechts):** Abweichende operative Zustände (Pausiert, Inaktiv)
+  werden oben rechts als Chip angezeigt (Zeile 1: `justify-space-between`, Identität links, Status rechts).
+  Normalzustand = kein Badge. → Nach visuellem Test als feste UI-Regel übernehmen oder anpassen.
+
+  ```
+  ┌───────────────────────────────────────────────┐
+  │ [Avatar/Icon + Name]           [⚠ Status]    │  ← nur bei Abweichung
+  │ Details / Attribute / Chips                    │
+  │                                [Actions ...]   │
+  └───────────────────────────────────────────────┘
+  ```

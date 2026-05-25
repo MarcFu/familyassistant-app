@@ -1,0 +1,292 @@
+@page "/setup"
+@rendermode InteractiveServer
+@inject FamilyAssistant.Services.IHomeAssistantService HaService
+@inject FamilyAssistant.Data.AppDbContext Db
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject IStringLocalizer<SharedResource> L
+@using Microsoft.EntityFrameworkCore
+@using FamilyAssistant.Services
+
+<PageTitle>@L["PageTitle.Setup"]</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-2">@L["Setup.Welcome"]</MudText>
+<MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
+    @L["Setup.Subtitle"]
+</MudText>
+
+@* ─── Schritt 1: HA-Verbindung ─── *@
+<MudPaper Outlined="true" Class="pa-4 mb-4">
+    <div class="d-flex align-center mb-2">
+        <MudIcon Icon="@(_haConnected ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)"
+                 Color="@(_haConnected ? Color.Success : Color.Error)" Class="mr-2" />
+        <MudText Typo="Typo.h6">@L["Setup.HaConnection"]</MudText>
+    </div>
+    @if (_haConnected)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            @L["Setup.Connected"]
+        </MudText>
+    }
+    else if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Class="mt-2" />
+    }
+    else
+    {
+        <MudText Typo="Typo.body2" Color="Color.Error">
+            @L["Setup.NoConnection"]
+        </MudText>
+    }
+</MudPaper>
+
+@* ─── Schritt 2: Personen importieren ─── *@
+<MudPaper Outlined="true" Class="pa-4 mb-4">
+    <div class="d-flex align-center mb-2">
+        @if (_importedPersons.Count > 0)
+        {
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Class="mr-2" />
+        }
+        else
+        {
+            <MudIcon Icon="@Icons.Material.Filled.RadioButtonUnchecked" Color="Color.Default" Class="mr-2" />
+        }
+        <MudText Typo="Typo.h6">@L["Setup.ImportPersons"]</MudText>
+    </div>
+
+    @if (!_haConnected)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            @L["Setup.HaRequired"]
+        </MudText>
+    }
+    else if (_availablePersons.Count == 0 && _importedPersons.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Warning">
+            @L["Setup.NoHaPersons"]
+        </MudText>
+    }
+    else
+    {
+        @if (_availablePersons.Count > 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                @L["Setup.SelectPersons"]
+            </MudText>
+
+            <MudGrid>
+                @foreach (var person in _availablePersons)
+                {
+                    var isSelected = _selectedPersons.Contains(person.EntityId);
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudPaper Outlined="true"
+                                  Class="@($"pa-3 cursor-pointer {(isSelected ? "border-primary" : "")}")"
+                                  Style="@(isSelected ? "border-color: var(--mud-palette-primary); border-width: 2px;" : "")"
+                                  @onclick="() => ToggleSelection(person.EntityId)">
+                            <div class="d-flex align-center">
+                                <MudCheckBox T="bool" Value="isSelected" Color="Color.Primary"
+                                             class="mr-1" Style="pointer-events:none;" />
+                                @if (person.EntityPicture is not null)
+                                {
+                                    <MudAvatar Size="Size.Small">
+                                        <img src="@($"/api/ha-image?path={Uri.EscapeDataString(person.EntityPicture)}")"
+                                             style="width:100%;height:100%;object-fit:cover;" alt="@person.FriendlyName" />
+                                    </MudAvatar>
+                                }
+                                else
+                                {
+                                    <MudAvatar Size="Size.Small" Color="Color.Surface">@person.FriendlyName[0]</MudAvatar>
+                                }
+                                <div class="ml-2">
+                                    <MudText Typo="Typo.body2">@person.FriendlyName</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@person.EntityId</MudText>
+                                </div>
+                            </div>
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       Class="mt-3" StartIcon="@Icons.Material.Filled.PersonAdd"
+                       Disabled="@(_selectedPersons.Count == 0)"
+                       OnClick="ImportSelectedPersons"
+                       Style="border-radius: 9999px;">
+                @(_selectedPersons.Count == 0 ? L["Setup.SelectButton"] : string.Format(L["Setup.ImportButton"], _selectedPersons.Count))
+            </MudButton>
+        }
+
+        @if (_importedPersons.Count > 0)
+        {
+            <MudText Typo="Typo.subtitle1" Class="@(_availablePersons.Count > 0 ? "mt-4 mb-2" : "mb-2")">
+                @L["Setup.AssignRoles"]
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                @L["Setup.AdminRequired"]
+            </MudText>
+
+            @foreach (var person in _importedPersons)
+            {
+                <div class="d-flex align-center mb-2">
+                    @if (person.EntityPicture is not null)
+                    {
+                        <MudAvatar Size="Size.Small">
+                            <img src="@($"/api/ha-image?path={Uri.EscapeDataString(person.EntityPicture)}")"
+                                 style="width:100%;height:100%;object-fit:cover;" alt="@person.Name" />
+                        </MudAvatar>
+                    }
+                    else
+                    {
+                        <MudAvatar Size="Size.Small" Color="Color.Primary">@person.Name[0]</MudAvatar>
+                    }
+                    <MudText Class="ml-2 mr-4" Style="min-width: 120px;">@person.Name</MudText>
+                    <MudSelect T="PersonRole" Value="person.Role" ValueChanged="(r) => OnRoleChanged(person, r)"
+                               Variant="Variant.Outlined" Dense="true" Style="max-width: 160px;">
+                        <MudSelectItem Value="PersonRole.Admin">@L["Role.Admin"]</MudSelectItem>
+                        <MudSelectItem Value="PersonRole.Parent">@L["Role.Parent"]</MudSelectItem>
+                        <MudSelectItem Value="PersonRole.Child">@L["Role.Child"]</MudSelectItem>
+                    </MudSelect>
+                </div>
+            }
+
+            @if (!HasAdmin)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
+                    @L["Setup.AdminWarning"]
+                </MudAlert>
+            }
+        }
+    }
+</MudPaper>
+
+@* ─── Schritt 3: Erste Aufgabe (optional) ─── *@
+<MudPaper Outlined="true" Class="pa-4 mb-4">
+    <div class="d-flex align-center mb-2">
+        @if (_choreCreated)
+        {
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Class="mr-2" />
+        }
+        else
+        {
+            <MudIcon Icon="@Icons.Material.Filled.RadioButtonUnchecked" Color="Color.Default" Class="mr-2" />
+        }
+        <MudText Typo="Typo.h6">@L["Setup.FirstChore"]</MudText>
+        <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="ml-2">@L["Common.Optional"]</MudChip>
+    </div>
+
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+        @L["Setup.FirstChoreHint"]
+    </MudText>
+
+    @if (_choreCreated)
+    {
+        <MudAlert Severity="Severity.Success" Dense="true">
+            @L["Setup.ChoreCreated"]
+        </MudAlert>
+    }
+    else
+    {
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   Disabled="@(_importedPersons.Count == 0)"
+                   OnClick="OpenChoreDialog"
+                   Style="border-radius: 9999px;">
+            @L["Setup.CreateChore"]
+        </MudButton>
+    }
+</MudPaper>
+
+@* ─── Abschluss ─── *@
+<div class="d-flex justify-end mt-4">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+               EndIcon="@Icons.Material.Filled.ArrowForward"
+               Disabled="@(!HasAdmin)"
+               OnClick="@(() => Navigation.NavigateTo("/"))"
+               Style="border-radius: 9999px;">
+        @L["Setup.ToDashboard"]
+    </MudButton>
+</div>
+
+@code {
+    private bool _loading = true;
+    private bool _haConnected;
+    private List<HaPerson> _availablePersons = [];
+    private List<Person> _importedPersons = [];
+    private HashSet<string> _selectedPersons = [];
+    private bool _choreCreated;
+
+    private bool HasAdmin => _importedPersons.Any(p => p.Role == PersonRole.Admin);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _haConnected = await HaService.TestConnectionAsync();
+
+        if (_haConnected)
+        {
+            await LoadPersonsAsync();
+        }
+
+        _loading = false;
+    }
+
+    private async Task LoadPersonsAsync()
+    {
+        _importedPersons = await Db.Persons.OrderBy(p => p.Name).ToListAsync();
+        var haPersons = await HaService.GetPersonsAsync();
+        var managedIds = _importedPersons.Select(p => p.HaEntityId).ToHashSet();
+        _availablePersons = haPersons.Where(p => !managedIds.Contains(p.EntityId)).ToList();
+    }
+
+    private void ToggleSelection(string entityId)
+    {
+        if (!_selectedPersons.Add(entityId))
+            _selectedPersons.Remove(entityId);
+    }
+
+    private async Task ImportSelectedPersons()
+    {
+        var haPersons = _availablePersons.Where(p => _selectedPersons.Contains(p.EntityId)).ToList();
+
+        foreach (var haPerson in haPersons)
+        {
+            var person = new Person
+            {
+                HaEntityId = haPerson.EntityId,
+                Name = haPerson.FriendlyName,
+                EntityPicture = haPerson.EntityPicture,
+                Role = PersonRole.Child,
+                Credits = 0
+            };
+            Db.Persons.Add(person);
+        }
+
+        await Db.SaveChangesAsync();
+        _selectedPersons.Clear();
+        await LoadPersonsAsync();
+        StateHasChanged();
+    }
+
+    private async Task OnRoleChanged(Person person, PersonRole newRole)
+    {
+        person.Role = newRole;
+        await Db.SaveChangesAsync();
+        StateHasChanged();
+    }
+
+    private async Task OpenChoreDialog()
+    {
+        var parameters = new DialogParameters<ChoreDialog>
+        {
+            { x => x.IsNew, true }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ChoreDialog>(L["Dialog.ChoreCreate.Title"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            _choreCreated = true;
+            StateHasChanged();
+        }
+    }
+}

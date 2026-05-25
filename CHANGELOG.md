@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- Renamed project from HassCompanion to FamilyAssist
+- Renamed project from HassCompanion to FamilyAssistant
 - Debug endpoint `/api/debug/simulate-state-change` now only available in Development environment
 - Upload endpoint now validates task/comment existence, content types, and sanitizes filenames
 - Image proxy endpoint now validates path parameter (must start with `/api/`)
@@ -16,7 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - MIT License
 - Onboarding setup page (`/setup`) — HA connection check, person import with role assignment, first chore creation
+- Admin backup/restore UI with local ZIP backup list, download/delete actions, and ZIP import for SQLite database and task attachments
+- Backup API endpoints for listing, downloading, deleting, and restoring local backup ZIPs
+- Startup restore flow that applies prepared backups before EF Core migration and keeps a pre-restore safety backup
 - Automatic redirect to setup on first start (0 persons in DB)
+
+### Fixed
+- BUG-001: Temporary SQLite backup files remained locked on Windows during ZIP creation
+- BUG-002: Direct backup download could create repeated backup ZIPs when the browser/proxy retried the GET download
+- BUG-003: Removed direct create-and-download backup flow and reject duplicate backup creation events
+
+### Security
+- Restore validation now checks migration compatibility on a temporary database copy, rejects unknown migrations, verifies attachment DB references, rejects orphan/missing attachments, and verifies attachment files are valid images
 - Test project with 36 unit tests (TaskGenerator, validation rules)
 - CHANGELOG.md
 - CONTRIBUTING.md

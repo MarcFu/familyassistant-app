@@ -1,0 +1,188 @@
+@inject FamilyAssistant.Data.AppDbContext Db
+@inject FamilyAssistant.Services.UserContextService UserContext
+@inject IStringLocalizer<SharedResource> L
+@using Microsoft.EntityFrameworkCore
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            @L["Dialog.AdHoc.Description"]
+        </MudText>
+
+        @* Intent: For whom is this task? *@
+        <MudText Typo="Typo.subtitle2" Class="mb-1">@L["Dialog.AdHoc.ForWhom"]</MudText>
+        <MudRadioGroup T="TaskIntent" @bind-Value="_intent" Class="mb-3">
+            <MudRadio Value="TaskIntent.ForMyself" Color="Color.Primary">@L["Dialog.AdHoc.ForMyself"]</MudRadio>
+            <MudRadio Value="TaskIntent.ForSomeone" Color="Color.Primary">@L["Dialog.AdHoc.ForSomeone"]</MudRadio>
+            <MudRadio Value="TaskIntent.OpenForAll" Color="Color.Primary">@L["Dialog.AdHoc.OpenForAll"]</MudRadio>
+        </MudRadioGroup>
+
+        @* Choose existing chore or enter custom name *@
+        <MudRadioGroup T="AdHocMode" @bind-Value="_mode" Class="mb-3">
+            <MudRadio Value="AdHocMode.ExistingChore" Color="Color.Primary">@L["Dialog.AdHoc.ExistingChore"]</MudRadio>
+            <MudRadio Value="AdHocMode.Custom" Color="Color.Primary">@L["Dialog.AdHoc.Custom"]</MudRadio>
+        </MudRadioGroup>
+
+        @if (_mode == AdHocMode.ExistingChore)
+        {
+            <MudSelect T="int?" @bind-Value="_selectedChoreId" Label="@L["Dialog.AdHoc.ChoreLabel"].Value" Variant="Variant.Filled"
+                       Margin="Margin.Dense" Clearable="true" Class="mb-3">
+                @foreach (var chore in _chores)
+                {
+                    <MudSelectItem T="int?" Value="@chore.Id">
+                        @if (chore.Icon is not null)
+                        {
+                            @if (IsEmoji(chore.Icon))
+                            {
+                                <span class="mr-1">@chore.Icon</span>
+                            }
+                            else
+                            {
+                                var svg = FamilyAssistant.Services.IconRegistry.GetSvg(chore.Icon);
+                                if (svg is not null)
+                                {
+                                    <MudIcon Icon="@svg" Size="Size.Small" Class="mr-1"
+                                             Style="@(chore.IconColor is not null ? $"color: {chore.IconColor};" : "")" />
+                                }
+                            }
+                        }
+                        @chore.Name (@chore.CreditsReward Credits)
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        }
+        else
+        {
+            <MudTextField @bind-Value="_customName" Label="@L["Dialog.AdHoc.TaskName"].Value" Required="true"
+                          Variant="Variant.Filled" Margin="Margin.Dense" Class="mb-3" />
+            <MudNumericField @bind-Value="_customCredits" Label="@L["Dialog.Chore.CreditsLabel"].Value" Min="0" Max="100"
+                             Variant="Variant.Filled" Margin="Margin.Dense" Class="mb-3" />
+        }
+
+        @if (_intent == TaskIntent.ForSomeone)
+        {
+            <MudSelect T="int?" @bind-Value="_assignToPersonId" Label="@L["Dialog.AdHoc.AssignTo"].Value"
+                       Variant="Variant.Filled" Margin="Margin.Dense" Required="true" Class="mb-3">
+                @foreach (var person in _persons.Where(p => p.Id != UserContext.CurrentPersonId))
+                {
+                    <MudSelectItem T="int?" Value="@person.Id">@person.Name</MudSelectItem>
+                }
+            </MudSelect>
+        }
+
+        <MudDatePicker @bind-Date="_dueDate" Label="@L["Dialog.AdHoc.DueDate"].Value" Variant="Variant.Filled"
+                       Margin="Margin.Dense" Clearable="true" DateFormat="dd.MM.yyyy" Class="mb-3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">@L["Common.Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="!IsValid()" StartIcon="@Icons.Material.Filled.Add">
+            @L["Common.Create"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private List<Chore> _chores = [];
+    private List<Person> _persons = [];
+
+    private TaskIntent _intent;
+    private AdHocMode _mode = AdHocMode.ExistingChore;
+    private int? _selectedChoreId;
+    private string? _customName;
+    private int _customCredits = 5;
+    private int? _assignToPersonId;
+    private DateTime? _dueDate = DateTime.Today;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _chores = await Db.Chores.Where(c => c.IsActive).OrderBy(c => c.Name).ToListAsync();
+        _persons = await Db.Persons.Where(p => p.Role != PersonRole.Guest).OrderBy(p => p.Name).ToListAsync();
+
+        // Role-based default: Parents/Admins typically assign to others, Children track their own work
+        _intent = UserContext.IsParentOrAdmin ? TaskIntent.ForSomeone : TaskIntent.ForMyself;
+    }
+
+    private bool IsValid()
+    {
+        // Task content must be defined
+        if (_mode == AdHocMode.ExistingChore && !_selectedChoreId.HasValue)
+            return false;
+        if (_mode == AdHocMode.Custom && string.IsNullOrWhiteSpace(_customName))
+            return false;
+
+        // "Für jemand anderen" requires a person selection
+        if (_intent == TaskIntent.ForSomeone && !_assignToPersonId.HasValue)
+            return false;
+
+        return true;
+    }
+
+    private async Task Submit()
+    {
+        if (!IsValid()) return;
+
+        Chore chore;
+
+        if (_mode == AdHocMode.ExistingChore)
+        {
+            chore = _chores.First(c => c.Id == _selectedChoreId!.Value);
+        }
+        else
+        {
+            // Create a new ad-hoc chore (no schedule, just for this one task)
+            chore = new Chore
+            {
+                Name = _customName!.Trim(),
+                CreditsReward = _customCredits,
+                IsActive = true
+            };
+            Db.Chores.Add(chore);
+            await Db.SaveChangesAsync(); // Need the ID
+        }
+
+        var task = new ChoreTask
+        {
+            ChoreId = chore.Id,
+            ScheduleId = null, // Ad-hoc: no schedule
+            DueDate = _dueDate.HasValue ? DateOnly.FromDateTime(_dueDate.Value) : DateOnly.FromDateTime(DateTime.Today),
+            OccurrenceIndex = 1,
+            DefaultPersonId = _intent == TaskIntent.ForSomeone ? _assignToPersonId : null,
+            ClaimedByPersonId = _intent == TaskIntent.ForMyself ? UserContext.CurrentPersonId : null,
+            Status = _intent == TaskIntent.ForMyself ? ChoreTaskStatus.Claimed : ChoreTaskStatus.Open,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        Db.ChoreTasks.Add(task);
+        await Db.SaveChangesAsync();
+
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private static bool IsEmoji(string s) =>
+        !string.IsNullOrEmpty(s) && !s.All(c => c < 128);
+
+    private enum AdHocMode
+    {
+        ExistingChore,
+        Custom
+    }
+
+    /// <summary>
+    /// Determines who the ad-hoc task is for:
+    /// ForMyself = auto-claimed by creator,
+    /// ForSomeone = assigned to a specific person,
+    /// OpenForAll = no assignment, anyone can claim.
+    /// </summary>
+    private enum TaskIntent
+    {
+        ForMyself,
+        ForSomeone,
+        OpenForAll
+    }
+}

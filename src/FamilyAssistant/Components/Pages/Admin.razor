@@ -1,0 +1,458 @@
+@page "/admin"
+@rendermode InteractiveServer
+@inject FamilyAssistant.Data.AppDbContext Db
+@inject FamilyAssistant.Services.BackupRestoreService BackupService
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<SharedResource> L
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.WebUtilities
+@using FamilyAssistant.Services
+
+<PageTitle>@L["PageTitle.Admin"]</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-3">@L["Admin.Title"]</MudText>
+
+<MudTabs Elevation="1" Rounded="true" Class="mb-4" ActivePanelIndex="_activeTabIndex" ActivePanelIndexChanged="OnTabChanged">
+    <MudTabPanel Text="@L["Admin.Tab.Correction"].Value" Icon="@Icons.Material.Filled.Edit">
+        <div class="pa-4" style="max-width:500px;">
+            <MudSelect T="int?" @bind-Value="_selectedPersonId" Label="@L["Common.Person"].Value" Variant="Variant.Filled"
+                       Margin="Margin.Dense" Class="mb-3" Required="true">
+                @foreach (var person in _persons)
+                {
+                    <MudSelectItem T="int?" Value="@person.Id">@person.Name (@person.Credits @L["Common.Credits"])</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudNumericField @bind-Value="_correctionAmount" Label="@L["Admin.AmountLabel"].Value"
+                             Variant="Variant.Filled" Margin="Margin.Dense" Class="mb-3" />
+
+            <MudTextField @bind-Value="_correctionReason" Label="@L["Admin.ReasonLabel"].Value" Variant="Variant.Filled"
+                          Margin="Margin.Dense" Class="mb-3" Required="true"
+                          Placeholder="@L["Admin.ReasonPlaceholder"].Value" />
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SubmitCorrectionAsync"
+                       Disabled="@(_selectedPersonId is null || _correctionAmount == 0 || string.IsNullOrWhiteSpace(_correctionReason))"
+                       StartIcon="@Icons.Material.Filled.Save">
+                @L["Admin.Submit"]
+            </MudButton>
+        </div>
+    </MudTabPanel>
+
+    <MudTabPanel Text="@L["Admin.Tab.Log"].Value" Icon="@Icons.Material.Filled.Receipt">
+        <div class="pa-4">
+            <div class="d-flex align-center gap-3 mb-3">
+                <MudSelect T="int?" Value="_logFilterPersonId" ValueChanged="OnLogPersonFilterChanged"
+                           Label="@L["Common.Person"].Value" Variant="Variant.Filled"
+                           Margin="Margin.Dense" Clearable="true" Style="max-width:200px;">
+                    @foreach (var person in _persons)
+                    {
+                        <MudSelectItem T="int?" Value="@person.Id">@person.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="CreditTransactionType?" Value="_logFilterType" ValueChanged="OnLogTypeFilterChanged"
+                           Label="@L["Common.Type"].Value" Variant="Variant.Filled"
+                           Margin="Margin.Dense" Clearable="true" Style="max-width:250px;">
+                    <MudSelectItem T="CreditTransactionType?" Value="CreditTransactionType.ChoreCompleted">@L["Admin.Type.ChoreCompleted"]</MudSelectItem>
+                    <MudSelectItem T="CreditTransactionType?" Value="CreditTransactionType.ManualBonus">@L["Admin.Type.Bonus"]</MudSelectItem>
+                    <MudSelectItem T="CreditTransactionType?" Value="CreditTransactionType.ManualPenalty">@L["Admin.Type.Penalty"]</MudSelectItem>
+                    <MudSelectItem T="CreditTransactionType?" Value="CreditTransactionType.InternetTimeSpent">@L["Admin.Type.Internet"]</MudSelectItem>
+                </MudSelect>
+            </div>
+
+            @if (_transactions.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info">@L["Admin.NoTransactions"]</MudAlert>
+            }
+            else
+            {
+                <MudTable Items="_transactions" Dense="true" Hover="true" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>@L["Common.Date"]</MudTh>
+                        <MudTh>@L["Common.Person"]</MudTh>
+                        <MudTh>@L["Admin.Amount"]</MudTh>
+                        <MudTh>@L["Common.Type"]</MudTh>
+                        <MudTh>@L["Admin.ReasonLabel"]</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Timestamp.ToLocalTime().ToString("dd.MM.yy HH:mm")</MudTd>
+                        <MudTd>@context.Person.Name</MudTd>
+                        <MudTd>
+                            <MudText Color="@(context.Amount >= 0 ? Color.Success : Color.Error)">
+                                @(context.Amount >= 0 ? $"+{context.Amount}" : context.Amount.ToString())
+                            </MudText>
+                        </MudTd>
+                        <MudTd>
+                            <MudChip T="string" Size="Size.Small" Color="@GetTypeColor(context.Type)">
+                                @GetTypeLabel(context.Type)
+                            </MudChip>
+                        </MudTd>
+                        <MudTd>@context.Reason</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </div>
+    </MudTabPanel>
+
+    <MudTabPanel Text="@L["Admin.Tab.Reset"].Value" Icon="@Icons.Material.Filled.RestartAlt">
+        <div class="pa-4" style="max-width:500px;">
+            <MudAlert Severity="Severity.Warning" Class="mb-3">
+                @L["Admin.ResetWarning"]
+            </MudAlert>
+
+            <MudSelect T="int?" @bind-Value="_resetPersonId" Label="@L["Common.Person"].Value" Variant="Variant.Filled"
+                       Margin="Margin.Dense" Class="mb-3">
+                @foreach (var person in _persons)
+                {
+                    <MudSelectItem T="int?" Value="@person.Id">@person.Name (aktuell: @person.Credits)</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudNumericField @bind-Value="_resetTarget" Label="@L["Admin.NewBalance"].Value"
+                             Variant="Variant.Filled" Margin="Margin.Dense" Class="mb-3" />
+
+            <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="ResetCreditsAsync"
+                       Disabled="@(_resetPersonId is null)"
+                       StartIcon="@Icons.Material.Filled.RestartAlt">
+                @string.Format(L["Admin.ResetButton"], _resetTarget)
+            </MudButton>
+        </div>
+    </MudTabPanel>
+
+    <MudTabPanel Text="@L["Admin.Tab.Backup"].Value" Icon="@Icons.Material.Filled.Backup">
+        <div class="pa-4" style="max-width:640px;">
+            <MudText Typo="Typo.h6" Class="mb-2">@L["Admin.Backup.Title"]</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                @L["Admin.Backup.Description"]
+            </MudText>
+
+            <MudPaper Outlined="true" Class="pa-3 mb-3">
+                <MudText Typo="Typo.subtitle1" Class="mb-2">@L["Admin.Backup.DownloadTitle"]</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                    @L["Admin.Backup.DownloadHint"]
+                </MudText>
+                <div class="d-flex align-center gap-2 mb-3">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateBackupAsync"
+                               Disabled="@_backupInProgress" StartIcon="@Icons.Material.Filled.Add">
+                        @L["Admin.Backup.Create"]
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="LoadBackupsAsync"
+                               Disabled="@_backupInProgress" StartIcon="@Icons.Material.Filled.Refresh">
+                        @L["Common.Refresh"]
+                    </MudButton>
+                </div>
+
+                @if (_backupInProgress)
+                {
+                    <MudProgressLinear Indeterminate="true" Class="mb-3" />
+                }
+
+                @if (_backups.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info">@L["Admin.Backup.None"]</MudAlert>
+                }
+                else
+                {
+                    <MudTable Items="_backups" Dense="true" Hover="true" Elevation="0">
+                        <HeaderContent>
+                            <MudTh>@L["Common.Date"]</MudTh>
+                            <MudTh>@L["Admin.Backup.FileName"]</MudTh>
+                            <MudTh>@L["Admin.Backup.Size"]</MudTh>
+                            <MudTh>@L["Common.Actions"]</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="@L["Common.Date"]">@context.LastWriteTimeUtc.ToLocalTime().ToString("dd.MM.yy HH:mm")</MudTd>
+                            <MudTd DataLabel="@L["Admin.Backup.FileName"]">@context.FileName</MudTd>
+                            <MudTd DataLabel="@L["Admin.Backup.Size"]">@FormatBytes(context.SizeBytes)</MudTd>
+                            <MudTd DataLabel="@L["Common.Actions"]">
+                                <div class="d-flex align-center gap-1">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Download" Size="Size.Small" Color="Color.Primary"
+                                                   Href="@GetBackupDownloadUrl(context.FileName)" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                                   Disabled="@(_deletingBackupFileName == context.FileName)"
+                                                   OnClick="@(() => DeleteBackupAsync(context.FileName))" />
+                                </div>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </MudPaper>
+
+            <MudPaper Outlined="true" Class="pa-3">
+                <MudText Typo="Typo.subtitle1" Class="mb-2">@L["Admin.Backup.RestoreTitle"]</MudText>
+                <MudAlert Severity="Severity.Warning" Class="mb-3">
+                    @L["Admin.Backup.RestoreWarning"]
+                </MudAlert>
+
+                @if (_restoreInProgress)
+                {
+                    <MudProgressLinear Indeterminate="true" Class="mb-3" />
+                }
+
+                <InputFile OnChange="RestoreBackupAsync" accept=".zip,application/zip" />
+
+                @if (!string.IsNullOrWhiteSpace(_restoreMessage))
+                {
+                    <MudAlert Severity="Severity.Success" Class="mt-3">
+                        @_restoreMessage
+                    </MudAlert>
+                }
+            </MudPaper>
+        </div>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    private List<Person> _persons = [];
+
+    // Tab sync
+    private int _activeTabIndex;
+    private static readonly string[] TabSlugs = ["correction", "log", "reset", "backup"];
+
+    // Correction
+    private int? _selectedPersonId;
+    private int _correctionAmount;
+    private string _correctionReason = "";
+
+    // Log
+    private int? _logFilterPersonId;
+    private CreditTransactionType? _logFilterType;
+    private List<CreditTransaction> _transactions = [];
+
+    // Reset
+    private int? _resetPersonId;
+    private int _resetTarget;
+
+    // Backup/restore
+    private List<BackupSummary> _backups = [];
+    private bool _backupInProgress;
+    private bool _restoreInProgress;
+    private string? _restoreMessage;
+    private string? _deletingBackupFileName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ParseTabFromUrl();
+        _persons = await Db.Persons.OrderBy(p => p.Name).ToListAsync();
+        await LoadTransactionsAsync();
+        await LoadBackupsAsync();
+    }
+
+    private void ParseTabFromUrl()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("tab", out var tabValue))
+        {
+            var idx = Array.IndexOf(TabSlugs, tabValue.ToString().ToLowerInvariant());
+            if (idx >= 0) _activeTabIndex = idx;
+        }
+    }
+
+    private void OnTabChanged(int newIndex)
+    {
+        _activeTabIndex = newIndex;
+        var slug = newIndex >= 0 && newIndex < TabSlugs.Length ? TabSlugs[newIndex] : TabSlugs[0];
+        Navigation.NavigateTo($"/admin?tab={slug}", replace: true, forceLoad: false);
+    }
+
+    private async Task SubmitCorrectionAsync()
+    {
+        if (_selectedPersonId is null || _correctionAmount == 0 || string.IsNullOrWhiteSpace(_correctionReason))
+            return;
+
+        var person = _persons.First(p => p.Id == _selectedPersonId);
+        person.Credits += _correctionAmount;
+
+        var type = _correctionAmount > 0 ? CreditTransactionType.ManualBonus : CreditTransactionType.ManualPenalty;
+
+        Db.CreditTransactions.Add(new CreditTransaction
+        {
+            PersonId = person.Id,
+            Amount = _correctionAmount,
+            Reason = _correctionReason.Trim(),
+            Type = type,
+            Timestamp = DateTime.UtcNow
+        });
+
+        await Db.SaveChangesAsync();
+
+        Snackbar.Add(string.Format(L["Admin.Snackbar.Booked"], $"{(_correctionAmount > 0 ? "+" : "")}{_correctionAmount}", person.Name), Severity.Success);
+
+        // Reset form
+        _correctionAmount = 0;
+        _correctionReason = "";
+        _selectedPersonId = null;
+
+        // Refresh data
+        _persons = await Db.Persons.OrderBy(p => p.Name).ToListAsync();
+        await LoadTransactionsAsync();
+    }
+
+    private async Task ResetCreditsAsync()
+    {
+        if (_resetPersonId is null) return;
+
+        var person = _persons.First(p => p.Id == _resetPersonId);
+        var diff = _resetTarget - person.Credits;
+
+        if (diff == 0)
+        {
+            Snackbar.Add(L["Admin.Snackbar.NoChange"], Severity.Info);
+            return;
+        }
+
+        person.Credits = _resetTarget;
+
+        Db.CreditTransactions.Add(new CreditTransaction
+        {
+            PersonId = person.Id,
+            Amount = diff,
+            Reason = string.Format(L["Admin.ResetReason"], _resetTarget, _resetTarget - diff),
+            Type = diff > 0 ? CreditTransactionType.ManualBonus : CreditTransactionType.ManualPenalty,
+            Timestamp = DateTime.UtcNow
+        });
+
+        await Db.SaveChangesAsync();
+
+        Snackbar.Add(string.Format(L["Admin.Snackbar.Reset"], person.Name, _resetTarget), Severity.Success);
+
+        _persons = await Db.Persons.OrderBy(p => p.Name).ToListAsync();
+        _resetPersonId = null;
+        await LoadTransactionsAsync();
+    }
+
+    private async Task LoadTransactionsAsync()
+    {
+        IQueryable<CreditTransaction> query = Db.CreditTransactions
+            .Include(t => t.Person)
+            .OrderByDescending(t => t.Timestamp);
+
+        if (_logFilterPersonId.HasValue)
+            query = query.Where(t => t.PersonId == _logFilterPersonId);
+
+        if (_logFilterType.HasValue)
+            query = query.Where(t => t.Type == _logFilterType);
+
+        _transactions = await query.Take(100).ToListAsync();
+        StateHasChanged();
+    }
+
+    private async Task OnLogPersonFilterChanged(int? newPersonId)
+    {
+        _logFilterPersonId = newPersonId;
+        await LoadTransactionsAsync();
+    }
+
+    private async Task OnLogTypeFilterChanged(CreditTransactionType? newType)
+    {
+        _logFilterType = newType;
+        await LoadTransactionsAsync();
+    }
+
+    private async Task RestoreBackupAsync(InputFileChangeEventArgs args)
+    {
+        var file = args.File;
+        _restoreInProgress = true;
+        _restoreMessage = null;
+
+        try
+        {
+            await using var stream = file.OpenReadStream(FamilyAssistant.Services.BackupRestoreService.MaxBackupUploadBytes);
+            var result = await BackupService.PrepareRestoreAsync(stream, file.Name, file.Size);
+            _restoreMessage = result.Message;
+            Snackbar.Add(L["Admin.Backup.RestorePrepared"], Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(string.Format(L["Common.Snackbar.Error"], ex.Message), Severity.Error);
+        }
+        finally
+        {
+            _restoreInProgress = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadBackupsAsync()
+    {
+        _backups = (await BackupService.ListBackupsAsync()).ToList();
+        StateHasChanged();
+    }
+
+    private async Task CreateBackupAsync()
+    {
+        if (_backupInProgress)
+            return;
+
+        _backupInProgress = true;
+        StateHasChanged();
+
+        try
+        {
+            var backup = await BackupService.CreateBackupAsync();
+            await LoadBackupsAsync();
+            Snackbar.Add(string.Format(L["Admin.Backup.Created"], backup.FileName), Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(string.Format(L["Common.Snackbar.Error"], ex.Message), Severity.Error);
+        }
+        finally
+        {
+            _backupInProgress = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteBackupAsync(string fileName)
+    {
+        _deletingBackupFileName = fileName;
+        try
+        {
+            await BackupService.DeleteBackupAsync(fileName);
+            await LoadBackupsAsync();
+            Snackbar.Add(string.Format(L["Admin.Backup.Deleted"], fileName), Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(string.Format(L["Common.Snackbar.Error"], ex.Message), Severity.Error);
+        }
+        finally
+        {
+            _deletingBackupFileName = null;
+            StateHasChanged();
+        }
+    }
+
+    private static string GetBackupDownloadUrl(string fileName) => $"/api/backup/file/{Uri.EscapeDataString(fileName)}";
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        var kb = bytes / 1024d;
+        if (kb < 1024) return $"{kb:0.0} KB";
+        var mb = kb / 1024d;
+        if (mb < 1024) return $"{mb:0.0} MB";
+        return $"{mb / 1024d:0.0} GB";
+    }
+
+    private static Color GetTypeColor(CreditTransactionType type) => type switch
+    {
+        CreditTransactionType.ChoreCompleted => Color.Success,
+        CreditTransactionType.ManualBonus => Color.Info,
+        CreditTransactionType.ManualPenalty => Color.Error,
+        CreditTransactionType.InternetTimeSpent => Color.Warning,
+        _ => Color.Default
+    };
+
+    private string GetTypeLabel(CreditTransactionType type) => type switch
+    {
+        CreditTransactionType.ChoreCompleted => L["Admin.Type.ChoreCompleted"],
+        CreditTransactionType.ManualBonus => L["Admin.Type.Bonus"],
+        CreditTransactionType.ManualPenalty => L["Admin.Type.Penalty"],
+        CreditTransactionType.InternetTimeSpent => L["Admin.Type.Internet"],
+        _ => "?"
+    };
+}

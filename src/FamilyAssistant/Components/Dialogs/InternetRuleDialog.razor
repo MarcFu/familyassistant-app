@@ -1,0 +1,224 @@
+@using FamilyAssistant.Models
+@inject IStringLocalizer<SharedResource> L
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsNew ? L["Dialog.Rule.TitleNew"] : L["Dialog.Rule.TitleEdit"])</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_name" Label="@L["Common.Name"].Value" Required="true"
+                      RequiredError="@L["Validation.NameRequired"].Value"
+                      Variant="Variant.Filled" Class="mb-3"
+                      Placeholder="z.B. Nachtruhe, Gaming Budget" />
+
+        <MudSelect T="InternetRuleMode" @bind-Value="_ruleMode" Label="@L["Dialog.Rule.Mode"].Value"
+                   Variant="Variant.Filled" Class="mb-3">
+            <MudSelectItem T="InternetRuleMode" Value="InternetRuleMode.TimeWindow">@L["Rule.Mode.TimeWindow"]</MudSelectItem>
+            <MudSelectItem T="InternetRuleMode" Value="InternetRuleMode.DetectionBudget">@L["Rule.Mode.DetectionBudget"]</MudSelectItem>
+        </MudSelect>
+
+        <MudSelect T="InternetRuleTarget" @bind-Value="_target" Label="@L["Dialog.Rule.Target"].Value"
+                   Variant="Variant.Filled" Class="mb-3">
+            <MudSelectItem T="InternetRuleTarget" Value="InternetRuleTarget.Internet">@L["Rule.Target.Internet"]</MudSelectItem>
+            <MudSelectItem T="InternetRuleTarget" Value="InternetRuleTarget.Gaming">@L["Rule.Target.Gaming"]</MudSelectItem>
+        </MudSelect>
+
+        <MudDivider Class="my-4" />
+
+        @* --- Device Selection --- *@
+        <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Dialog.Rule.Devices"]</MudText>
+        @if (AvailableDevices.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-3">@L["Dialog.Rule.NoDevices"]</MudAlert>
+        }
+        else
+        {
+            @foreach (var device in AvailableDevices)
+            {
+                var isSelected = _selectedDeviceIds.Contains(device.Id);
+                <MudCheckBox T="bool" Value="@isSelected" Label="@device.Label" Class="mb-1"
+                             ValueChanged="@(v => ToggleDevice(device.Id, v))" />
+            }
+        }
+
+        <MudDivider Class="my-4" />
+
+        @* --- TimeWindow fields --- *@
+        @if (_ruleMode == InternetRuleMode.TimeWindow)
+        {
+            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Dialog.Rule.TimeWindow"]</MudText>
+
+            <div class="d-flex gap-3 mb-3">
+                <MudTimePicker @bind-Time="_windowStart" Label="@L["Dialog.Rule.WindowStart"].Value"
+                               Variant="Variant.Filled" AmPm="false" />
+                <MudTimePicker @bind-Time="_windowEnd" Label="@L["Dialog.Rule.WindowEnd"].Value"
+                               Variant="Variant.Filled" AmPm="false" />
+            </div>
+        }
+
+        @* --- DetectionBudget fields (Phase 2 prep) --- *@
+        @if (_ruleMode == InternetRuleMode.DetectionBudget)
+        {
+            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Dialog.Rule.Budget"]</MudText>
+
+            <MudNumericField @bind-Value="_dailyBudgetMinutes" Label="@L["Dialog.Rule.DailyMinutes"].Value"
+                             Variant="Variant.Filled" Min="10" Max="720" Step="15" Class="mb-3"
+                             HelperText="@L["Dialog.Rule.DailyMinutesHelper"].Value" />
+
+            <div class="d-flex gap-3 mb-3">
+                <MudTimePicker @bind-Time="_windowStart" Label="@L["Dialog.Rule.BudgetWindowStart"].Value"
+                               Variant="Variant.Filled" AmPm="false" />
+                <MudTimePicker @bind-Time="_windowEnd" Label="@L["Dialog.Rule.BudgetWindowEnd"].Value"
+                               Variant="Variant.Filled" AmPm="false" />
+            </div>
+
+            <MudNumericField @bind-Value="_detectionThreshold" Label="@L["Dialog.Rule.DetectionThreshold"].Value"
+                             Variant="Variant.Filled" Min="1" Max="30" Step="1" Class="mb-3"
+                             HelperText="@L["Dialog.Rule.DetectionThresholdHelper"].Value" />
+
+            <MudNumericField @bind-Value="_gracePeriod" Label="@L["Dialog.Rule.GracePeriod"].Value"
+                             Variant="Variant.Filled" Min="0" Max="30" Step="1" Class="mb-3"
+                             HelperText="@L["Dialog.Rule.GracePeriodHelper"].Value" />
+        }
+
+        <MudDivider Class="my-4" />
+
+        @* --- Days of week --- *@
+        <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Dialog.Rule.Days"]</MudText>
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            @foreach (var day in _dayOptions)
+            {
+                var isChecked = (_applicableDays & day.Flag) != 0;
+                <MudChip T="string" Color="@(isChecked ? Color.Primary : Color.Default)"
+                         Variant="@(isChecked ? Variant.Filled : Variant.Outlined)"
+                         OnClick="@(() => ToggleDay(day.Flag))">
+                    @day.Label
+                </MudChip>
+            }
+        </div>
+        <div class="d-flex gap-2 mb-3">
+            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => _applicableDays = DaysOfWeek.Weekdays)">@L["Dialog.Rule.Weekdays"]</MudButton>
+            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => _applicableDays = DaysOfWeek.Weekend)">@L["Dialog.Rule.Weekend"]</MudButton>
+            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => _applicableDays = DaysOfWeek.All)">@L["Dialog.Rule.AllDays"]</MudButton>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">@L["Common.Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   StartIcon="@(IsNew ? Icons.Material.Filled.Add : Icons.Material.Filled.Save)"
+                   OnClick="Submit"
+                   Disabled="@(!IsValid)">
+            @(IsNew ? L["Common.Create"] : L["Common.Save"])
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public InternetRule? Rule { get; set; }
+    [Parameter] public bool IsNew { get; set; }
+    [Parameter] public int PersonId { get; set; }
+    [Parameter] public List<PersonDevice> AvailableDevices { get; set; } = [];
+
+    private string _name = "";
+    private InternetRuleMode _ruleMode = InternetRuleMode.TimeWindow;
+    private InternetRuleTarget _target = InternetRuleTarget.Internet;
+    private TimeSpan? _windowStart = new TimeSpan(7, 0, 0);
+    private TimeSpan? _windowEnd = new TimeSpan(21, 0, 0);
+    private DaysOfWeek _applicableDays = DaysOfWeek.All;
+    private int _dailyBudgetMinutes = 120;
+    private int _detectionThreshold = 5;
+    private int _gracePeriod = 5;
+    private HashSet<int> _selectedDeviceIds = [];
+
+    private bool IsValid =>
+        !string.IsNullOrWhiteSpace(_name) &&
+        _selectedDeviceIds.Count > 0 &&
+        _windowStart is not null &&
+        _windowEnd is not null;
+
+    private readonly record struct DayOption(string Label, DaysOfWeek Flag);
+
+    private readonly DayOption[] _dayOptions =
+    [
+        new("Mo", DaysOfWeek.Monday),
+        new("Di", DaysOfWeek.Tuesday),
+        new("Mi", DaysOfWeek.Wednesday),
+        new("Do", DaysOfWeek.Thursday),
+        new("Fr", DaysOfWeek.Friday),
+        new("Sa", DaysOfWeek.Saturday),
+        new("So", DaysOfWeek.Sunday),
+    ];
+
+    protected override void OnParametersSet()
+    {
+        if (Rule is not null)
+        {
+            _name = Rule.Name;
+            _ruleMode = Rule.RuleMode;
+            _target = Rule.Target;
+            _windowStart = Rule.WindowStart?.ToTimeSpan();
+            _windowEnd = Rule.WindowEnd?.ToTimeSpan();
+            _applicableDays = Rule.ApplicableDays;
+            _dailyBudgetMinutes = Rule.DailyBudgetMinutes ?? 120;
+            _detectionThreshold = Rule.DetectionThresholdMinutes ?? 5;
+            _gracePeriod = Rule.GracePeriodMinutes ?? 5;
+            _selectedDeviceIds = Rule.AffectedDevices.Select(d => d.Id).ToHashSet();
+        }
+    }
+
+    private void ToggleDevice(int deviceId, bool selected)
+    {
+        if (selected)
+            _selectedDeviceIds.Add(deviceId);
+        else
+            _selectedDeviceIds.Remove(deviceId);
+    }
+
+    private void ToggleDay(DaysOfWeek day)
+    {
+        if ((_applicableDays & day) != 0)
+            _applicableDays &= ~day;
+        else
+            _applicableDays |= day;
+    }
+
+    private void Submit()
+    {
+        var result = Rule ?? new InternetRule
+        {
+            Name = null!,
+            PersonId = PersonId
+        };
+
+        result.Name = _name.Trim();
+        result.RuleMode = _ruleMode;
+        result.Target = _target;
+        result.WindowStart = _windowStart.HasValue ? TimeOnly.FromTimeSpan(_windowStart.Value) : null;
+        result.WindowEnd = _windowEnd.HasValue ? TimeOnly.FromTimeSpan(_windowEnd.Value) : null;
+        result.ApplicableDays = _applicableDays;
+
+        if (_ruleMode == InternetRuleMode.DetectionBudget)
+        {
+            result.DailyBudgetMinutes = _dailyBudgetMinutes;
+            result.DetectionThresholdMinutes = _detectionThreshold;
+            result.GracePeriodMinutes = _gracePeriod;
+        }
+        else
+        {
+            result.DailyBudgetMinutes = null;
+            result.DetectionThresholdMinutes = null;
+            result.GracePeriodMinutes = null;
+        }
+
+        if (IsNew)
+            result.IsActive = true;
+
+        // Store selected device IDs as metadata for the page to handle
+        MudDialog.Close(DialogResult.Ok((result, _selectedDeviceIds)));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

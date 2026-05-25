@@ -1,0 +1,60 @@
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+
+@* Debounced text input — delays ValueChanged notification by the configured debounce time.
+   Consumer code doesn't need to handle timing; just bind to Value/ValueChanged. *@
+
+<MudTextField T="string" Value="@Value" ValueChanged="OnInput"
+              Label="@Label" Placeholder="@Placeholder" Variant="@Variant"
+              Adornment="@Adornment" AdornmentIcon="@AdornmentIcon"
+              Clearable="@Clearable" Immediate="true"
+              Dense="@Dense" Margin="@Margin" Class="@Class" Style="@Style" />
+
+@code {
+    private System.Timers.Timer? _debounceTimer;
+    private string? _pendingValue;
+
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public Variant Variant { get; set; } = Variant.Filled;
+    [Parameter] public Adornment Adornment { get; set; } = Adornment.None;
+    [Parameter] public string? AdornmentIcon { get; set; }
+    [Parameter] public bool Clearable { get; set; } = true;
+    [Parameter] public bool Dense { get; set; } = true;
+    [Parameter] public Margin Margin { get; set; } = Margin.Dense;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+
+    /// <summary>
+    /// Debounce delay in milliseconds. Default: 400ms.
+    /// </summary>
+    [Parameter] public int DebounceMs { get; set; } = 400;
+
+    private void OnInput(string? value)
+    {
+        _pendingValue = value;
+
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+
+        _debounceTimer = new System.Timers.Timer(DebounceMs);
+        _debounceTimer.AutoReset = false;
+        _debounceTimer.Elapsed += async (_, _) =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await ValueChanged.InvokeAsync(_pendingValue);
+                StateHasChanged();
+            });
+        };
+        _debounceTimer.Start();
+    }
+
+    public void Dispose()
+    {
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+    }
+}
