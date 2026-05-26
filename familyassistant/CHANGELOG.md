@@ -1,3 +1,9 @@
+## 0.1.5
+
+- Dev page: added WebSocket connection status + Refresh Status detail
+- Dev page: Refresh button now attempts WebSocket reconnect if disconnected
+- Improved diagnostics: shows exact reason if HA theme data cannot be read
+
 ## 0.1.4
 
 - Fix: `dev_mode` add-on option was not read (snake_case JSON key mismatch)

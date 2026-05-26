@@ -53,6 +53,8 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
 
     public bool IsWebSocketConnected => _ws?.State == WebSocketState.Open;
 
+    public event Action? WebSocketConnected;
+
     // ─── HTTP Client Helper ─────────────────────────────────────
 
     private HttpClient CreateHttpClient()
@@ -398,6 +400,9 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
             // Start message loop
             _wsLoopCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             _wsLoopTask = Task.Run(() => WebSocketMessageLoop(_wsLoopCts.Token), _wsLoopCts.Token);
+
+            // Notify subscribers (theme service, etc.)
+            WebSocketConnected?.Invoke();
         }
         finally
         {

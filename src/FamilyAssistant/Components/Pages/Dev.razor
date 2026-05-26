@@ -191,11 +191,30 @@
                     <td>@(ThemeService.LastRefreshed?.ToString("yyyy-MM-dd HH:mm:ss") ?? "— nie —")</td>
                 </tr>
                 <tr>
+                    <td><strong>Refresh Status</strong></td>
+                    <td style="font-size:0.85rem;">@(ThemeService.LastRefreshStatus ?? "—")</td>
+                </tr>
+                <tr>
+                    <td><strong>WebSocket</strong></td>
+                    <td>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(HaService.IsWebSocketConnected ? Color.Success : Color.Error)">
+                            @(HaService.IsWebSocketConnected ? "Connected" : "Disconnected")
+                        </MudChip>
+                    </td>
+                </tr>
+                <tr>
                     <td><strong>SUPERVISOR_TOKEN</strong></td>
                     <td>@(string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SUPERVISOR_TOKEN")) ? "— nicht gesetzt —" : "✓ vorhanden")</td>
                 </tr>
             </tbody>
         </MudSimpleTable>
+        @if (!HaService.IsWebSocketConnected)
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
+                WebSocket nicht verbunden — Sprache/Theme/Farben können nicht aus HA gelesen werden.
+            </MudAlert>
+        }
         <div class="d-flex mt-3">
             <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshHaConfig">
@@ -506,6 +525,21 @@
 
     private async Task RefreshHaConfig()
     {
+        if (!HaService.IsWebSocketConnected)
+        {
+            try
+            {
+                await HaService.ConnectWebSocketAsync();
+                Snackbar.Add("WebSocket verbunden!", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"WebSocket-Verbindung fehlgeschlagen: {ex.Message}", Severity.Error);
+                StateHasChanged();
+                return;
+            }
+        }
+
         await ThemeService.RefreshAsync();
         StateHasChanged();
     }

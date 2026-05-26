@@ -109,6 +109,11 @@ public interface IHomeAssistantService
     bool IsWebSocketConnected { get; }
 
     /// <summary>
+    /// Fired when WebSocket connection is successfully established (initial or reconnect).
+    /// </summary>
+    event Action? WebSocketConnected;
+
+    /// <summary>
     /// Get the HA frontend dark mode preference for the token owner.
     /// Uses WebSocket command: frontend/get_user_data (key: "core").
     /// </summary>

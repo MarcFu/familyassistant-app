@@ -85,6 +85,11 @@ public class HaThemeService
     public DateTime? LastRefreshed { get; private set; }
 
     /// <summary>
+    /// Status text of last refresh attempt (for diagnostics).
+    /// </summary>
+    public string? LastRefreshStatus { get; private set; }
+
+    /// <summary>
     /// Fired when any preference changes (theme, colors, language, or dev override).
     /// </summary>
     public event Action? ThemeChanged;
@@ -101,6 +106,14 @@ public class HaThemeService
     {
         try
         {
+            if (!_haService.IsWebSocketConnected)
+            {
+                LastRefreshStatus = "WebSocket not connected";
+                LastRefreshed = DateTime.Now;
+                _logger.LogWarning("ThemeService.RefreshAsync skipped: WebSocket not connected");
+                return;
+            }
+
             var data = await _haService.GetUserFrontendDataAsync(ct);
             var changed = false;
 
@@ -128,21 +141,27 @@ public class HaThemeService
                 changed = true;
             }
 
+            LastRefreshed = DateTime.Now;
+
             if (changed)
             {
-                LastRefreshed = DateTime.Now;
+                LastRefreshStatus = $"OK (lang={Language ?? "null"}, dark={DarkModePreference?.ToString() ?? "auto"})";
                 _logger.LogInformation("Theme updated from HA: darkMode={DarkMode}, primary={Primary}, accent={Accent}, lang={Lang}",
                     DarkModePreference?.ToString() ?? "auto", PrimaryColor, AccentColor, Language);
                 ThemeChanged?.Invoke();
             }
             else
             {
-                // Even if nothing changed, record the refresh time
-                LastRefreshed ??= DateTime.Now;
+                var hasData = Language != null || PrimaryColor != null || AccentColor != null || DarkModePreference != null;
+                LastRefreshStatus = hasData
+                    ? $"OK, no change (lang={Language})"
+                    : "OK but all values null — HA returned empty data";
             }
         }
         catch (Exception ex)
         {
+            LastRefreshStatus = $"Error: {ex.Message}";
+            LastRefreshed = DateTime.Now;
             _logger.LogWarning(ex, "Failed to read frontend data from HA, keeping current state");
         }
     }

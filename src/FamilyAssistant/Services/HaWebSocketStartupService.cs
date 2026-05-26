@@ -2,7 +2,7 @@ namespace FamilyAssistant.Services;
 
 /// <summary>
 /// Background service that establishes the HA WebSocket connection on startup
-/// and reads the initial theme preference.
+/// and refreshes theme/language on every (re)connect.
 /// </summary>
 public class HaWebSocketStartupService : BackgroundService
 {
@@ -18,12 +18,31 @@ public class HaWebSocketStartupService : BackgroundService
         _haService = haService;
         _themeService = themeService;
         _logger = logger;
+
+        // Subscribe to (re)connect events — always refresh theme when WebSocket comes up
+        _haService.WebSocketConnected += OnWebSocketConnected;
+    }
+
+    private void OnWebSocketConnected()
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                _logger.LogInformation("WebSocket connected, refreshing theme/language...");
+                await _themeService.RefreshAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to refresh theme after WebSocket connect");
+            }
+        });
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // Wait a bit for the app to fully start
-        await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+        await Task.Delay(TimeSpan.FromSeconds(3), stoppingToken);
 
         // Retry loop for WebSocket connection
         while (!stoppingToken.IsCancellationRequested)
@@ -35,9 +54,7 @@ public class HaWebSocketStartupService : BackgroundService
 
                 if (_haService.IsWebSocketConnected)
                 {
-                    _logger.LogInformation("HA WebSocket connected, reading theme...");
-                    await _themeService.RefreshAsync(stoppingToken);
-                    break; // Success — exit retry loop
+                    break; // Success — exit retry loop (OnWebSocketConnected handles refresh)
                 }
             }
             catch (Exception ex)
@@ -48,14 +65,21 @@ public class HaWebSocketStartupService : BackgroundService
             await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
         }
 
-        // Periodically refresh theme (every 5 min) in case user changes it in HA
+        // Keep running: periodically refresh theme (every 5 min) in case user changes it in HA
         while (!stoppingToken.IsCancellationRequested)
         {
             await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
 
             if (_haService.IsWebSocketConnected)
             {
-                await _themeService.RefreshAsync(stoppingToken);
+                try
+                {
+                    await _themeService.RefreshAsync(stoppingToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Periodic theme refresh failed");
+                }
             }
         }
     }
