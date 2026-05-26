@@ -90,6 +90,11 @@ public class HaThemeService
     public string? LastRefreshStatus { get; private set; }
 
     /// <summary>
+    /// Raw JSON response from last GetUserFrontendDataAsync call (for diagnostics).
+    /// </summary>
+    public string? LastRawResponse { get; private set; }
+
+    /// <summary>
     /// Fired when any preference changes (theme, colors, language, or dev override).
     /// </summary>
     public event Action? ThemeChanged;
@@ -115,6 +120,7 @@ public class HaThemeService
             }
 
             var data = await _haService.GetUserFrontendDataAsync(ct);
+            LastRawResponse = data.RawJson;
             var changed = false;
 
             if (data.DarkMode != DarkModePreference)

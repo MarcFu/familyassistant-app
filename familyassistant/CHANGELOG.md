@@ -1,3 +1,10 @@
+## 0.1.6
+
+- Fix: HA language/theme not read — `frontend/get_user_data` response has a `value` wrapper that was not unwrapped
+- Fix: dark mode parsing (false was not correctly detected)
+- Dev page: shows raw HA WebSocket response for diagnostics
+- Auto-refresh theme on every WebSocket (re)connect via `WebSocketConnected` event
+
 ## 0.1.5
 
 - Dev page: added WebSocket connection status + Refresh Status detail

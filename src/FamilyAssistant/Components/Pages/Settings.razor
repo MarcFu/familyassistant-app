@@ -458,88 +458,6 @@
                 @L["Common.Save"]
             </MudButton>
         </div>
-
-        @* ── Live Event Log ── *@
-        <MudDivider Class="my-4" />
-        <div class="d-flex align-center gap-3 mb-3">
-            <MudText Typo="Typo.h6">@L["Settings.System.EventLog"]</MudText>
-            <MudSwitch T="bool" Value="_eventLogEnabled" ValueChanged="ToggleEventLog"
-                       Color="Color.Success" Label="@(_eventLogEnabled ? L["Settings.System.EventLogLive"].Value : L["Settings.System.EventLogOff"].Value)" />
-            @if (_eventLogEnabled)
-            {
-                <MudChip T="string" Size="Size.Small" Color="Color.Info">@_eventLogEntries.Count Events</MudChip>
-            }
-        </div>
-
-        @if (_eventLogEnabled)
-        {
-            <MudTextField T="string" @bind-Value="_eventLogFilter" Label="@L["Settings.System.EventLogFilter"].Value" Variant="Variant.Outlined"
-                          Placeholder="@L["Settings.System.EventLogFilterPlaceholder"].Value" Immediate="true"
-                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.FilterAlt"
-                          Class="mb-3" Style="max-width: 400px;" />
-
-            <div class="d-flex gap-2 mb-3">
-                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="RefreshEventLog"
-                           StartIcon="@Icons.Material.Filled.Refresh">
-                    @L["Common.Refresh"]
-                </MudButton>
-                <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Error" OnClick="ClearEventLog"
-                           StartIcon="@Icons.Material.Filled.Delete">
-                    @L["Common.Clear"]
-                </MudButton>
-            </div>
-
-            <MudPaper Outlined="true" Style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 12px;">
-                <MudSimpleTable Dense="true" Hover="true" FixedHeader="true" Style="background: transparent;">
-                    <thead>
-                        <tr>
-                            <th style="width:70px;">@L["Common.Time"]</th>
-                            <th style="width:120px;">@L["Common.Type"]</th>
-                            <th>@L["Settings.System.EntityInfo"]</th>
-                            <th style="width:80px;">@L["Settings.System.Old"]</th>
-                            <th style="width:20px;"></th>
-                            <th style="width:80px;">@L["Settings.System.New"]</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var evt in FilteredEvents)
-                        {
-                            <tr>
-                                <td>@evt.Timestamp.ToString("HH:mm:ss")</td>
-                                <td>
-                                    <span style="color: var(--mud-palette-tertiary);">@evt.EventType</span>
-                                </td>
-                                <td>
-                                    <strong>@evt.EntityId</strong>
-                                    @if (evt.RawData is not null && evt.OldState is null)
-                                    {
-                                        <br/><span style="opacity: 0.6; font-size: 10px;">@evt.RawData</span>
-                                    }
-                                </td>
-                                <td>@(evt.OldState ?? "")</td>
-                                <td>@(evt.OldState is not null ? "→" : "")</td>
-                                <td style="color: var(--mud-palette-info);">@(evt.NewState ?? "")</td>
-                            </tr>
-                        }
-                        @if (!FilteredEvents.Any())
-                        {
-                            <tr>
-                                <td colspan="6" style="text-align:center; opacity:0.5; padding:16px;">
-                                    @if (_eventLogEntries.Count == 0)
-                                    {
-                                        @L["Settings.System.WaitingForEvents"]
-                                    }
-                                    else
-                                    {
-                                        @(string.Format(L["Settings.System.NoEventsForFilter"], _eventLogFilter))
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </MudSimpleTable>
-            </MudPaper>
-        }
     </MudTabPanel>
 </MudTabs>
 
@@ -869,13 +787,6 @@
         return token[..6] + "..." + token[^4..];
     }
 
-    // ─── Event Log ────────────────────────────────────────────────
-
-    private bool _eventLogEnabled;
-    private List<HaEventLogEntry> _eventLogEntries = [];
-    private string _eventLogFilter = "";
-    private System.Threading.Timer? _eventLogTimer;
-
     // ─── System Settings (Language + PointsUnit) ─────────────────
 
     private async Task LoadSystemSettingsAsync()
@@ -915,71 +826,7 @@
         Snackbar.Add(L["Settings.Snackbar.LanguageSaved"], Severity.Success);
     }
 
-    private IEnumerable<HaEventLogEntry> FilteredEvents =>
-        string.IsNullOrWhiteSpace(_eventLogFilter)
-            ? _eventLogEntries
-            : _eventLogEntries.Where(e =>
-                e.EntityId.Contains(_eventLogFilter, StringComparison.OrdinalIgnoreCase) ||
-                e.EventType.Contains(_eventLogFilter, StringComparison.OrdinalIgnoreCase));
-
-    private async Task ToggleEventLog(bool enabled)
-    {
-        _eventLogEnabled = enabled;
-
-        if (enabled)
-        {
-            try
-            {
-                await HaService.StartEventMonitorAsync();
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add(string.Format(L["Settings.Snackbar.EventMonitorFailed"], ex.Message), Severity.Error);
-                _eventLogEnabled = false;
-                return;
-            }
-
-            // Auto-refresh every 2 seconds
-            _eventLogTimer = new System.Threading.Timer(_ =>
-            {
-                InvokeAsync(() =>
-                {
-                    _eventLogEntries = HaService.GetRecentEvents().ToList();
-                    StateHasChanged();
-                });
-            }, null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
-        }
-        else
-        {
-            _eventLogTimer?.Dispose();
-            _eventLogTimer = null;
-
-            try
-            {
-                await HaService.StopEventMonitorAsync();
-            }
-            catch { /* ignore on stop */ }
-        }
-    }
-
-    private void RefreshEventLog()
-    {
-        _eventLogEntries = HaService.GetRecentEvents().ToList();
-    }
-
-    private void ClearEventLog()
-    {
-        HaService.ClearEventLog();
-        _eventLogEntries = [];
-    }
-
     public void Dispose()
     {
-        _eventLogTimer?.Dispose();
-        // Stop monitoring when leaving the page (fire-and-forget)
-        if (_eventLogEnabled)
-        {
-            _ = HaService.StopEventMonitorAsync();
-        }
     }
 }

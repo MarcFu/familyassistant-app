@@ -1,5 +1,6 @@
 @page "/dev"
 @rendermode InteractiveServer
+@implements IDisposable
 @inject FamilyAssistant.Services.AddonOptionsService AddonOptions
 @inject FamilyAssistant.Services.UserContextService UserContext
 @inject FamilyAssistant.Services.HaThemeService ThemeService
@@ -194,6 +195,15 @@
                     <td><strong>Refresh Status</strong></td>
                     <td style="font-size:0.85rem;">@(ThemeService.LastRefreshStatus ?? "—")</td>
                 </tr>
+                @if (ThemeService.LastRawResponse is not null)
+                {
+                    <tr>
+                        <td><strong>Raw Response</strong></td>
+                        <td style="word-break:break-all; font-family:monospace; font-size:0.75rem; max-width:300px; overflow:auto;">
+                            @ThemeService.LastRawResponse
+                        </td>
+                    </tr>
+                }
                 <tr>
                     <td><strong>WebSocket</strong></td>
                     <td>
@@ -298,95 +308,182 @@
     </MudExpansionPanels>
 </div>
 
-<MudPaper Outlined="true" Class="achievement-board-panel pa-4 mb-4">
-    <div class="d-flex align-center justify-space-between gap-3 flex-wrap mb-3">
-        <div>
-            <MudText Typo="Typo.h6">Achievement Badgeboard Demo</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                Echte DB-Auswertung für @_achievementSubjectName.
-            </MudText>
-        </div>
-        <div class="d-flex align-center gap-2 flex-wrap">
-            <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined" Size="Size.Small">
-                @_achievements.Count(a => !IsBadgeboardLocked(a)) unlocked
-            </MudChip>
-            <MudChip T="string" Color="Color.Default" Variant="Variant.Outlined" Size="Size.Small">
-                @_achievements.Count(IsBadgeboardLocked) locked
-            </MudChip>
-        </div>
+@* ── Live Event Log ── *@
+<MudPaper Outlined="true" Class="pa-4 mb-4">
+    <div class="d-flex align-center gap-3 mb-3">
+        <MudText Typo="Typo.h6">@L["Settings.System.EventLog"]</MudText>
+        <MudSwitch T="bool" Value="_eventLogEnabled" ValueChanged="ToggleEventLog"
+                   Color="Color.Success" Label="@(_eventLogEnabled ? L["Settings.System.EventLogLive"].Value : L["Settings.System.EventLogOff"].Value)" />
+        @if (_eventLogEnabled)
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Info">@_eventLogEntries.Count Events</MudChip>
+        }
     </div>
 
-    <div class="d-flex align-center gap-3 mb-3 flex-wrap">
-        <MudText Typo="Typo.body2" Style="min-width:90px;">Ratio 1:@(_hexHeightRatio.ToString("F2"))</MudText>
-        <MudSlider T="double" Value="_hexHeightRatio" ValueChanged="v => { _hexHeightRatio = v; }" Min="1.0" Max="1.25" Step="0.01" Style="max-width:280px;" />
-        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="() => _hexHeightRatio = 1.05">1:1.05</MudButton>
-        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="() => _hexHeightRatio = 1.1547">1:√3:2</MudButton>
-    </div>
+    @if (_eventLogEnabled)
+    {
+        <MudTextField T="string" @bind-Value="_eventLogFilter" Label="@L["Settings.System.EventLogFilter"].Value" Variant="Variant.Outlined"
+                      Placeholder="@L["Settings.System.EventLogFilterPlaceholder"].Value" Immediate="true"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.FilterAlt"
+                      Class="mb-3" Style="max-width: 400px;" />
 
-    <div class="achievement-board-scroll">
-        <div class="achievement-board" style="@GetBoardRatioStyle()">
-            @foreach (var row in _achievements.Chunk(10).Select((Achievements, Index) => new { Achievements, Index }))
-            {
-                <div class="achievement-board-row @(row.Index % 2 == 1 ? "achievement-board-row-offset" : null)">
-                    @foreach (var achievement in row.Achievements)
+        <div class="d-flex gap-2 mb-3">
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="RefreshEventLog"
+                       StartIcon="@Icons.Material.Filled.Refresh">
+                @L["Common.Refresh"]
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Error" OnClick="ClearEventLog"
+                       StartIcon="@Icons.Material.Filled.Delete">
+                @L["Common.Clear"]
+            </MudButton>
+        </div>
+
+        <MudPaper Outlined="true" Style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 12px;">
+            <MudSimpleTable Dense="true" Hover="true" FixedHeader="true" Style="background: transparent;">
+                <thead>
+                    <tr>
+                        <th style="width:70px;">@L["Common.Time"]</th>
+                        <th style="width:120px;">@L["Common.Type"]</th>
+                        <th>@L["Settings.System.EntityInfo"]</th>
+                        <th style="width:80px;">@L["Settings.System.Old"]</th>
+                        <th style="width:20px;"></th>
+                        <th style="width:80px;">@L["Settings.System.New"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var evt in FilteredEvents)
                     {
-                        var isLocked = IsBadgeboardLocked(achievement);
-                        <div class="achievement-board-slot" title="@GetBoardTitle(achievement, isLocked)">
-                            <AchievementHex Definition="achievement" IsLocked="isLocked" />
+                        <tr>
+                            <td>@evt.Timestamp.ToString("HH:mm:ss")</td>
+                            <td>
+                                <span style="color: var(--mud-palette-tertiary);">@evt.EventType</span>
+                            </td>
+                            <td>
+                                <strong>@evt.EntityId</strong>
+                                @if (evt.RawData is not null && evt.OldState is null)
+                                {
+                                    <br/><span style="opacity: 0.6; font-size: 10px;">@evt.RawData</span>
+                                }
+                            </td>
+                            <td>@(evt.OldState ?? "")</td>
+                            <td>@(evt.OldState is not null ? "→" : "")</td>
+                            <td style="color: var(--mud-palette-info);">@(evt.NewState ?? "")</td>
+                        </tr>
+                    }
+                    @if (!FilteredEvents.Any())
+                    {
+                        <tr>
+                            <td colspan="6" style="text-align:center; opacity:0.5; padding:16px;">
+                                @if (_eventLogEntries.Count == 0)
+                                {
+                                    @L["Settings.System.WaitingForEvents"]
+                                }
+                                else
+                                {
+                                    @(string.Format(L["Settings.System.NoEventsForFilter"], _eventLogFilter))
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    }
+</MudPaper>
+
+<MudExpansionPanels Class="mb-4">
+    <MudExpansionPanel Text="Achievement Badges" IsInitiallyExpanded="false">
+        <MudPaper Elevation="0" Class="achievement-board-panel pa-2 mb-4">
+            <div class="d-flex align-center justify-space-between gap-3 flex-wrap mb-3">
+                <div>
+                    <MudText Typo="Typo.h6">Badgeboard</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Echte DB-Auswertung für @_achievementSubjectName.
+                    </MudText>
+                </div>
+                <div class="d-flex align-center gap-2 flex-wrap">
+                    <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined" Size="Size.Small">
+                        @_achievements.Count(a => !IsBadgeboardLocked(a)) unlocked
+                    </MudChip>
+                    <MudChip T="string" Color="Color.Default" Variant="Variant.Outlined" Size="Size.Small">
+                        @_achievements.Count(IsBadgeboardLocked) locked
+                    </MudChip>
+                </div>
+            </div>
+
+            <div class="d-flex align-center gap-3 mb-3 flex-wrap">
+                <MudText Typo="Typo.body2" Style="min-width:90px;">Ratio 1:@(_hexHeightRatio.ToString("F2"))</MudText>
+                <MudSlider T="double" Value="_hexHeightRatio" ValueChanged="v => { _hexHeightRatio = v; }" Min="1.0" Max="1.25" Step="0.01" Style="max-width:280px;" />
+                <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="() => _hexHeightRatio = 1.05">1:1.05</MudButton>
+                <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="() => _hexHeightRatio = 1.1547">1:√3:2</MudButton>
+            </div>
+
+            <div class="achievement-board-scroll">
+                <div class="achievement-board" style="@GetBoardRatioStyle()">
+                    @foreach (var row in _achievements.Chunk(10).Select((Achievements, Index) => new { Achievements, Index }))
+                    {
+                        <div class="achievement-board-row @(row.Index % 2 == 1 ? "achievement-board-row-offset" : null)">
+                            @foreach (var achievement in row.Achievements)
+                            {
+                                var isLocked = IsBadgeboardLocked(achievement);
+                                <div class="achievement-board-slot" title="@GetBoardTitle(achievement, isLocked)">
+                                    <AchievementHex Definition="achievement" IsLocked="isLocked" />
+                                </div>
+                            }
                         </div>
                     }
                 </div>
-            }
-        </div>
-    </div>
-</MudPaper>
+            </div>
+        </MudPaper>
 
-<MudPaper Outlined="true" Class="pa-4 mb-4">
-    <div class="d-flex align-center justify-space-between gap-3 flex-wrap mb-3">
-        <div>
-            <MudText Typo="Typo.h6">Achievement Badge Preview</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                Statische Dev-Vorschau aller vorgeschlagenen Achievements im hexagonalen Badge-Stil.
-            </MudText>
-        </div>
-        <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small">
-            @_achievements.Count Badges
-        </MudChip>
-    </div>
-
-    <div class="achievement-preview-grid">
-        @foreach (var achievement in _achievements)
-        {
-            <MudPaper Outlined="true" Class="achievement-preview-card pa-3">
-                <div class="achievement-preview-badge-wrap">
-                    <AchievementHex Definition="achievement" IsLocked="false" ShowTierChip="true" HeightOverride="@GetPreviewRatioStyle()" />
+        <MudPaper Elevation="0" Class="pa-2 mb-4">
+            <div class="d-flex align-center justify-space-between gap-3 flex-wrap mb-3">
+                <div>
+                    <MudText Typo="Typo.h6">Badge Preview</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Statische Dev-Vorschau aller Achievements im hexagonalen Badge-Stil.
+                    </MudText>
                 </div>
+                <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small">
+                    @_achievements.Count Badges
+                </MudChip>
+            </div>
 
-                <div class="d-flex align-center gap-1 flex-wrap mb-1">
-                    <MudChip T="string" Color="@GetCategoryColor(achievement.Category)" Size="Size.Small" Variant="Variant.Outlined">
-                        @achievement.Category
-                    </MudChip>
-                    <MudChip T="string" Color="@(IsBadgeboardLocked(achievement) ? Color.Default : Color.Success)" Size="Size.Small" Variant="Variant.Outlined">
-                        @(IsBadgeboardLocked(achievement) ? "Locked" : "Unlocked")
-                    </MudChip>
-                    @if (achievement.IsHidden)
-                    {
-                        <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Outlined">
-                            Hidden
-                        </MudChip>
-                    }
-                </div>
+            <div class="achievement-preview-grid">
+                @foreach (var achievement in _achievements)
+                {
+                    <MudPaper Outlined="true" Class="achievement-preview-card pa-3">
+                        <div class="achievement-preview-badge-wrap">
+                            <AchievementHex Definition="achievement" IsLocked="false" ShowTierChip="true" HeightOverride="@GetPreviewRatioStyle()" />
+                        </div>
 
-                <MudText Typo="Typo.subtitle2" Class="achievement-preview-name">@achievement.Name</MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="achievement-preview-key">@achievement.Key</MudText>
-                <MudText Typo="Typo.body2" Class="mt-2 achievement-preview-condition">@achievement.Condition</MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2 achievement-preview-condition">
-                    @GetAchievementFact(achievement)
-                </MudText>
-            </MudPaper>
-        }
-    </div>
-</MudPaper>
+                        <div class="d-flex align-center gap-1 flex-wrap mb-1">
+                            <MudChip T="string" Color="@GetCategoryColor(achievement.Category)" Size="Size.Small" Variant="Variant.Outlined">
+                                @achievement.Category
+                            </MudChip>
+                            <MudChip T="string" Color="@(IsBadgeboardLocked(achievement) ? Color.Default : Color.Success)" Size="Size.Small" Variant="Variant.Outlined">
+                                @(IsBadgeboardLocked(achievement) ? "Locked" : "Unlocked")
+                            </MudChip>
+                            @if (achievement.IsHidden)
+                            {
+                                <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Outlined">
+                                    Hidden
+                                </MudChip>
+                            }
+                        </div>
+
+                        <MudText Typo="Typo.subtitle2" Class="achievement-preview-name">@achievement.Name</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="achievement-preview-key">@achievement.Key</MudText>
+                        <MudText Typo="Typo.body2" Class="mt-2 achievement-preview-condition">@achievement.Condition</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2 achievement-preview-condition">
+                            @GetAchievementFact(achievement)
+                        </MudText>
+                    </MudPaper>
+                }
+            </div>
+        </MudPaper>
+    </MudExpansionPanel>
+</MudExpansionPanels>
 
 @code {
     private List<Person> _persons = [];
@@ -607,4 +704,77 @@
         "Hidden" => Color.Default,
         _ => Color.Primary
     };
+
+    // ─── Event Log ────────────────────────────────────────────────
+
+    private bool _eventLogEnabled;
+    private List<HaEventLogEntry> _eventLogEntries = [];
+    private string _eventLogFilter = "";
+    private System.Threading.Timer? _eventLogTimer;
+
+    private IEnumerable<HaEventLogEntry> FilteredEvents =>
+        string.IsNullOrWhiteSpace(_eventLogFilter)
+            ? _eventLogEntries
+            : _eventLogEntries.Where(e =>
+                e.EntityId.Contains(_eventLogFilter, StringComparison.OrdinalIgnoreCase) ||
+                e.EventType.Contains(_eventLogFilter, StringComparison.OrdinalIgnoreCase));
+
+    private async Task ToggleEventLog(bool enabled)
+    {
+        _eventLogEnabled = enabled;
+
+        if (enabled)
+        {
+            try
+            {
+                await HaService.StartEventMonitorAsync();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Event Monitor fehlgeschlagen: {ex.Message}", Severity.Error);
+                _eventLogEnabled = false;
+                return;
+            }
+
+            _eventLogTimer = new System.Threading.Timer(_ =>
+            {
+                InvokeAsync(() =>
+                {
+                    _eventLogEntries = HaService.GetRecentEvents().ToList();
+                    StateHasChanged();
+                });
+            }, null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
+        }
+        else
+        {
+            _eventLogTimer?.Dispose();
+            _eventLogTimer = null;
+
+            try
+            {
+                await HaService.StopEventMonitorAsync();
+            }
+            catch { /* ignore on stop */ }
+        }
+    }
+
+    private void RefreshEventLog()
+    {
+        _eventLogEntries = HaService.GetRecentEvents().ToList();
+    }
+
+    private void ClearEventLog()
+    {
+        HaService.ClearEventLog();
+        _eventLogEntries = [];
+    }
+
+    public void Dispose()
+    {
+        _eventLogTimer?.Dispose();
+        if (_eventLogEnabled)
+        {
+            _ = HaService.StopEventMonitorAsync();
+        }
+    }
 }

@@ -531,7 +531,8 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
 
             var result = await tcs.Task;
 
-            // Response: {"result": {"selectedLanguage": "de", "selectedTheme": {"theme": "...", "dark": true/false (missing=auto), "primaryColor": "#03a9f4", "accentColor": "#ff9800"}}}
+            // HA response structure: {"id":X, "type":"result", "success":true, "result": {"value": {"selectedLanguage":"de", "selectedTheme":{...}}}}
+            // The "result" may contain a "value" wrapper (frontend/get_user_data returns data inside "value")
             bool? darkMode = null; // null = Auto (follow OS preference)
             string? language = null;
             string? primaryColor = null;
@@ -539,8 +540,22 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
 
             if (result.TryGetProperty("result", out var resultObj) && resultObj.ValueKind == JsonValueKind.Object)
             {
+                // Unwrap "value" wrapper if present
+                if (resultObj.TryGetProperty("value", out var valueObj) && valueObj.ValueKind == JsonValueKind.Object)
+                {
+                    resultObj = valueObj;
+                }
+
+                _logger.LogDebug("frontend/get_user_data parsed object keys: {Keys}",
+                    string.Join(", ", resultObj.EnumerateObject().Select(p => p.Name)));
+
                 // Language
                 if (resultObj.TryGetProperty("selectedLanguage", out var lang) && lang.ValueKind == JsonValueKind.String)
+                {
+                    language = lang.GetString();
+                }
+                // Fallback: HA may also use "language" key
+                else if (resultObj.TryGetProperty("language", out lang) && lang.ValueKind == JsonValueKind.String)
                 {
                     language = lang.GetString();
                 }
@@ -549,15 +564,13 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
                 if (resultObj.TryGetProperty("selectedTheme", out var theme) && theme.ValueKind == JsonValueKind.Object)
                 {
                     // dark: true = forced dark, false = forced light, missing/null = auto
-                    if (theme.TryGetProperty("dark", out var dark) && dark.ValueKind == JsonValueKind.True)
+                    if (theme.TryGetProperty("dark", out var dark))
                     {
-                        darkMode = true;
+                        if (dark.ValueKind == JsonValueKind.True)
+                            darkMode = true;
+                        else if (dark.ValueKind == JsonValueKind.False)
+                            darkMode = false;
                     }
-                    else if (theme.TryGetProperty("dark", out _) && dark.ValueKind == JsonValueKind.False)
-                    {
-                        darkMode = false;
-                    }
-                    // else: darkMode remains null (Auto)
 
                     if (theme.TryGetProperty("primaryColor", out var pc) && pc.ValueKind == JsonValueKind.String)
                     {
@@ -569,11 +582,19 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
                     }
                 }
             }
+            else
+            {
+                _logger.LogWarning("frontend/get_user_data: unexpected response structure: {Raw}", result.GetRawText());
+            }
 
             _logger.LogInformation("HA frontend data: darkMode={DarkMode}, lang={Language}, primary={Primary}, accent={Accent}",
                 darkMode?.ToString() ?? "auto", language, primaryColor, accentColor);
 
-            return new HaUserFrontendData(darkMode, language, primaryColor, accentColor);
+            // Include truncated raw JSON for diagnostics
+            var rawJson = result.GetRawText();
+            if (rawJson.Length > 500) rawJson = rawJson[..500] + "...";
+
+            return new HaUserFrontendData(darkMode, language, primaryColor, accentColor, rawJson);
         }
         catch (OperationCanceledException)
         {

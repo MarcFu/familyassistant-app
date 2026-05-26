@@ -4,6 +4,9 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
+    /* ── Layout ── */
+    --mud-appbar-height: 48px;
+
     /* ── UI Chrome ── */
     --ha-border-subtle: rgba(255, 255, 255, 0.06);
     --ha-border-medium: rgba(255, 255, 255, 0.12);
@@ -121,6 +124,8 @@ html, body {
 
 .mud-appbar {
     border-bottom: 1px solid var(--ha-border-subtle) !important;
+    height: 48px !important;
+    min-height: 48px !important;
 }
 
 .app-current-user {

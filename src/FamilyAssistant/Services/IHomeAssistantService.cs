@@ -35,7 +35,8 @@ public record HaUserFrontendData(
     bool? DarkMode,
     string? Language,
     string? PrimaryColor,
-    string? AccentColor
+    string? AccentColor,
+    string? RawJson = null
 );
 
 /// <summary>
