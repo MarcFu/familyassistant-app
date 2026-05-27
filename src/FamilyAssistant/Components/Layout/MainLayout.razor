@@ -71,15 +71,22 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Resolve user from HA Ingress header (available during prerender/initial request)
+        var haUserId = HttpContextAccessor.HttpContext?.Request.Headers["X-Remote-User-Id"].ToString();
+
+        // Load per-user preferences from HA config storage file
+        if (!string.IsNullOrEmpty(haUserId))
+        {
+            ThemeService.RefreshForUser(haUserId);
+        }
+
         _isDarkMode = ResolveDarkMode();
         _theme = BuildTheme(ThemeService.EffectivePrimaryColor, ThemeService.EffectiveAccentColor);
         ThemeService.ThemeChanged += OnThemeChanged;
         UserContext.CurrentPersonChanged += OnCurrentPersonChanged;
 
-        // Resolve user from HA Ingress header (available during prerender/initial request)
         if (!UserContext.IsAuthenticated)
         {
-            var haUserId = HttpContextAccessor.HttpContext?.Request.Headers["X-Remote-User-Id"].ToString();
             if (!string.IsNullOrEmpty(haUserId))
             {
                 await UserContext.ResolveFromHaUserIdAsync(haUserId);

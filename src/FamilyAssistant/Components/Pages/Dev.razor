@@ -4,6 +4,7 @@
 @inject FamilyAssistant.Services.AddonOptionsService AddonOptions
 @inject FamilyAssistant.Services.UserContextService UserContext
 @inject FamilyAssistant.Services.HaThemeService ThemeService
+@inject FamilyAssistant.Services.HaUserPreferencesService PrefsService
 @inject FamilyAssistant.Services.IHomeAssistantService HaService
 @inject FamilyAssistant.Data.AppDbContext Db
 @inject ISnackbar Snackbar
@@ -148,6 +149,14 @@
                     </td>
                 </tr>
                 <tr>
+                    <td><strong>Current User ID</strong></td>
+                    <td style="font-family:monospace; font-size:0.85rem;">@(ThemeService.CurrentUserId ?? "— nicht gesetzt —")</td>
+                </tr>
+                <tr>
+                    <td><strong>Prefs File Path</strong></td>
+                    <td style="word-break:break-all; font-family:monospace; font-size:0.8rem;">@(ThemeService.LastFilePath ?? "—")</td>
+                </tr>
+                <tr>
                     <td><strong>Sprache (HA)</strong></td>
                     <td>@(ThemeService.Language ?? "— nicht gelesen —")</td>
                 </tr>
@@ -195,15 +204,6 @@
                     <td><strong>Refresh Status</strong></td>
                     <td style="font-size:0.85rem;">@(ThemeService.LastRefreshStatus ?? "—")</td>
                 </tr>
-                @if (ThemeService.LastRawResponse is not null)
-                {
-                    <tr>
-                        <td><strong>Raw Response</strong></td>
-                        <td style="word-break:break-all; font-family:monospace; font-size:0.75rem; max-width:300px; overflow:auto;">
-                            @ThemeService.LastRawResponse
-                        </td>
-                    </tr>
-                }
                 <tr>
                     <td><strong>WebSocket</strong></td>
                     <td>
@@ -215,22 +215,26 @@
                 </tr>
                 <tr>
                     <td><strong>SUPERVISOR_TOKEN</strong></td>
-                    <td>@(string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SUPERVISOR_TOKEN")) ? "— nicht gesetzt —" : "✓ vorhanden")</td>
+                    <td>@(string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SUPERVISOR_TOKEN")) ? "— nicht gesetzt —" : "vorhanden")</td>
                 </tr>
             </tbody>
         </MudSimpleTable>
-        @if (!HaService.IsWebSocketConnected)
-        {
-            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
-                WebSocket nicht verbunden — Sprache/Theme/Farben können nicht aus HA gelesen werden.
-            </MudAlert>
-        }
-        <div class="d-flex mt-3">
+        <div class="d-flex gap-2 mt-3">
             <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshHaConfig">
-                Refresh
+                Refresh Preferences
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Filled.Code" OnClick="ShowRawPrefsFile">
+                Raw File
             </MudButton>
         </div>
+        @if (_rawPrefsFileContent is not null)
+        {
+            <MudPaper Outlined="true" Class="pa-2 mt-2" Style="max-height:200px; overflow:auto;">
+                <pre style="font-size:0.7rem; margin:0; white-space:pre-wrap;">@_rawPrefsFileContent</pre>
+            </MudPaper>
+        }
     </MudCard>
 
     @* ── Info ── *@
@@ -242,6 +246,7 @@
                 <tr><td><strong>@L["Dev.InfoDbPath"]</strong></td><td style="word-break:break-all;">@_dbPath</td></tr>
                 <tr><td><strong>@L["Dev.InfoPersons"]</strong></td><td>@_persons.Count</td></tr>
                 <tr><td><strong>.NET</strong></td><td>@System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription</td></tr>
+                <tr><td><strong>Build</strong></td><td>@GetBuildTimestamp()</td></tr>
             </tbody>
         </MudSimpleTable>
     </MudCard>
@@ -579,6 +584,13 @@
         ThemeService.NotifyChanged();
     }
 
+    private static string GetBuildTimestamp()
+    {
+        var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+        var buildTime = File.GetLastWriteTimeUtc(assembly.Location);
+        return buildTime.ToString("yyyy-MM-dd HH:mm:ss") + " UTC";
+    }
+
     private async Task OnPersonChanged(int? personId)
     {
         _selectedPersonId = personId;
@@ -620,24 +632,19 @@
         _haPersonsForMapping = allHaPersons.Where(p => !string.IsNullOrEmpty(p.UserId)).ToList();
     }
 
-    private async Task RefreshHaConfig()
-    {
-        if (!HaService.IsWebSocketConnected)
-        {
-            try
-            {
-                await HaService.ConnectWebSocketAsync();
-                Snackbar.Add("WebSocket verbunden!", Severity.Success);
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"WebSocket-Verbindung fehlgeschlagen: {ex.Message}", Severity.Error);
-                StateHasChanged();
-                return;
-            }
-        }
+    private string? _rawPrefsFileContent;
 
-        await ThemeService.RefreshAsync();
+    private void RefreshHaConfig()
+    {
+        ThemeService.RefreshForUser(ThemeService.CurrentUserId);
+        _rawPrefsFileContent = null;
+        StateHasChanged();
+    }
+
+    private void ShowRawPrefsFile()
+    {
+        _rawPrefsFileContent = PrefsService.GetRawFileContent(ThemeService.CurrentUserId)
+            ?? "File not found or not readable.";
         StateHasChanged();
     }
 
@@ -712,12 +719,62 @@
     private string _eventLogFilter = "";
     private System.Threading.Timer? _eventLogTimer;
 
-    private IEnumerable<HaEventLogEntry> FilteredEvents =>
-        string.IsNullOrWhiteSpace(_eventLogFilter)
-            ? _eventLogEntries
-            : _eventLogEntries.Where(e =>
-                e.EntityId.Contains(_eventLogFilter, StringComparison.OrdinalIgnoreCase) ||
-                e.EventType.Contains(_eventLogFilter, StringComparison.OrdinalIgnoreCase));
+    private IEnumerable<HaEventLogEntry> FilteredEvents
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_eventLogFilter))
+                return _eventLogEntries;
+
+            var terms = _eventLogFilter.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+            return _eventLogEntries.Where(e =>
+            {
+                var hasIncludes = false;
+                var anyIncludeMatched = false;
+
+                foreach (var term in terms)
+                {
+                    var isExclude = term.StartsWith('-') && term.Length > 1;
+                    var raw = isExclude ? term[1..] : term;
+
+                    // Parse field prefix: type: or info:
+                    string? field = null;
+                    var value = raw;
+                    var colonIdx = raw.IndexOf(':');
+                    if (colonIdx > 0 && colonIdx < raw.Length - 1)
+                    {
+                        var prefix = raw[..colonIdx].ToLowerInvariant();
+                        if (prefix is "type" or "info")
+                        {
+                            field = prefix;
+                            value = raw[(colonIdx + 1)..];
+                        }
+                    }
+
+                    var matches = field switch
+                    {
+                        "type" => e.EventType.Contains(value, StringComparison.OrdinalIgnoreCase),
+                        "info" => e.EntityId.Contains(value, StringComparison.OrdinalIgnoreCase),
+                        _ => e.EventType.Contains(value, StringComparison.OrdinalIgnoreCase)
+                             || e.EntityId.Contains(value, StringComparison.OrdinalIgnoreCase)
+                    };
+
+                    if (isExclude)
+                    {
+                        if (matches) return false;
+                    }
+                    else
+                    {
+                        hasIncludes = true;
+                        if (matches) anyIncludeMatched = true;
+                    }
+                }
+
+                return !hasIncludes || anyIncludeMatched;
+            });
+        }
+    }
 
     private async Task ToggleEventLog(bool enabled)
     {

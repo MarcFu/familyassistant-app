@@ -80,7 +80,10 @@ builder.Services.AddSingleton<AttachmentStorageService>();
 // Backup/restore (DB + task attachments)
 builder.Services.AddSingleton<BackupRestoreService>();
 
-// HA Theme (reads dark/light from HA WebSocket)
+// HA per-user preferences (reads from /config/.storage/ files)
+builder.Services.AddSingleton<HaUserPreferencesService>();
+
+// HA Theme (wraps preferences for UI consumption + dev overrides)
 builder.Services.AddSingleton<HaThemeService>();
 
 // Background services

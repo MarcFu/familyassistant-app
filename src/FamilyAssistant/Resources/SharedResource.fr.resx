@@ -273,7 +273,7 @@
   <data name="Settings.System.EventLogLive"><value>En direct</value></data>
   <data name="Settings.System.EventLogOff"><value>Désactivé</value></data>
   <data name="Settings.System.EventLogFilter"><value>Filtre (Entité)</value></data>
-  <data name="Settings.System.EventLogFilterPlaceholder"><value>ex. sensor. ou light.salon</value></data>
+  <data name="Settings.System.EventLogFilterPlaceholder"><value>ex. light, -type:state_changed, -info:unavailable</value></data>
   <data name="Settings.System.EntityInfo"><value>Entité / Info</value></data>
   <data name="Settings.System.Old"><value>Ancien</value></data>
   <data name="Settings.System.New"><value>Nouveau</value></data>

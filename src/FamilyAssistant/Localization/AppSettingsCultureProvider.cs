@@ -7,7 +7,7 @@ namespace FamilyAssistant.Localization;
 
 /// <summary>
 /// Determines the app language. Priority:
-/// 1. HA user preference (from HaThemeService, synced via WebSocket)
+/// 1. HA user preference (from config storage file via HaUserPreferencesService)
 /// 2. Manual override in AppSettings DB table
 /// 3. Fallback: "en"
 /// </summary>
@@ -18,12 +18,18 @@ public class AppSettingsCultureProvider : RequestCultureProvider
 
     public override async Task<ProviderCultureResult?> DetermineProviderCultureResult(HttpContext httpContext)
     {
-        // Priority 1: HA language (already resolved by WebSocket background service)
-        var themeService = httpContext.RequestServices.GetRequiredService<HaThemeService>();
-        if (!string.IsNullOrEmpty(themeService.Language))
+        // Priority 1: HA per-user language (read from config storage file)
+        var prefsService = httpContext.RequestServices.GetRequiredService<HaUserPreferencesService>();
+        var haUserId = httpContext.Request.Headers["X-Remote-User-Id"].ToString();
+
+        if (!string.IsNullOrEmpty(haUserId))
         {
-            var haLang = NormalizeLanguageCode(themeService.Language);
-            return new ProviderCultureResult(haLang, haLang);
+            var prefs = prefsService.GetPreferences(haUserId);
+            if (!string.IsNullOrEmpty(prefs?.Language))
+            {
+                var haLang = NormalizeLanguageCode(prefs.Language);
+                return new ProviderCultureResult(haLang, haLang);
+            }
         }
 
         // Priority 2: Manual DB override

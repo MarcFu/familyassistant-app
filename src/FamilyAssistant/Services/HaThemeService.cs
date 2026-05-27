@@ -1,25 +1,50 @@
 namespace FamilyAssistant.Services;
 
 /// <summary>
-/// Reads the HA frontend user preferences (theme, colors, language) and exposes them to the UI.
-/// Builds on IHomeAssistantService (WebSocket proxy).
+/// Provides theme/language preferences to the UI. Reads per-user data from HA config storage files
+/// via HaUserPreferencesService. Maintains dev overrides for testing.
 /// </summary>
 public class HaThemeService
 {
-    private readonly IHomeAssistantService _haService;
+    private readonly HaUserPreferencesService _prefsService;
     private readonly ILogger<HaThemeService> _logger;
 
-    public HaThemeService(IHomeAssistantService haService, ILogger<HaThemeService> logger)
+    public HaThemeService(HaUserPreferencesService prefsService, ILogger<HaThemeService> logger)
     {
-        _haService = haService;
+        _prefsService = prefsService;
         _logger = logger;
     }
 
+    // ─── Current user context ────────────────────────────────────────
+
+    /// <summary>
+    /// The HA user ID currently loaded (set by MainLayout on init from X-Remote-User-Id header).
+    /// </summary>
+    public string? CurrentUserId { get; private set; }
+
+    // ─── HA-sourced preferences ──────────────────────────────────────
+
     /// <summary>
     /// Dark mode preference from HA: true=dark, false=light, null=auto (follow OS preference).
-    /// Defaults to null (auto) until WebSocket delivers real value.
     /// </summary>
     public bool? DarkModePreference { get; private set; }
+
+    /// <summary>
+    /// Primary color from HA user settings (hex string, e.g. "#03a9f4"). Null = use app default.
+    /// </summary>
+    public string? PrimaryColor { get; private set; }
+
+    /// <summary>
+    /// Accent color from HA user settings (hex string, e.g. "#ff9800"). Null = use app default.
+    /// </summary>
+    public string? AccentColor { get; private set; }
+
+    /// <summary>
+    /// Language from HA user settings (ISO code, e.g. "de", "en"). Null = use app default.
+    /// </summary>
+    public string? Language { get; private set; }
+
+    // ─── Dev overrides ───────────────────────────────────────────────
 
     /// <summary>
     /// Dev override for dark mode. Has highest priority over HA preference.
@@ -43,6 +68,8 @@ public class HaThemeService
     /// </summary>
     public string? DevAccentColorOverride { get; set; }
 
+    // ─── Effective values (dev override > HA > defaults) ─────────────
+
     /// <summary>
     /// Gets the effective dark mode preference considering dev override > HA preference > null (auto).
     /// </summary>
@@ -64,23 +91,10 @@ public class HaThemeService
     /// </summary>
     public string? EffectiveAccentColor => DevAccentColorOverride ?? AccentColor;
 
-    /// <summary>
-    /// Primary color from HA user settings (hex string, e.g. "#03a9f4"). Null = use app default.
-    /// </summary>
-    public string? PrimaryColor { get; private set; }
+    // ─── Diagnostics ─────────────────────────────────────────────────
 
     /// <summary>
-    /// Accent color from HA user settings (hex string, e.g. "#ff9800"). Null = use app default.
-    /// </summary>
-    public string? AccentColor { get; private set; }
-
-    /// <summary>
-    /// Language from HA user settings (ISO code, e.g. "de", "en"). Null = use app default.
-    /// </summary>
-    public string? Language { get; private set; }
-
-    /// <summary>
-    /// Timestamp of the last successful refresh from HA.
+    /// Timestamp of the last successful refresh.
     /// </summary>
     public DateTime? LastRefreshed { get; private set; }
 
@@ -90,9 +104,11 @@ public class HaThemeService
     public string? LastRefreshStatus { get; private set; }
 
     /// <summary>
-    /// Raw JSON response from last GetUserFrontendDataAsync call (for diagnostics).
+    /// File path being read (for diagnostics).
     /// </summary>
-    public string? LastRawResponse { get; private set; }
+    public string? LastFilePath { get; private set; }
+
+    // ─── Events ──────────────────────────────────────────────────────
 
     /// <summary>
     /// Fired when any preference changes (theme, colors, language, or dev override).
@@ -104,71 +120,82 @@ public class HaThemeService
     /// </summary>
     public void NotifyChanged() => ThemeChanged?.Invoke();
 
+    // ─── Core methods ────────────────────────────────────────────────
+
     /// <summary>
-    /// Reads all frontend preferences from HA via WebSocket. Called after WebSocket connects and periodically.
+    /// Reads preferences for a specific HA user from the config storage file.
+    /// Called by MainLayout on circuit init with the user ID from X-Remote-User-Id header.
     /// </summary>
-    public async Task RefreshAsync(CancellationToken ct = default)
+    public void RefreshForUser(string? userId)
     {
-        try
+        CurrentUserId = userId;
+        LastFilePath = _prefsService.GetFilePath(userId);
+
+        if (string.IsNullOrEmpty(userId))
         {
-            if (!_haService.IsWebSocketConnected)
-            {
-                LastRefreshStatus = "WebSocket not connected";
-                LastRefreshed = DateTime.Now;
-                _logger.LogWarning("ThemeService.RefreshAsync skipped: WebSocket not connected");
-                return;
-            }
-
-            var data = await _haService.GetUserFrontendDataAsync(ct);
-            LastRawResponse = data.RawJson;
-            var changed = false;
-
-            if (data.DarkMode != DarkModePreference)
-            {
-                DarkModePreference = data.DarkMode;
-                changed = true;
-            }
-
-            if (data.PrimaryColor != PrimaryColor)
-            {
-                PrimaryColor = data.PrimaryColor;
-                changed = true;
-            }
-
-            if (data.AccentColor != AccentColor)
-            {
-                AccentColor = data.AccentColor;
-                changed = true;
-            }
-
-            if (data.Language != Language)
-            {
-                Language = data.Language;
-                changed = true;
-            }
-
+            LastRefreshStatus = "No user ID available";
             LastRefreshed = DateTime.Now;
-
-            if (changed)
-            {
-                LastRefreshStatus = $"OK (lang={Language ?? "null"}, dark={DarkModePreference?.ToString() ?? "auto"})";
-                _logger.LogInformation("Theme updated from HA: darkMode={DarkMode}, primary={Primary}, accent={Accent}, lang={Lang}",
-                    DarkModePreference?.ToString() ?? "auto", PrimaryColor, AccentColor, Language);
-                ThemeChanged?.Invoke();
-            }
-            else
-            {
-                var hasData = Language != null || PrimaryColor != null || AccentColor != null || DarkModePreference != null;
-                LastRefreshStatus = hasData
-                    ? $"OK, no change (lang={Language})"
-                    : "OK but all values null — HA returned empty data";
-            }
+            _logger.LogDebug("ThemeService: No user ID, keeping defaults");
+            return;
         }
-        catch (Exception ex)
+
+        var prefs = _prefsService.Refresh(userId);
+        ApplyPreferences(prefs, userId);
+    }
+
+    /// <summary>
+    /// Gets preferences from cache (non-blocking). Used by AppSettingsCultureProvider on each request.
+    /// </summary>
+    public UserPreferences? GetCachedPreferences(string? userId)
+    {
+        return _prefsService.GetPreferences(userId);
+    }
+
+    private void ApplyPreferences(UserPreferences? prefs, string userId)
+    {
+        LastRefreshed = DateTime.Now;
+
+        if (prefs is null)
         {
-            LastRefreshStatus = $"Error: {ex.Message}";
-            LastRefreshed = DateTime.Now;
-            _logger.LogWarning(ex, "Failed to read frontend data from HA, keeping current state");
+            LastRefreshStatus = _prefsService.GetLastStatus(userId) ?? "No preferences found";
+            _logger.LogDebug("No preferences available for user {UserId}", userId);
+            return;
+        }
+
+        var changed = false;
+
+        if (prefs.DarkMode != DarkModePreference)
+        {
+            DarkModePreference = prefs.DarkMode;
+            changed = true;
+        }
+
+        if (prefs.PrimaryColor != PrimaryColor)
+        {
+            PrimaryColor = prefs.PrimaryColor;
+            changed = true;
+        }
+
+        if (prefs.AccentColor != AccentColor)
+        {
+            AccentColor = prefs.AccentColor;
+            changed = true;
+        }
+
+        if (prefs.Language != Language)
+        {
+            Language = prefs.Language;
+            changed = true;
+        }
+
+        LastRefreshStatus = $"OK (lang={Language ?? "null"}, dark={DarkModePreference?.ToString() ?? "auto"})";
+
+        if (changed)
+        {
+            _logger.LogInformation(
+                "Theme updated from file for user {UserId}: lang={Lang}, dark={Dark}, primary={Primary}, accent={Accent}",
+                userId, Language, DarkModePreference?.ToString() ?? "auto", PrimaryColor, AccentColor);
+            ThemeChanged?.Invoke();
         }
     }
 }

@@ -1,3 +1,12 @@
+## 0.1.7
+
+- **Breaking change**: User preferences (language, theme, colors) now read directly from HA config storage files instead of WebSocket API
+- New: `config:ro` mount — add-on reads `/config/.storage/frontend.user_data_{userId}` for per-user settings
+- New: Build timestamp shown on Dev page
+- Dev page: shows file path, user ID, and "Raw File" button for preference diagnostics
+- Removed: WebSocket-based theme/language refresh (never worked with SUPERVISOR_TOKEN)
+- Simplified: `HaWebSocketStartupService` only manages WS connection (still needed for event triggers)
+
 ## 0.1.6
 
 - Fix: HA language/theme not read — `frontend/get_user_data` response has a `value` wrapper that was not unwrapped

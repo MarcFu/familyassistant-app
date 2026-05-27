@@ -26,18 +26,7 @@ public record HaEntityRegistryInfo(
 /// </summary>
 public record HaEventLogEntry(DateTime Timestamp, string EventType, string EntityId, string? OldState, string? NewState, string? RawData);
 
-/// <summary>
-/// DTO containing the user's frontend preferences from HA (theme, language, colors).
-/// Retrieved via WebSocket command: frontend/get_user_data (key: "core").
-/// DarkMode: true=forced dark, false=forced light, null=auto (follow OS preference).
-/// </summary>
-public record HaUserFrontendData(
-    bool? DarkMode,
-    string? Language,
-    string? PrimaryColor,
-    string? AccentColor,
-    string? RawJson = null
-);
+
 
 /// <summary>
 /// Callback for state change subscriptions.
@@ -113,25 +102,6 @@ public interface IHomeAssistantService
     /// Fired when WebSocket connection is successfully established (initial or reconnect).
     /// </summary>
     event Action? WebSocketConnected;
-
-    /// <summary>
-    /// Get the HA frontend dark mode preference for the token owner.
-    /// Uses WebSocket command: frontend/get_user_data (key: "core").
-    /// </summary>
-    Task<bool> GetUserDarkModeAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Get the HA frontend language preference for the token owner.
-    /// Uses WebSocket command: frontend/get_user_data (key: "core").
-    /// Returns ISO language code (e.g., "de", "en") or null if unavailable.
-    /// </summary>
-    Task<string?> GetUserLanguageAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Get all user frontend preferences (dark mode, language, colors) in a single WebSocket call.
-    /// Uses WebSocket command: frontend/get_user_data (key: "core").
-    /// </summary>
-    Task<HaUserFrontendData> GetUserFrontendDataAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Subscribe to state changes for a specific entity.

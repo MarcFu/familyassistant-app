@@ -277,7 +277,7 @@
   <data name="Settings.System.EventLogLive"><value>Live</value></data>
   <data name="Settings.System.EventLogOff"><value>Aus</value></data>
   <data name="Settings.System.EventLogFilter"><value>Filter (Entity)</value></data>
-  <data name="Settings.System.EventLogFilterPlaceholder"><value>z.B. sensor. oder light.wohnzimmer</value></data>
+  <data name="Settings.System.EventLogFilterPlaceholder"><value>z.B. light, -type:state_changed, -info:unavailable</value></data>
   <data name="Settings.System.EntityInfo"><value>Entity / Info</value></data>
   <data name="Settings.System.Old"><value>Alt</value></data>
   <data name="Settings.System.New"><value>Neu</value></data>
