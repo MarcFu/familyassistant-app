@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using FamilyAssistant.Data;
 using FamilyAssistant.Models;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,12 @@ public class HaEventTriggerService : BackgroundService
     // Active subscriptions: entityId → subscriptionId
     private readonly Dictionary<string, int> _activeSubscriptions = new();
     private readonly object _lock = new();
+
+    // BUG-004: In-memory debounce to prevent race conditions when concurrent callbacks fire.
+    // The DB-based debounce has a TOCTOU race (time-of-check-to-time-of-use) because
+    // Task.Run dispatches callbacks concurrently. ConcurrentDictionary + TryUpdate provides
+    // atomic compare-and-swap to ensure only one callback wins per debounce window.
+    private readonly ConcurrentDictionary<int, DateTime> _lastFiredAt = new();
 
     public HaEventTriggerService(
         IHomeAssistantService haService,
@@ -61,6 +68,7 @@ public class HaEventTriggerService : BackgroundService
     /// <summary>
     /// Loads active triggers from DB and ensures we have WebSocket subscriptions for each entity.
     /// Removes subscriptions for entities that no longer have active triggers.
+    /// Also seeds the in-memory debounce state from DB for restart resilience.
     /// </summary>
     private async Task SyncSubscriptionsAsync(CancellationToken ct)
     {
@@ -77,6 +85,12 @@ public class HaEventTriggerService : BackgroundService
                 .Select(t => t.EntityId)
                 .Distinct()
                 .ToHashSet();
+
+            // Seed in-memory debounce state from DB (survives app restarts)
+            foreach (var trigger in activeTriggers.Where(t => t.LastTriggeredAt.HasValue))
+            {
+                _lastFiredAt.TryAdd(trigger.Id, trigger.LastTriggeredAt!.Value);
+            }
 
             // Remove subscriptions for entities no longer needed
             List<KeyValuePair<string, int>> toRemove;
@@ -129,6 +143,7 @@ public class HaEventTriggerService : BackgroundService
     /// <summary>
     /// Called when a subscribed entity changes state.
     /// Checks all active triggers for this entity and fires if conditions met.
+    /// Uses in-memory CAS debounce to prevent race conditions from concurrent callbacks.
     /// </summary>
     private async Task OnStateChanged(string entityId, string oldState, string newState)
     {
@@ -150,21 +165,46 @@ public class HaEventTriggerService : BackgroundService
                 if (!string.Equals(trigger.TriggerState, newState, StringComparison.OrdinalIgnoreCase))
                     continue;
 
-                // Debounce: skip if triggered too recently
-                if (trigger.LastTriggeredAt.HasValue)
+                // BUG-004: In-memory debounce with atomic CAS (prevents race condition)
+                var now = DateTime.UtcNow;
+                var debounceMinutes = Math.Max(trigger.DebounceMins, 1); // At least 1 minute
+
+                while (true)
                 {
-                    var elapsed = DateTime.UtcNow - trigger.LastTriggeredAt.Value;
-                    if (elapsed.TotalMinutes < trigger.DebounceMins)
+                    var lastFired = _lastFiredAt.GetOrAdd(trigger.Id, DateTime.MinValue);
+                    if ((now - lastFired).TotalMinutes < debounceMinutes)
                     {
                         _logger.LogDebug(
-                            "Trigger '{Name}' debounced ({Elapsed:F0}min < {Debounce}min)",
-                            trigger.Name, elapsed.TotalMinutes, trigger.DebounceMins);
-                        continue;
+                            "Trigger '{Name}' debounced in-memory ({Elapsed:F1}min < {Debounce}min)",
+                            trigger.Name, (now - lastFired).TotalMinutes, debounceMinutes);
+                        break;
                     }
-                }
 
-                // Fire: create ad-hoc task
-                await CreateTriggeredTaskAsync(db, trigger);
+                    // Atomic claim: only one concurrent caller wins this
+                    if (_lastFiredAt.TryUpdate(trigger.Id, now, lastFired))
+                    {
+                        // We won — check DB for duplicate as safety net, then create task
+                        var duplicateExists = await db.ChoreTasks.AnyAsync(t =>
+                            t.ChoreId == trigger.ChoreId
+                            && t.DueDate == DateOnly.FromDateTime(DateTime.Today)
+                            && t.Status == ChoreTaskStatus.Open
+                            && t.OccurrenceLabel == $"Trigger: {trigger.Name}");
+
+                        if (duplicateExists)
+                        {
+                            _logger.LogDebug(
+                                "Trigger '{Name}' skipped: open task already exists for today",
+                                trigger.Name);
+                        }
+                        else
+                        {
+                            await CreateTriggeredTaskAsync(db, trigger);
+                        }
+                        break;
+                    }
+
+                    // Another thread updated concurrently, retry the check
+                }
             }
         }
         catch (Exception ex)
@@ -189,7 +229,7 @@ public class HaEventTriggerService : BackgroundService
 
         db.ChoreTasks.Add(task);
 
-        // Update last triggered timestamp
+        // Update last triggered timestamp (persists across restarts)
         trigger.LastTriggeredAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync();

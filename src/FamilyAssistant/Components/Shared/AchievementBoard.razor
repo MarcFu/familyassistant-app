@@ -1,9 +1,14 @@
 @using FamilyAssistant.Services
+@inject IJSRuntime JS
+@inject IBrowserViewportService ViewportService
+@implements IBrowserViewportObserver
+@implements IAsyncDisposable
 
-<MudPaper Outlined="true" Class="achievement-board-panel pa-4">
-    <div class="achievement-board-scroll">
-        <div class="achievement-board" style="@_boardStyle">
-            @foreach (var row in Definitions.Chunk(10).Select((Achievements, Index) => new { Achievements, Index }))
+@if (_isReady)
+{
+    <MudPaper Outlined="true" Class="achievement-board-panel pa-4">
+        <div class="achievement-board" style="@_boardStyle" @ref="_boardRef">
+            @foreach (var row in Definitions.Chunk(_columns).Select((Achievements, Index) => new { Achievements, Index }))
             {
                 <div class="achievement-board-row @(row.Index % 2 == 1 ? "achievement-board-row-offset" : null)">
                     @foreach (var achievement in row.Achievements)
@@ -17,8 +22,21 @@
                 </div>
             }
         </div>
-    </div>
-</MudPaper>
+    </MudPaper>
+}
+else
+{
+    <MudPaper Outlined="true" Class="achievement-board-panel pa-4">
+        <div class="achievement-board" @ref="_boardRef">
+            <div class="achievement-board-loading">
+                @for (var i = 0; i < 5; i++)
+                {
+                    <div class="achievement-board-loading-hex"></div>
+                }
+            </div>
+        </div>
+    </MudPaper>
+}
 
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<AchievementDefinition> Definitions { get; set; } = [];
@@ -27,28 +45,80 @@
     [Parameter] public EventCallback<AchievementDefinition> OnBadgeClick { get; set; }
 
     /// <summary>
-    /// Optional height ratio override for dev slider (e.g., "59px").
-    /// When null, uses the CSS default.
+    /// Optional height override for dev slider (e.g., "59px").
     /// </summary>
     [Parameter] public string? BoardHexHeightOverride { get; set; }
 
+    private ElementReference _boardRef;
+    private bool _isReady;
+    private int _columns = 10;
     private string? _boardStyle;
+
+    // Badge layout constants (must match CSS)
+    private const int HexWidth = 56;
+    private const int HexGap = 5;
+    private const int RowOffset = 31; // half hex + half gap for honeycomb offset
+
+    // ── IBrowserViewportObserver ──
+    public Guid Id { get; } = Guid.NewGuid();
+    public MudBlazor.Services.ResizeOptions ResizeOptions => new()
+    {
+        ReportRate = 200,
+        NotifyOnBreakpointOnly = false
+    };
 
     protected override void OnParametersSet()
     {
-        if (BoardHexHeightOverride is not null)
+        _boardStyle = BuildBoardStyle();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
         {
-            // Parse px value for row-step calculation
-            if (double.TryParse(BoardHexHeightOverride.Replace("px", ""), out var h))
-            {
-                var step = Math.Round(h * 0.75 + 5, 1);
-                _boardStyle = $"--achievement-board-hex-h: {h}px; --achievement-board-row-step: {step}px;";
-            }
+            // First measurement — element is in DOM, Blazor circuit is ready
+            await MeasureAndUpdate();
+            await ViewportService.SubscribeAsync(this, fireImmediately: false);
         }
-        else
+    }
+
+    public async Task NotifyBrowserViewportChangeAsync(BrowserViewportEventArgs args)
+    {
+        // Small delay to let browser layout settle after resize/drawer toggle
+        await Task.Delay(60);
+        await MeasureAndUpdate();
+    }
+
+    private async Task MeasureAndUpdate()
+    {
+        var width = await JS.InvokeAsync<int>("measureWidth", _boardRef);
+
+        if (width <= 0) return; // Element not visible yet — skip
+
+        var cols = Math.Max(3, (width - RowOffset) / (HexWidth + HexGap));
+        var changed = cols != _columns || !_isReady;
+
+        _columns = cols;
+        _isReady = true;
+
+        if (changed)
         {
-            _boardStyle = null;
+            await InvokeAsync(StateHasChanged);
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await ViewportService.UnsubscribeAsync(this);
+    }
+
+    private string? BuildBoardStyle()
+    {
+        if (BoardHexHeightOverride is null) return null;
+        if (!double.TryParse(BoardHexHeightOverride.Replace("px", ""), out var h)) return null;
+
+        var step = Math.Round(h * 0.75 + 5, 1);
+        return $"--achievement-board-hex-h: {h}px; --achievement-board-row-step: {step}px;";
     }
 
     private string GetTitle(AchievementDefinition achievement, bool isLocked)

@@ -5,12 +5,13 @@
 @inject IStringLocalizer<SharedResource> L
 @using FamilyAssistant.Services
 
-<PageTitle>Profil</PageTitle>
+<PageTitle>@L["PageTitle.Profile"]</PageTitle>
 
 @if (!UserContext.IsAuthenticated)
 {
     <MudAlert Severity="Severity.Info" Class="mb-4">
-        Kein aktiver Benutzer. Bitte in den Einstellungen eine Person auswählen.
+        @L["Profile.NoUser"]
+        <MudLink Href="settings" Color="Color.Primary" Class="ml-1">@L["Profile.NoUser.Link"]</MudLink>
     </MudAlert>
 }
 else
@@ -33,7 +34,7 @@ else
         <div>
             <MudText Typo="Typo.h5">@person.Name</MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary">
-                @person.Role · @person.Credits Credits
+                @person.Role · @person.Credits @L["Common.Credits"]
             </MudText>
         </div>
     </div>
@@ -43,19 +44,19 @@ else
         <div class="d-flex gap-3 flex-wrap mb-4">
             <MudPaper Outlined="true" Class="pa-3 text-center" Style="min-width:100px;">
                 <MudText Typo="Typo.h4">@_evaluation.Stats.TotalCompleted</MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Tasks erledigt</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Profile.Stats.Completed"]</MudText>
             </MudPaper>
             <MudPaper Outlined="true" Class="pa-3 text-center" Style="min-width:100px;">
                 <MudText Typo="Typo.h4">@_evaluation.Stats.CurrentStreak</MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Aktuelle Serie</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Profile.Stats.CurrentStreak"]</MudText>
             </MudPaper>
             <MudPaper Outlined="true" Class="pa-3 text-center" Style="min-width:100px;">
                 <MudText Typo="Typo.h4">@_evaluation.Stats.LongestStreak</MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Rekord-Serie</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Profile.Stats.LongestStreak"]</MudText>
             </MudPaper>
             <MudPaper Outlined="true" Class="pa-3 text-center" Style="min-width:100px;">
                 <MudText Typo="Typo.h4">@_evaluation.Stats.UnlockedBadges/@_evaluation.Stats.TotalBadges</MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Achievements</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Profile.Stats.Achievements"]</MudText>
             </MudPaper>
         </div>
 
@@ -82,11 +83,11 @@ else
                 </MudText>
                 @if (!_evaluation.UnlockedKeys.Contains(_selectedAchievement.Key))
                 {
-                    <MudChip T="string" Color="Color.Default" Size="Size.Small" Class="mt-2">Noch nicht freigeschaltet</MudChip>
+                    <MudChip T="string" Color="Color.Default" Size="Size.Small" Class="mt-2">@L["Profile.Badge.Locked"]</MudChip>
                 }
                 else
                 {
-                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Class="mt-2">Freigeschaltet</MudChip>
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Class="mt-2">@L["Profile.Badge.Unlocked"]</MudChip>
                 }
             </MudPaper>
         }

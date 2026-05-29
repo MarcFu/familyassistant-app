@@ -3,6 +3,7 @@
 @inject FamilyAssistant.Data.AppDbContext Db
 @inject FamilyAssistant.Services.BackupRestoreService BackupService
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @inject IStringLocalizer<SharedResource> L
 @inject NavigationManager Navigation
 @using Microsoft.AspNetCore.Components.Forms
@@ -12,11 +13,11 @@
 
 <PageTitle>@L["PageTitle.Admin"]</PageTitle>
 
-<MudText Typo="Typo.h5" Class="mb-3">@L["Admin.Title"]</MudText>
+<MudText Typo="Typo.h4" Class="mb-4">@L["Admin.Title"]</MudText>
 
-<MudTabs Elevation="1" Rounded="true" Class="mb-4" ActivePanelIndex="_activeTabIndex" ActivePanelIndexChanged="OnTabChanged">
+<MudTabs Elevation="0" Rounded="true" PanelClass="pa-4 pt-6" Class="mb-4" ActivePanelIndex="_activeTabIndex" ActivePanelIndexChanged="OnTabChanged">
     <MudTabPanel Text="@L["Admin.Tab.Correction"].Value" Icon="@Icons.Material.Filled.Edit">
-        <div class="pa-4" style="max-width:500px;">
+        <div style="max-width:500px;">
             <MudSelect T="int?" @bind-Value="_selectedPersonId" Label="@L["Common.Person"].Value" Variant="Variant.Filled"
                        Margin="Margin.Dense" Class="mb-3" Required="true">
                 @foreach (var person in _persons)
@@ -41,7 +42,7 @@
     </MudTabPanel>
 
     <MudTabPanel Text="@L["Admin.Tab.Log"].Value" Icon="@Icons.Material.Filled.Receipt">
-        <div class="pa-4">
+        <div>
             <div class="d-flex align-center gap-3 mb-3">
                 <MudSelect T="int?" Value="_logFilterPersonId" ValueChanged="OnLogPersonFilterChanged"
                            Label="@L["Common.Person"].Value" Variant="Variant.Filled"
@@ -96,7 +97,7 @@
     </MudTabPanel>
 
     <MudTabPanel Text="@L["Admin.Tab.Reset"].Value" Icon="@Icons.Material.Filled.RestartAlt">
-        <div class="pa-4" style="max-width:500px;">
+        <div style="max-width:500px;">
             <MudAlert Severity="Severity.Warning" Class="mb-3">
                 @L["Admin.ResetWarning"]
             </MudAlert>
@@ -121,7 +122,7 @@
     </MudTabPanel>
 
     <MudTabPanel Text="@L["Admin.Tab.Backup"].Value" Icon="@Icons.Material.Filled.Backup">
-        <div class="pa-4" style="max-width:640px;">
+        <div style="max-width:640px;">
             <MudText Typo="Typo.h6" Class="mb-2">@L["Admin.Backup.Title"]</MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
                 @L["Admin.Backup.Description"]
@@ -254,7 +255,14 @@
     {
         _activeTabIndex = newIndex;
         var slug = newIndex >= 0 && newIndex < TabSlugs.Length ? TabSlugs[newIndex] : TabSlugs[0];
-        Navigation.NavigateTo($"admin?tab={slug}", replace: true, forceLoad: false);
+        try
+        {
+            Navigation.NavigateTo($"admin?tab={slug}", replace: true, forceLoad: false);
+        }
+        catch (NavigationException)
+        {
+            // Swallow: MudTabs fires ActivePanelIndexChanged during SSR disposal
+        }
     }
 
     private async Task SubmitCorrectionAsync()
@@ -295,6 +303,18 @@
         if (_resetPersonId is null) return;
 
         var person = _persons.First(p => p.Id == _resetPersonId);
+
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.Message, string.Format(L["Common.Confirm.ResetCredits"], person.Name, _resetTarget) },
+            { x => x.ConfirmText, L["Common.Confirm.Yes"].Value },
+            { x => x.CancelText, L["Common.Cancel"].Value },
+            { x => x.Destructive, true }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(L["Common.Confirm.Title"].Value, parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
         var diff = _resetTarget - person.Credits;
 
         if (diff == 0)
@@ -408,6 +428,17 @@
 
     private async Task DeleteBackupAsync(string fileName)
     {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.Message, string.Format(L["Common.Confirm.DeleteBackup"], fileName) },
+            { x => x.ConfirmText, L["Common.Confirm.Yes"].Value },
+            { x => x.CancelText, L["Common.Cancel"].Value },
+            { x => x.Destructive, true }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(L["Common.Confirm.Title"].Value, parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
         _deletingBackupFileName = fileName;
         try
         {

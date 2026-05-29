@@ -99,7 +99,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _chores = await Db.Chores.Where(c => c.IsActive).OrderBy(c => c.Name).ToListAsync();
+        _chores = await Db.Chores.Where(c => c.IsActive && !c.IsDeleted).OrderBy(c => c.Name).ToListAsync();
         _persons = await Db.Persons.Where(p => p.Role != PersonRole.Guest).OrderBy(p => p.Name).ToListAsync();
 
         // Role-based default: Parents/Admins typically assign to others, Children track their own work

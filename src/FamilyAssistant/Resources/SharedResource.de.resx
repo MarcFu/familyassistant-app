@@ -57,6 +57,8 @@
   <data name="Common.Description"><value>Beschreibung</value></data>
   <data name="Common.Status"><value>Status</value></data>
   <data name="Common.Actions"><value>Aktionen</value></data>
+  <data name="Common.Edit"><value>Bearbeiten</value></data>
+  <data name="Common.Guest"><value>Gast</value></data>
   <data name="Common.Person"><value>Person</value></data>
   <data name="Common.Filter"><value>Filter</value></data>
   <data name="Common.Done"><value>Erledigt</value></data>
@@ -79,11 +81,22 @@
   <data name="Common.Date.Today"><value>Heute</value></data>
   <data name="Common.Date.Yesterday"><value>Gestern</value></data>
   <data name="Common.Date.Tomorrow"><value>Morgen</value></data>
+  <data name="Common.Confirm.Title"><value>Bestätigung</value></data>
+  <data name="Common.Confirm.CancelTask"><value>Task „{0}" wirklich abbrechen? Diese Aktion kann nicht rückgängig gemacht werden.</value></data>
+  <data name="Common.Confirm.DeletePerson"><value>Person „{0}" wirklich entfernen? Alle verknüpften Tasks, Credits und Geräte gehen verloren.</value></data>
+  <data name="Common.Confirm.DeleteTrigger"><value>Trigger „{0}" wirklich löschen?</value></data>
+  <data name="Common.Confirm.DeleteDevice"><value>Gerät „{0}" wirklich löschen? Verknüpfte Regeln könnten betroffen sein.</value></data>
+  <data name="Common.Confirm.DeleteRule"><value>Regel „{0}" wirklich löschen?</value></data>
+  <data name="Common.Confirm.ResetCredits"><value>Credits von „{0}" wirklich auf {1} zurücksetzen?</value></data>
+  <data name="Common.Confirm.DeleteBackup"><value>Backup „{0}" wirklich löschen?</value></data>
+  <data name="Common.Confirm.DeleteChore"><value>Aufgabe „{0}" wirklich löschen? Bestehende Tasks bleiben erhalten.</value></data>
+  <data name="Common.Confirm.Yes"><value>Ja, fortfahren</value></data>
 
   <!-- ═══ Roles ═══ -->
   <data name="Role.Admin"><value>Admin</value></data>
   <data name="Role.Parent"><value>Elternteil</value></data>
   <data name="Role.Child"><value>Kind</value></data>
+  <data name="Role.Guest"><value>Gast</value></data>
 
   <!-- ═══ Validation ═══ -->
   <data name="Validation.NameRequired"><value>Name ist erforderlich</value></data>
@@ -112,6 +125,17 @@
   <data name="PageTitle.Admin"><value>Admin - FamilyAssistant</value></data>
   <data name="PageTitle.Dev"><value>Dev - FamilyAssistant</value></data>
   <data name="PageTitle.Setup"><value>Einrichtung - FamilyAssistant</value></data>
+  <data name="PageTitle.Profile"><value>Profil - FamilyAssistant</value></data>
+
+  <!-- ═══ Profile ═══ -->
+  <data name="Profile.NoUser"><value>Kein aktiver Benutzer. Bitte in den Einstellungen eine Person auswählen.</value></data>
+  <data name="Profile.NoUser.Link"><value>Zu den Einstellungen</value></data>
+  <data name="Profile.Stats.Completed"><value>Tasks erledigt</value></data>
+  <data name="Profile.Stats.CurrentStreak"><value>Aktuelle Serie</value></data>
+  <data name="Profile.Stats.LongestStreak"><value>Rekord-Serie</value></data>
+  <data name="Profile.Stats.Achievements"><value>Achievements</value></data>
+  <data name="Profile.Badge.Locked"><value>Noch nicht freigeschaltet</value></data>
+  <data name="Profile.Badge.Unlocked"><value>Freigeschaltet</value></data>
 
   <!-- ═══ Home / Dashboard ═══ -->
   <data name="Home.Title"><value>Dashboard</value></data>
@@ -172,6 +196,8 @@
   <data name="Tasks.NoResults"><value>Keine Aufgaben für den gewählten Filter.</value></data>
   <data name="Tasks.CommentsTooltip"><value>Kommentare / Fotos</value></data>
   <data name="Tasks.Claim"><value>Übernehmen</value></data>
+  <data name="Tasks.Unclaim"><value>Zurückgeben</value></data>
+  <data name="Tasks.ApproachingDeadline"><value>Bald fällig</value></data>
   <data name="Tasks.Confirm"><value>Bestätigen</value></data>
   <data name="Tasks.NoUser"><value>Kein Benutzer angemeldet. Bitte unter Dev eine Person wählen.</value></data>
   <data name="Tasks.LoggedInAs"><value>Angemeldet als: {0} ({1})</value></data>
@@ -179,6 +205,7 @@
   <data name="Tasks.Snackbar.Generated"><value>{0} neue Aufgaben generiert.</value></data>
   <data name="Tasks.Snackbar.AdHocCreated"><value>Ad-hoc Aufgabe erstellt!</value></data>
   <data name="Tasks.Snackbar.Claimed"><value>Aufgabe übernommen!</value></data>
+  <data name="Tasks.Snackbar.Unclaimed"><value>Aufgabe zurückgegeben.</value></data>
   <data name="Tasks.Snackbar.Completed"><value>Erledigt! +{0} Credits für {1}</value></data>
   <data name="Tasks.Snackbar.PendingConfirmation"><value>Erledigt! Wartet auf Bestätigung durch Eltern.</value></data>
   <data name="Tasks.Snackbar.Confirmed"><value>Bestätigt! +{0} Credits für {1}</value></data>
@@ -201,6 +228,10 @@
   <data name="Chores.Column.Schedule"><value>Zeitplan</value></data>
   <data name="Chores.CreateTooltip"><value>Neue Aufgabe</value></data>
   <data name="Chores.NoSchedule"><value>Kein Zeitplan</value></data>
+  <data name="Chores.NoFilterResults"><value>Keine Hausarbeiten passen zum aktuellen Filter.</value></data>
+  <data name="Chores.Snackbar.Activated"><value>„{0}" aktiviert.</value></data>
+  <data name="Chores.Snackbar.Deactivated"><value>„{0}" deaktiviert.</value></data>
+  <data name="Chores.Snackbar.Deleted"><value>„{0}" gelöscht.</value></data>
 
   <!-- ═══ Schedule ═══ -->
   <data name="Schedule.Daily"><value>Täglich</value></data>
@@ -291,6 +322,9 @@
   <data name="Settings.Snackbar.TriggerCreated"><value>Trigger '{0}' erstellt.</value></data>
   <data name="Settings.Snackbar.TriggerSaved"><value>Trigger '{0}' gespeichert.</value></data>
   <data name="Settings.Snackbar.TriggerDeleted"><value>Trigger '{0}' gelöscht.</value></data>
+  <data name="Settings.Snackbar.RoleChanged"><value>Rolle von {0} geändert zu {1}.</value></data>
+  <data name="Settings.Snackbar.Paused"><value>{0} pausiert.</value></data>
+  <data name="Settings.Snackbar.Resumed"><value>{0} wieder aktiv.</value></data>
   <data name="Settings.Snackbar.RestOk"><value>REST API erreichbar ({0}ms)</value></data>
   <data name="Settings.Snackbar.RestFailed"><value>REST API nicht erreichbar</value></data>
   <data name="Settings.Snackbar.EventMonitorFailed"><value>Event-Monitor konnte nicht gestartet werden: {0}</value></data>
@@ -303,7 +337,7 @@
   <data name="Settings.Snackbar.PointsUnitSaved"><value>Einheitenname gespeichert.</value></data>
 
   <!-- ═══ Admin ═══ -->
-  <data name="Admin.Title"><value>Admin — Buchungskorrekturen</value></data>
+  <data name="Admin.Title"><value>Admin</value></data>
   <data name="Admin.Tab.Correction"><value>Korrektur buchen</value></data>
   <data name="Admin.Tab.Log"><value>Transaktions-Log</value></data>
   <data name="Admin.Tab.Reset"><value>Credits zurücksetzen</value></data>
@@ -463,6 +497,11 @@
   <data name="Internet.AddDevice"><value>Gerät hinzufügen</value></data>
   <data name="Internet.Rules"><value>Regeln</value></data>
   <data name="Internet.NoRules"><value>Noch keine Regeln angelegt.</value></data>
+  <data name="Internet.NoChildren"><value>Keine Kinder konfiguriert. Internet-Regeln gelten nur für Kinder.</value></data>
+  <data name="Internet.NoChildren.Link"><value>Personen verwalten</value></data>
+  <data name="Internet.AddRule.NeedsDevice"><value>Zuerst ein Gerät hinzufügen</value></data>
+  <data name="Internet.Column.Mode"><value>Modus</value></data>
+  <data name="Internet.Column.Details"><value>Details</value></data>
   <data name="Internet.AddRule"><value>Regel hinzufügen</value></data>
   <data name="Internet.ConfirmDeleteDevice"><value>Gerät "{0}" wirklich löschen? Zugehörige Regel-Verknüpfungen werden ebenfalls entfernt.</value></data>
   <data name="Internet.ConfirmDeleteRule"><value>Regel "{0}" wirklich löschen?</value></data>

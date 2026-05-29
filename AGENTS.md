@@ -6,12 +6,23 @@
 - Ausnahme: C#/.NET-Projektstruktur folgt PascalCase-Konvention (Namespaces = Ordnernamen, z.B. `Services/`, `Models/`).
 - Für Config-Dateien, Scripts, Docker, YAML, Workflows etc. immer lowercase + kebab-case (z.B. `build.yaml`, `family-assistant/`).
 
+## Kohärenz-Validierung (PFLICHT)
+
+- **Vor jeder Änderung MUSS der Kontext geprüft werden.** Bevor ein Name, Label, Titel oder Wert geändert wird: prüfe, ob die Änderung zum Gesamtkontext passt (z.B. Seite hat mehrere Tabs → Titel darf nicht nur einen Tab beschreiben).
+- **Nachbar-Code lesen.** Vor einer Änderung an einer Datei immer die direkt zusammenhängenden Stellen prüfen (andere Tabs, zugehörige Localization-Keys in DE/EN/FR, aufrufende Komponenten).
+- **Localization: Alle 3 Sprachen gleichzeitig prüfen.** Wenn ein Resx-Key geändert wird, müssen DE, EN und FR semantisch konsistent sein.
+- **Benennung: Nicht raten, sondern verifizieren.** Wenn ein bestehendes Label/Titel umbenannt wird, muss der tatsächliche Inhalt/Scope der Seite/Komponente geprüft werden (z.B. Admin-Seite hat 4 Tabs → Titel bleibt "Admin", nicht "Admin — [ein Tab-Name]").
+
 ## Bug-Tracking
 
 - Bugs werden fortlaufend nummeriert: `BUG-001`, `BUG-002`, ...
 - **Commit-Messages:** `fix(BUG-003): Kurzbeschreibung`
 - **Code-Kommentar** am Fix (wenn nicht offensichtlich): `// BUG-003: Erklärung`
 - Nummerierung wird projektübergreifend fortgesetzt, nie zurückgesetzt.
+
+## Bekannte & gelöste Fehler (nicht erneut diskutieren)
+
+- **BUG-005 (SSR Prerender-Fehler):** MudTabs feuert `ActivePanelIndexChanged` während der SSR-Disposal-Phase. Das erzeugt eine `NavigationException` (in `OnTabChanged`) und eine `InvalidOperationException` (JS-Interop in `DisposeAsync`). **Fix:** `try/catch (NavigationException)` in allen `OnTabChanged`-Methoden (Settings, Admin, InternetRules) + `catch (InvalidOperationException)` in `MainLayout.DisposeAsync`. Dieses Log-Muster ist harmlos und vollständig unterdrückt — nie wieder behandeln.
 
 ## Datenbank & Enums
 

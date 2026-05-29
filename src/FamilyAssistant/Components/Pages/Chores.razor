@@ -2,16 +2,21 @@
 @rendermode InteractiveServer
 @inject FamilyAssistant.Data.AppDbContext Db
 @inject IDialogService DialogService
+@inject ISnackbar Snackbar
 @inject IStringLocalizer<SharedResource> L
 @using Microsoft.EntityFrameworkCore
 
 <PageTitle>@L["PageTitle.Chores"]</PageTitle>
 
-<MudText Typo="Typo.h5" Class="mb-3">@L["Chores.Title"]</MudText>
+<MudText Typo="Typo.h4" Class="mb-4">@L["Chores.Title"]</MudText>
 
 @if (_loading)
 {
     <MudProgressCircular Indeterminate="true" />
+}
+else if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@string.Format(L["Common.Snackbar.Error"], _loadError)</MudAlert>
 }
 else if (_chores.Count == 0)
 {
@@ -22,12 +27,12 @@ else if (_chores.Count == 0)
 else
 {
     @* ── Filter Toolbar ── *@
-    <div class="d-flex align-center flex-wrap gap-3 mb-3">
-        <MudTextField @bind-Value="_search" Placeholder="@L["Common.Search"].Value" Adornment="Adornment.Start"
-                      AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
-                      Clearable="true"
-                      Variant="Variant.Filled" Margin="Margin.Dense"
-                      Style="max-width:250px;" />
+    <div class="d-flex align-center flex-wrap gap-3 mb-4">
+        <DebouncedTextField Value="@_search" ValueChanged="@(v => { _search = v; StateHasChanged(); })"
+                            Placeholder="@L["Common.Search"].Value" Adornment="Adornment.Start"
+                            AdornmentIcon="@Icons.Material.Filled.Search"
+                            Variant="Variant.Filled" Margin="Margin.Dense"
+                            Style="max-width:250px;" />
         <MudSelect T="ChoreFilter" @bind-Value="_filter" Variant="Variant.Filled"
                    Margin="Margin.Dense" Style="max-width:200px;">
             <MudSelectItem Value="ChoreFilter.All">@L["Common.All"]</MudSelectItem>
@@ -38,6 +43,12 @@ else
     </div>
 
     @* ── Responsive List ── *@
+    @if (!_filteredChores.Any())
+    {
+        <MudAlert Severity="Severity.Info">@L["Chores.NoFilterResults"]</MudAlert>
+    }
+    else
+    {
     <ResponsiveList Items="_filteredChores" Context="chore"
                     GridColumns="40px minmax(150px, 3fr) minmax(100px, 2fr) 80px auto"
                     Grouped="true">
@@ -66,13 +77,22 @@ else
             </MudText>
             <MudChip T="string" Size="Size.Small" Color="Color.Success">@chore.CreditsReward</MudChip>
             <div class="d-flex align-center gap-1">
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
-                               OnClick="@(() => OpenEditDialog(chore))" />
-                <MudIconButton Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small"
-                               OnClick="@(() => OpenScheduleDialog(chore))" />
+                <MudTooltip Text="@L["Common.Edit"].Value">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                   OnClick="@(() => OpenEditDialog(chore))" aria-label="@($"{L["Common.Edit"]} {chore.Name}")" />
+                </MudTooltip>
+                <MudTooltip Text="@L["Chores.Column.Schedule"].Value">
+                    <MudIconButton Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small"
+                                   OnClick="@(() => OpenScheduleDialog(chore))" aria-label="@($"{L["Chores.Column.Schedule"]} {chore.Name}")" />
+                </MudTooltip>
                 <MudSwitch T="bool" Value="chore.IsActive" ValueChanged="@(v => ToggleActive(chore, v))"
                            Color="Color.Primary" Size="Size.Small"
-                           Class="d-inline-flex" Style="margin:0;" />
+                           Class="d-inline-flex" Style="margin:0;"
+                           aria-label="@($"{L["Common.Active"]} {chore.Name}")" />
+                <MudTooltip Text="@L["Common.Delete"].Value">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                   OnClick="@(() => DeleteChoreAsync(chore))" aria-label="@($"{L["Common.Delete"]} {chore.Name}")" />
+                </MudTooltip>
             </div>
         </GridTemplate>
         <CardTemplate>
@@ -96,16 +116,26 @@ else
                 <MudChip T="string" Size="Size.Small" Color="Color.Success">@chore.CreditsReward Credits</MudChip>
             </div>
             <div class="d-flex align-center justify-end flex-wrap gap-1" style="row-gap: 6px;">
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
-                               OnClick="@(() => OpenEditDialog(chore))" />
-                <MudIconButton Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small"
-                               OnClick="@(() => OpenScheduleDialog(chore))" />
+                <MudTooltip Text="@L["Common.Edit"].Value">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                   OnClick="@(() => OpenEditDialog(chore))" aria-label="@($"{L["Common.Edit"]} {chore.Name}")" />
+                </MudTooltip>
+                <MudTooltip Text="@L["Chores.Column.Schedule"].Value">
+                    <MudIconButton Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small"
+                                   OnClick="@(() => OpenScheduleDialog(chore))" aria-label="@($"{L["Chores.Column.Schedule"]} {chore.Name}")" />
+                </MudTooltip>
                 <MudSwitch T="bool" Value="chore.IsActive" ValueChanged="@(v => ToggleActive(chore, v))"
                            Color="Color.Primary" Size="Size.Small"
-                           Class="d-inline-flex" Style="margin:0;" />
+                           Class="d-inline-flex" Style="margin:0;"
+                           aria-label="@($"{L["Common.Active"]} {chore.Name}")" />
+                <MudTooltip Text="@L["Common.Delete"].Value">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                   OnClick="@(() => DeleteChoreAsync(chore))" aria-label="@($"{L["Common.Delete"]} {chore.Name}")" />
+                </MudTooltip>
             </div>
         </CardTemplate>
     </ResponsiveList>
+    }
 }
 
 @* ── FAB: Extended FAB (Icon + Label), HA standard ── *@
@@ -115,6 +145,7 @@ else
 
 @code {
     private bool _loading = true;
+    private string? _loadError;
     private List<Chore> _chores = [];
     private string _search = "";
     private ChoreFilter _filter = ChoreFilter.Active;
@@ -123,13 +154,24 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadChoresAsync();
-        _loading = false;
+        try
+        {
+            await LoadChoresAsync();
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     private async Task LoadChoresAsync()
     {
         _chores = await Db.Chores
+            .Where(c => !c.IsDeleted)
             .Include(c => c.Schedules)
                 .ThenInclude(s => s.DefaultPerson)
             .OrderBy(c => c.Name)
@@ -196,6 +238,31 @@ else
     {
         chore.IsActive = active;
         await Db.SaveChangesAsync();
+        var msg = active ? L["Chores.Snackbar.Activated"] : L["Chores.Snackbar.Deactivated"];
+        Snackbar.Add(string.Format(msg, chore.Name), Severity.Success);
+        StateHasChanged();
+    }
+
+    private async Task DeleteChoreAsync(Chore chore)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.Message, string.Format(L["Common.Confirm.DeleteChore"], chore.Name) },
+            { x => x.ConfirmText, L["Common.Confirm.Yes"].Value },
+            { x => x.CancelText, L["Common.Cancel"].Value },
+            { x => x.Destructive, true }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(L["Common.Confirm.Title"].Value, parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
+        chore.IsDeleted = true;
+        chore.DeletedAt = DateTime.UtcNow;
+        chore.IsActive = false;
+        await Db.SaveChangesAsync();
+
+        _chores.Remove(chore);
+        Snackbar.Add(string.Format(L["Chores.Snackbar.Deleted"], chore.Name), Severity.Success);
         StateHasChanged();
     }
 

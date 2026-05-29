@@ -1,5 +1,6 @@
 @inject FamilyAssistant.Data.AppDbContext Db
 @inject FamilyAssistant.Services.ChoreIconGenerator IconGenerator
+@inject IServiceScopeFactory ScopeFactory
 @inject IDialogService DialogService
 @inject IStringLocalizer<SharedResource> L
 
@@ -172,12 +173,13 @@
     {
         if (string.IsNullOrWhiteSpace(_name)) return;
 
-        // Auto-generate icon if none set
+        // Use instant keyword-based icon if none set (never blocks on Ollama)
         if (_icon is null)
         {
-            _icon = await IconGenerator.GenerateIconAsync(_name, _description);
+            _icon = FamilyAssistant.Services.KeywordIconMapper.GetIcon(_name, _description);
         }
 
+        int choreId;
         if (IsNew)
         {
             var chore = new Chore
@@ -190,6 +192,8 @@
                 IsActive = true
             };
             Db.Chores.Add(chore);
+            await Db.SaveChangesAsync();
+            choreId = chore.Id;
         }
         else if (Chore is not null)
         {
@@ -198,10 +202,53 @@
             Chore.CreditsReward = _creditsReward;
             Chore.Icon = _icon;
             Chore.IconColor = _iconColor;
+            await Db.SaveChangesAsync();
+            choreId = Chore.Id;
+        }
+        else
+        {
+            return;
         }
 
-        await Db.SaveChangesAsync();
         MudDialog.Close(DialogResult.Ok(true));
+
+        // Fire-and-forget: upgrade icon via Ollama in background (if configured)
+        if (_icon is null || _icon == FamilyAssistant.Services.KeywordIconMapper.GetIcon(_name, _description))
+        {
+            var name = _name.Trim();
+            var desc = string.IsNullOrWhiteSpace(_description) ? null : _description?.Trim();
+            _ = Task.Run(async () => await UpgradeIconInBackgroundAsync(choreId, name, desc));
+        }
+    }
+
+    /// <summary>
+    /// Attempts to generate a better icon via Ollama in the background.
+    /// Uses a new DI scope (dialog's DbContext is no longer valid after close).
+    /// </summary>
+    private async Task UpgradeIconInBackgroundAsync(int choreId, string name, string? description)
+    {
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FamilyAssistant.Data.AppDbContext>();
+            var generator = scope.ServiceProvider.GetRequiredService<FamilyAssistant.Services.ChoreIconGenerator>();
+
+            var mode = await generator.GetIconModeAsync();
+            if (mode == FamilyAssistant.Models.IconMode.Keyword) return; // Already have keyword icon
+
+            var newIcon = await generator.GenerateIconAsync(name, description);
+            if (newIcon is null) return;
+
+            var chore = await db.Chores.FindAsync(choreId);
+            if (chore is null) return;
+
+            chore.Icon = newIcon;
+            await db.SaveChangesAsync();
+        }
+        catch
+        {
+            // Best-effort: if Ollama fails, the keyword icon remains
+        }
     }
 
     private void Cancel() => MudDialog.Cancel();

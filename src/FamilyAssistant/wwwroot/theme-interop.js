@@ -1,4 +1,10 @@
 /**
+ * Returns the clientWidth of an element (0 if null/undefined).
+ * Used by AchievementBoard for pixel-perfect column calculation.
+ */
+window.measureWidth = function (el) { return el ? el.clientWidth : 0; };
+
+/**
  * Theme interop: detects OS dark mode preference, watches for changes,
  * and manages theme CSS classes on <html>.
  */

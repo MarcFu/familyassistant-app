@@ -1,6 +1,6 @@
 @page "/dev"
 @rendermode InteractiveServer
-@implements IDisposable
+@implements IAsyncDisposable
 @inject FamilyAssistant.Services.AddonOptionsService AddonOptions
 @inject FamilyAssistant.Services.UserContextService UserContext
 @inject FamilyAssistant.Services.HaThemeService ThemeService
@@ -313,6 +313,44 @@
     </MudExpansionPanels>
 </div>
 
+@* ── Deleted Chores ── *@
+<MudExpansionPanels Class="mb-4">
+    <MudExpansionPanel Text="@($"Deleted Chores ({_deletedChores.Count})")" IsInitiallyExpanded="false" IsExpandedChanged="OnDeletedChoresExpanded">
+        @if (_deletedChores.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">Keine gelöschten Chores vorhanden.</MudAlert>
+        }
+        else
+        {
+            <MudSimpleTable Dense="true" Elevation="0" Hover="true">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Icon</th>
+                        <th>Gelöscht am</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var chore in _deletedChores)
+                    {
+                        <tr>
+                            <td><s>@chore.Name</s></td>
+                            <td><MudIcon Icon="@chore.Icon" Size="Size.Small" /></td>
+                            <td>@chore.DeletedAt?.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>
+                                <MudIconButton Icon="@Icons.Material.Filled.RestoreFromTrash"
+                                               Size="Size.Small" Color="Color.Success"
+                                               OnClick="@(() => RestoreChoreAsync(chore))" />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
 @* ── Live Event Log ── *@
 <MudPaper Outlined="true" Class="pa-4 mb-4">
     <div class="d-flex align-center gap-3 mb-3">
@@ -398,7 +436,7 @@
 
 <MudExpansionPanels Class="mb-4">
     <MudExpansionPanel Text="Achievement Badges" IsInitiallyExpanded="false">
-        <MudPaper Elevation="0" Class="achievement-board-panel pa-2 mb-4">
+        <MudPaper Elevation="0" Class="pa-2 mb-4">
             <div class="d-flex align-center justify-space-between gap-3 flex-wrap mb-3">
                 <div>
                     <MudText Typo="Typo.h6">Badgeboard</MudText>
@@ -417,28 +455,38 @@
             </div>
 
             <div class="d-flex align-center gap-3 mb-3 flex-wrap">
-                <MudText Typo="Typo.body2" Style="min-width:90px;">Ratio 1:@(_hexHeightRatio.ToString("F2"))</MudText>
+                <MudText Typo="Typo.body2" Style="min-width:90px;"><b>Ratio 1:@(_hexHeightRatio.ToString("F2"))</b></MudText>
                 <MudSlider T="double" Value="_hexHeightRatio" ValueChanged="v => { _hexHeightRatio = v; }" Min="1.0" Max="1.25" Step="0.01" Style="max-width:280px;" />
                 <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="() => _hexHeightRatio = 1.05">1:1.05</MudButton>
                 <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="() => _hexHeightRatio = 1.1547">1:√3:2</MudButton>
             </div>
-
-            <div class="achievement-board-scroll">
-                <div class="achievement-board" style="@GetBoardRatioStyle()">
-                    @foreach (var row in _achievements.Chunk(10).Select((Achievements, Index) => new { Achievements, Index }))
-                    {
-                        <div class="achievement-board-row @(row.Index % 2 == 1 ? "achievement-board-row-offset" : null)">
-                            @foreach (var achievement in row.Achievements)
-                            {
-                                var isLocked = IsBadgeboardLocked(achievement);
-                                <div class="achievement-board-slot" title="@GetBoardTitle(achievement, isLocked)">
-                                    <AchievementHex Definition="achievement" IsLocked="isLocked" />
-                                </div>
-                            }
-                        </div>
-                    }
-                </div>
+            <div class="d-flex gap-4 mb-3 flex-wrap">
+                <MudText Typo="Typo.body2">
+                    Board: W=56px · H=@(Math.Round(56 * _hexHeightRatio, 1))px · Step=@(Math.Round(56 * _hexHeightRatio * 0.75 + 5, 1))px
+                </MudText>
+                <MudText Typo="Typo.body2">
+                    Preview: W=104px · H=@(Math.Round(104 * _hexHeightRatio, 1))px
+                </MudText>
             </div>
+        </MudPaper>
+
+        <AchievementBoard Definitions="_achievements"
+                          UnlockedKeys="_unlockedAchievementKeys"
+                          Facts="_achievementFacts"
+                          BoardHexHeightOverride="@GetBoardHexHeightOverride()" />
+
+        <MudPaper Elevation="0" Class="pa-2 mb-4">
+            <div class="d-flex align-center gap-3 flex-wrap">
+                <MudText Typo="Typo.h6">Unlock Animation Test</MudText>
+                <MudButton Variant="Variant.Outlined" Color="Color.Warning" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.PlayArrow"
+                           OnClick="TestUnlockAnimation">
+                    Animation testen
+                </MudButton>
+            </div>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                Zeigt die Unlock-Animation für ein zufälliges unlocked Achievement.
+            </MudText>
         </MudPaper>
 
         <MudPaper Elevation="0" Class="pa-2 mb-4">
@@ -490,8 +538,11 @@
     </MudExpansionPanel>
 </MudExpansionPanels>
 
+<AchievementUnlockOverlay @ref="_unlockOverlay" HeightOverride="@GetPreviewRatioStyle()" />
+
 @code {
     private List<Person> _persons = [];
+    private List<Chore> _deletedChores = [];
     private int? _selectedPersonId;
     private string _mode = "Development";
     private string _dbPath = "";
@@ -503,6 +554,7 @@
     private string _themeMode = "auto"; // "auto", "light", "dark"
     private MudColor _devPrimaryColor = new("#03a9f4");
     private MudColor _devAccentColor = new("#ff9800");
+    private AchievementUnlockOverlay? _unlockOverlay;
 
     [Inject] private IAchievementService AchievementSvc { get; set; } = null!;
 
@@ -525,11 +577,20 @@
             null => "auto"
         };
 
-        // Restore color overrides
-        var effectivePrimary = ThemeService.EffectivePrimaryColor ?? "#03a9f4";
-        var effectiveAccent = ThemeService.EffectiveAccentColor ?? "#ff9800";
-        _devPrimaryColor = new MudColor(effectivePrimary);
-        _devAccentColor = new MudColor(effectiveAccent);
+        // Restore color overrides — use effective colors (HA value when no override set)
+        // Also try direct file read as fallback (in case ThemeService wasn't populated yet)
+        var effectivePrimary = ThemeService.EffectivePrimaryColor;
+        var effectiveAccent = ThemeService.EffectiveAccentColor;
+
+        if (string.IsNullOrEmpty(effectivePrimary) || string.IsNullOrEmpty(effectiveAccent))
+        {
+            var prefs = PrefsService.GetPreferences(ThemeService.CurrentUserId);
+            effectivePrimary ??= prefs?.PrimaryColor;
+            effectiveAccent ??= prefs?.AccentColor;
+        }
+
+        _devPrimaryColor = new MudColor(effectivePrimary ?? "#03a9f4");
+        _devAccentColor = new MudColor(effectiveAccent ?? "#ff9800");
 
         _persons = await Db.Persons.OrderBy(p => p.Name).ToListAsync();
         _selectedPersonId = UserContext.CurrentPersonId;
@@ -632,6 +693,29 @@
         _haPersonsForMapping = allHaPersons.Where(p => !string.IsNullOrEmpty(p.UserId)).ToList();
     }
 
+    // ─── Deleted Chores ──────────────────────────────────────────────
+
+    private async Task OnDeletedChoresExpanded(bool expanded)
+    {
+        if (expanded)
+        {
+            _deletedChores = await Db.Chores
+                .Where(c => c.IsDeleted)
+                .OrderByDescending(c => c.DeletedAt)
+                .ToListAsync();
+        }
+    }
+
+    private async Task RestoreChoreAsync(Chore chore)
+    {
+        chore.IsDeleted = false;
+        chore.DeletedAt = null;
+        chore.IsActive = true;
+        await Db.SaveChangesAsync();
+        _deletedChores.Remove(chore);
+        Snackbar.Add($"'{chore.Name}' wiederhergestellt", Severity.Success);
+    }
+
     private string? _rawPrefsFileContent;
 
     private void RefreshHaConfig()
@@ -673,30 +757,34 @@
 
     private bool IsBadgeboardLocked(AchievementDefinition achievement) => !_unlockedAchievementKeys.Contains(achievement.Key);
 
+    private async Task TestUnlockAnimation()
+    {
+        if (_unlockOverlay is null) return;
+
+        // Pick up to 3 random achievements (mix of tiers) for the test
+        var random = new Random();
+        var samples = _achievements
+            .OrderBy(_ => random.Next())
+            .Take(3)
+            .ToList();
+
+        await _unlockOverlay.ShowTestAsync(samples);
+    }
+
     private string GetAchievementFact(AchievementDefinition achievement)
     {
         return _achievementFacts.TryGetValue(achievement.Key, out var fact) ? fact : "Noch nicht ausgewertet.";
     }
 
-    private string GetBoardRatioStyle()
+    private string GetBoardHexHeightOverride()
     {
-        var h = Math.Round(56 * _hexHeightRatio, 1);
-        var step = Math.Round(h * 0.75 + 5, 1);
-        return $"--achievement-board-hex-h: {h}px; --achievement-board-row-step: {step}px;";
+        return $"{Math.Round(56 * _hexHeightRatio, 1)}px";
     }
 
     private string GetPreviewRatioStyle()
     {
         var h = Math.Round(104 * _hexHeightRatio, 1);
         return $"{h}px";
-    }
-
-    private string GetBoardTitle(AchievementDefinition achievement, bool isLocked)
-    {
-        if (isLocked && achievement.IsHidden)
-            return "Hidden Achievement";
-        var state = isLocked ? "Locked" : "Unlocked";
-        return $"{state}: {achievement.Name} - {GetAchievementFact(achievement)}";
     }
 
     private static Color GetCategoryColor(string category) => category switch
@@ -826,12 +914,12 @@
         _eventLogEntries = [];
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         _eventLogTimer?.Dispose();
         if (_eventLogEnabled)
         {
-            _ = HaService.StopEventMonitorAsync();
+            await HaService.StopEventMonitorAsync();
         }
     }
 }

@@ -12,6 +12,7 @@ ingress: true
 ingress_port: 8099
 panel_icon: "mdi:home-heart"  # TODO: Review icon choice (2026-06-08)
 panel_title: "FamilyAssistant"
+panel_admin: false
 map:
   - type: data
     read_only: false

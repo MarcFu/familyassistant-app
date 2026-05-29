@@ -15,7 +15,7 @@
 
 <PageTitle>@L["PageTitle.Tasks"]</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-2">@L["Tasks.Title"]</MudText>
+<MudText Typo="Typo.h4" Class="mb-4">@L["Tasks.Title"]</MudText>
 
 @if (_loading)
 {
@@ -38,7 +38,7 @@ else
                     <div class="d-flex flex-wrap gap-2 pa-2">
                         @foreach (var task in FilteredPermanentTasks)
                         {
-                            <MudPaper Outlined="true" Style="width: 200px; min-height: 120px; display: flex; flex-direction: column;">
+                            <MudPaper Outlined="true" Style="flex: 1 1 180px; min-width: 160px; max-width: 240px; min-height: 120px; display: flex; flex-direction: column;">
                                 <div class="pa-3" style="flex: 1; overflow: hidden;">
                                     <div class="d-flex align-start gap-2">
                                         @if (task.Chore.Icon is not null)
@@ -82,7 +82,7 @@ else
     }
 
     @* ── Filter-Toolbar ── *@
-    <div class="d-flex align-center mb-4 flex-wrap gap-2">
+    <div class="d-flex align-center mb-4 flex-wrap gap-3">
         <DebouncedTextField Value="@_searchText" ValueChanged="OnSearchChanged"
                             Placeholder="@L["Tasks.Search.Placeholder"].Value"
                             Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
@@ -98,7 +98,7 @@ else
         </MudSelect>
 
         <MudSelect T="TaskFilter" Value="_filter" ValueChanged="OnFilterChanged"
-                   Label="Filter" Variant="Variant.Filled"
+                   Label="@L["Common.Filter"].Value" Variant="Variant.Filled"
                    Dense="true" Margin="Margin.Dense" Class="mr-2" Style="min-width: 180px;">
             <MudSelectItem Value="TaskFilter.Today">@L["Tasks.Filter.Today"]</MudSelectItem>
             <MudSelectItem Value="TaskFilter.Open">@L["Tasks.Filter.Open"]</MudSelectItem>
@@ -153,9 +153,9 @@ else
                 @FormatDate(dateGroup.Key)
             </MudText>
 
-            @foreach (var task in dateGroup.OrderBy(t => GetSortPriority(t.Status)).ThenBy(t => t.Chore.Name).ThenBy(t => t.OccurrenceIndex))
+            @foreach (var task in dateGroup.OrderBy(t => t.ClaimedByPersonId == ActivePersonId ? 0 : 1).ThenBy(t => GetSortPriority(t.Status)).ThenByDescending(t => t.CreatedAt).ThenBy(t => t.Chore.Name))
             {
-                <MudPaper Outlined="true" Class="pa-3 mb-2">
+                <MudPaper Outlined="true" Class="pa-3 mb-3">
                     <div class="d-flex align-center mb-2" style="min-width: 0;">
                         <MudIcon Icon="@GetStatusIcon(task.Status)" Size="Size.Small"
                                  Color="@GetStatusColor(task.Status)" Class="mr-2" Style="flex-shrink: 0;" />
@@ -189,17 +189,31 @@ else
                                 {
                                     <span class="mud-text-secondary"> (@task.OccurrenceLabel)</span>
                                 }
+                                @if (IsTriggeredTask(task))
+                                {
+                                    <span class="mud-text-secondary" style="font-size: 0.75rem; margin-left: 4px;">
+                                        @task.CreatedAt.ToLocalTime().ToString("HH:mm")
+                                    </span>
+                                }
                             </MudText>
                         </div>
                     </div>
                     <div class="d-flex align-center justify-space-between flex-wrap" style="row-gap: 6px;">
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">
-                            @GetAssignmentText(task)
+                        <div class="d-flex align-center flex-wrap" style="row-gap: 4px;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @GetAssignmentText(task)
+                            </MudText>
                             <MudChip T="string" Size="Size.Small" Color="Color.Success" Class="ml-1">
                                 @task.Chore.CreditsReward Credits
                             </MudChip>
-                        </MudText>
-                        <div class="d-flex flex-wrap gap-1">
+                            @if (IsApproachingDeadline(task))
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Class="ml-1">
+                                    @L["Tasks.ApproachingDeadline"]
+                                </MudChip>
+                            }
+                        </div>
+                        <div class="d-flex flex-wrap gap-1 align-center">
                             @* Comment button — always visible *@
                             <MudTooltip Text="@L["Tasks.CommentsTooltip"].Value">
                                 <MudBadge Content="@task.Comments.Count" Overlap="true" Color="Color.Info"
@@ -235,13 +249,27 @@ else
                                     @L["Tasks.Confirm"]
                                 </MudButton>
                             }
-                            @if (task.Status != ChoreTaskStatus.Confirmed && task.Status != ChoreTaskStatus.Missed && task.Status != ChoreTaskStatus.Cancelled && UserContext.IsParentOrAdmin)
+                            @* Secondary actions in overflow menu *@
+                            @if (HasSecondaryActions(task))
                             {
-                                <MudTooltip Text="@L["Common.Cancel"].Value">
-                                    <MudIconButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Warning"
-                                                   Icon="@Icons.Material.Filled.Close"
-                                                   OnClick="@(() => CancelTask(task))" />
-                                </MudTooltip>
+                                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small"
+                                         AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                                    @if (task.Status == ChoreTaskStatus.Claimed && task.ClaimedByPersonId == ActivePersonId)
+                                    {
+                                        <MudMenuItem Icon="@Icons.Material.Filled.PersonRemove"
+                                                     OnClick="@(() => UnclaimTask(task))"
+                                                     Disabled="!UserContext.CanAct">
+                                            @L["Tasks.Unclaim"]
+                                        </MudMenuItem>
+                                    }
+                                    @if (task.Status != ChoreTaskStatus.Confirmed && task.Status != ChoreTaskStatus.Missed && task.Status != ChoreTaskStatus.Cancelled && UserContext.IsParentOrAdmin)
+                                    {
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Close" IconColor="Color.Warning"
+                                                     OnClick="@(() => CancelTask(task))">
+                                            @L["Common.Cancel"]
+                                        </MudMenuItem>
+                                    }
+                                </MudMenu>
                             }
                         </div>
                     </div>
@@ -415,6 +443,17 @@ else
         StateHasChanged();
     }
 
+    private async Task UnclaimTask(ChoreTask task)
+    {
+        if (!UserContext.CanAct) return;
+
+        task.ClaimedByPersonId = null;
+        task.Status = ChoreTaskStatus.Open;
+        await Db.SaveChangesAsync();
+        Snackbar.Add(L["Tasks.Snackbar.Unclaimed"].Value, Severity.Info);
+        StateHasChanged();
+    }
+
     private async Task CompleteTask(ChoreTask task)
     {
         if (ActivePersonId is null || !UserContext.CanAct) return;
@@ -505,6 +544,17 @@ else
     {
         if (!UserContext.IsParentOrAdmin) return;
 
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.Message, string.Format(L["Common.Confirm.CancelTask"], task.Chore.Name) },
+            { x => x.ConfirmText, L["Common.Confirm.Yes"].Value },
+            { x => x.CancelText, L["Common.Cancel"].Value },
+            { x => x.Destructive, true }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(L["Common.Confirm.Title"].Value, parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
         task.Status = ChoreTaskStatus.Cancelled;
         await Db.SaveChangesAsync();
 
@@ -543,6 +593,28 @@ else
         if (task.ClaimedByPerson is not null) return string.Format(L["Tasks.Assignment.Claimed"], task.ClaimedByPerson.Name);
         if (task.DefaultPerson is not null) return string.Format(L["Tasks.Assignment.Assigned"], task.DefaultPerson.Name);
         return L["Tasks.Assignment.OpenForAll"];
+    }
+
+    /// <summary>
+    /// Returns true if the task is approaching its deadline (≥80% of lifetime elapsed).
+    /// Only applies to open/claimed tasks that haven't been completed yet.
+    /// </summary>
+    private static bool IsApproachingDeadline(ChoreTask task)
+    {
+        if (task.Status is not (ChoreTaskStatus.Open or ChoreTaskStatus.Claimed))
+            return false;
+
+        var now = DateTime.UtcNow;
+        var dueEnd = task.DueDate.ToDateTime(new TimeOnly(23, 59, 59), DateTimeKind.Local).ToUniversalTime();
+        // Already overdue — no need for "approaching" warning
+        if (now >= dueEnd) return false;
+
+        var totalLifetime = dueEnd - task.CreatedAt;
+        // Minimum 1 hour lifetime to avoid division issues for ad-hoc tasks
+        if (totalLifetime.TotalHours < 1) return false;
+
+        var elapsed = now - task.CreatedAt;
+        return elapsed.TotalSeconds / totalLifetime.TotalSeconds >= 0.8;
     }
 
     /// <summary>
@@ -612,4 +684,19 @@ else
 
     private static bool IsEmoji(string s) =>
         !string.IsNullOrEmpty(s) && !s.All(c => c < 128);
+
+    private static bool IsTriggeredTask(ChoreTask task) =>
+        task.ScheduleId is null
+        && task.OccurrenceLabel?.StartsWith("Trigger:", StringComparison.OrdinalIgnoreCase) == true;
+
+    private bool HasSecondaryActions(ChoreTask task)
+    {
+        // Unclaim: claimed by current user
+        if (task.Status == ChoreTaskStatus.Claimed && task.ClaimedByPersonId == ActivePersonId)
+            return true;
+        // Cancel: parent/admin on non-terminal tasks
+        if (task.Status != ChoreTaskStatus.Confirmed && task.Status != ChoreTaskStatus.Missed && task.Status != ChoreTaskStatus.Cancelled && UserContext.IsParentOrAdmin)
+            return true;
+        return false;
+    }
 }

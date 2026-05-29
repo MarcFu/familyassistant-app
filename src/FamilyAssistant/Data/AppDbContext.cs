@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<TaskComment> TaskComments => Set<TaskComment>();
     public DbSet<TaskAttachment> TaskAttachments => Set<TaskAttachment>();
     public DbSet<EventTrigger> EventTriggers => Set<EventTrigger>();
+    public DbSet<PersonAchievement> PersonAchievements => Set<PersonAchievement>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -183,6 +184,18 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(et => et.EntityId);
+        });
+
+        // --- PersonAchievement ---
+        modelBuilder.Entity<PersonAchievement>(entity =>
+        {
+            entity.HasOne(pa => pa.Person)
+                .WithMany()
+                .HasForeignKey(pa => pa.PersonId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Each person can unlock each achievement only once
+            entity.HasIndex(pa => new { pa.PersonId, pa.AchievementKey }).IsUnique();
         });
     }
 }

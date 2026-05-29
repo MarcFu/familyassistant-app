@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2025-05-29
+
+### Added
+- Achievement system: 40+ badges with honeycomb board, tier system (Base/Bronze/Silver/Gold/Legendary), category-based colors
+- Achievement persistence: `PersonAchievement` DB table, unlock evaluation, reveal tracking
+- Achievement unlock animation overlay (fullscreen, spring easing, glow, queue)
+- Pixel-perfect responsive honeycomb board (measures actual container width via JS, loading skeleton until ready)
+- Chore soft-delete: archiving instead of permanent deletion, `IsDeleted` flag with cascading filter
+- Confirm dialog component for destructive actions
+- Task unclaim button (return claimed task to Open)
+- "Bald fällig" warning chip on tasks approaching deadline (≥80% of lifetime elapsed)
+- Triggered task timestamp display (HH:mm next to chore name)
+- Task sorting: own claimed first, then status priority, then newest
+
+### Changed
+- AchievementBoard uses one-shot JS measurement (Pull pattern) instead of callback-based ResizeObserver (Push) — eliminates Blazor Server lifecycle timing issues
+- Dev page uses AchievementBoard component instead of inline board with duplicated logic
+- Cleaned up theme-interop.js (removed broken elementResize block)
+
+### Fixed
+- JS interop error "No interop methods are registered for renderer 1" on Achievement Badges expansion panel
+
 ### Changed
 - Renamed project from HassCompanion to FamilyAssistant
 - Debug endpoint `/api/debug/simulate-state-change` now only available in Development environment
@@ -25,6 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - BUG-001: Temporary SQLite backup files remained locked on Windows during ZIP creation
 - BUG-002: Direct backup download could create repeated backup ZIPs when the browser/proxy retried the GET download
 - BUG-003: Removed direct create-and-download backup flow and reject duplicate backup creation events
+- BUG-004: Event trigger race condition — concurrent state_changed callbacks could create duplicate tasks (CAS debounce fix)
+- BUG-005: NavigationException + JS interop error on first page load during SSR prerender (MudTabs fires ActivePanelIndexChanged during disposal)
 
 ### Security
 - Restore validation now checks migration compatibility on a temporary database copy, rejects unknown migrations, verifies attachment DB references, rejects orphan/missing attachments, and verifies attachment files are valid images

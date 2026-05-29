@@ -191,10 +191,13 @@ public class HaUserPreferencesService
                 }
             }
 
-            // Theme: stored under data.selectedTheme (HA 2024+ format)
-            // May also be at top level of data in some HA versions
+            // Theme: stored under data.theme (current HA format), fallback data.selectedTheme (older versions)
             var themeSource = data;
-            if (data.TryGetProperty("selectedTheme", out var selectedTheme) && selectedTheme.ValueKind == JsonValueKind.Object)
+            if (data.TryGetProperty("theme", out var themeObj) && themeObj.ValueKind == JsonValueKind.Object)
+            {
+                themeSource = themeObj;
+            }
+            else if (data.TryGetProperty("selectedTheme", out var selectedTheme) && selectedTheme.ValueKind == JsonValueKind.Object)
             {
                 themeSource = selectedTheme;
             }

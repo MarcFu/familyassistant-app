@@ -47,7 +47,7 @@ public sealed class AchievementService : IAchievementService
         var eventCount = eventTasks.Count;
         var bestChoreCount = completedByPerson.GroupBy(t => t.ChoreId).Select(g => g.Count()).DefaultIfEmpty(0).Max();
         var uniqueChores = completedByPerson.Select(t => t.ChoreId).Distinct().Count();
-        var activeChores = await _db.Chores.AsNoTracking().CountAsync(c => c.IsActive);
+        var activeChores = await _db.Chores.AsNoTracking().CountAsync(c => c.IsActive && !c.IsDeleted);
         var photoCount = completedByPerson.Count(t => t.Comments.Any(c => c.Attachments.Count > 0));
         var commentCount = completedByPerson.Count(t => t.Comments.Any(c => c.PersonId == personId && !string.IsNullOrWhiteSpace(c.Text)));
         var dialogueCount = completedByPerson.Count(t => t.Comments.Count >= 2);
@@ -123,6 +123,37 @@ public sealed class AchievementService : IAchievementService
         Unlock("automation_chain", HasTasksInDay(eventTasks, _ => true, 3), "3+ Trigger-Aufgaben an einem Tag.");
         Unlock("family_marathon_500", allConfirmed.Count >= 500, $"Familie: {allConfirmed.Count}/500.");
 
+        // --- Persist newly unlocked achievements ---
+        var existingKeys = (await _db.PersonAchievements
+            .Where(pa => pa.PersonId == personId)
+            .Select(pa => pa.AchievementKey)
+            .ToListAsync())
+            .ToHashSet();
+
+        var newlyUnlocked = new List<PersonAchievement>();
+        var now = DateTime.UtcNow;
+
+        foreach (var key in unlocked)
+        {
+            if (!existingKeys.Contains(key))
+            {
+                var entity = new PersonAchievement
+                {
+                    PersonId = personId,
+                    AchievementKey = key,
+                    UnlockedAt = now,
+                    Revealed = false
+                };
+                _db.PersonAchievements.Add(entity);
+                newlyUnlocked.Add(entity);
+            }
+        }
+
+        if (newlyUnlocked.Count > 0)
+        {
+            await _db.SaveChangesAsync();
+        }
+
         var stats = new ProfileStats(
             TotalCompleted: completedCount,
             CurrentStreak: currentStreak,
@@ -130,7 +161,36 @@ public sealed class AchievementService : IAchievementService
             UnlockedBadges: unlocked.Count,
             TotalBadges: Definitions.Count);
 
-        return new AchievementEvaluation(unlocked, facts, stats);
+        return new AchievementEvaluation(unlocked, facts, stats, newlyUnlocked);
+    }
+
+    // ─── Persistence methods ──────────────────────────────────────────────────────
+
+    public async Task<IReadOnlyList<PersonAchievement>> GetUnrevealedAsync(int personId)
+    {
+        return await _db.PersonAchievements
+            .Where(pa => pa.PersonId == personId && !pa.Revealed)
+            .OrderBy(pa => pa.UnlockedAt)
+            .ToListAsync();
+    }
+
+    public async Task MarkRevealedAsync(IEnumerable<int> achievementIds)
+    {
+        var ids = achievementIds.ToList();
+        if (ids.Count == 0) return;
+
+        await _db.PersonAchievements
+            .Where(pa => ids.Contains(pa.Id))
+            .ExecuteUpdateAsync(s => s.SetProperty(pa => pa.Revealed, true));
+    }
+
+    public async Task<IReadOnlyList<PersonAchievement>> GetAllForPersonAsync(int personId)
+    {
+        return await _db.PersonAchievements
+            .Where(pa => pa.PersonId == personId)
+            .OrderBy(pa => pa.UnlockedAt)
+            .AsNoTracking()
+            .ToListAsync();
     }
 
     // ─── Helper methods ─────────────────────────────────────────────────────────

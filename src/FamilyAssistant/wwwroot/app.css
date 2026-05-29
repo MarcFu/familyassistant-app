@@ -118,6 +118,12 @@ html, body {
 }
 
 /* Override for MudBlazor to feel more HA-native */
+*:focus-visible {
+    outline: 2px solid var(--mud-palette-primary, #03a9f4);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
 .mud-drawer {
     border-right: 1px solid var(--ha-border-subtle) !important;
 }
@@ -138,6 +144,10 @@ html, body {
     border: 1px solid var(--ha-border-medium);
     border-radius: 9999px;
     background: var(--ha-surface-hover);
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    text-decoration: none;
 }
 
 .app-current-user-avatar {
@@ -225,11 +235,6 @@ html, body {
         var(--ha-board-bg);
 }
 
-.achievement-board-scroll {
-    overflow-x: auto;
-    padding: 4px 2px 10px;
-}
-
 .achievement-board {
     --achievement-board-hex-w: 56px;
     --achievement-board-hex-h: 59px;
@@ -237,7 +242,6 @@ html, body {
     --achievement-board-row-step: 49px;
     --achievement-board-row-offset: 30.5px;
     display: flex;
-    min-width: 646px;
     flex-direction: column;
     align-items: flex-start;
 }
@@ -295,6 +299,32 @@ html, body {
 .achievement-board .achievement-hex-pictogram {
     width: 34px;
     height: 34px;
+}
+
+/* ── Board loading skeleton ── */
+.achievement-board-loading {
+    display: flex;
+    gap: 8px;
+    padding: 12px 0;
+    align-items: center;
+}
+
+.achievement-board-loading-hex {
+    width: 42px;
+    height: 44px;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    background: rgba(255, 255, 255, 0.06);
+    animation: board-loading-pulse 1.2s ease-in-out infinite;
+}
+
+.achievement-board-loading-hex:nth-child(2) { animation-delay: 0.15s; }
+.achievement-board-loading-hex:nth-child(3) { animation-delay: 0.30s; }
+.achievement-board-loading-hex:nth-child(4) { animation-delay: 0.45s; }
+.achievement-board-loading-hex:nth-child(5) { animation-delay: 0.60s; }
+
+@keyframes board-loading-pulse {
+    0%, 100% { opacity: 0.3; transform: scale(0.92); }
+    50% { opacity: 0.7; transform: scale(1); }
 }
 
 .achievement-hex-pictogram {
@@ -462,20 +492,6 @@ html, body {
 }
 
 @media (max-width: 600px) {
-    .achievement-board {
-        --achievement-board-hex-w: 50px;
-        --achievement-board-hex-h: 53px;
-        --achievement-board-gap: 5px;
-        --achievement-board-row-step: 45px;
-        --achievement-board-row-offset: 27.5px;
-        min-width: 578px;
-    }
-
-    .achievement-board .achievement-hex-pictogram {
-        width: 30px;
-        height: 30px;
-    }
-
     .achievement-preview-grid {
         grid-template-columns: repeat(auto-fill, minmax(154px, 1fr));
         gap: 12px;
@@ -488,6 +504,121 @@ html, body {
     .achievement-hex {
         width: 92px;
         height: 97px;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Achievement Unlock Overlay
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.achievement-unlock-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0);
+    backdrop-filter: blur(0px);
+    transition: background 0.4s ease, backdrop-filter 0.4s ease;
+    cursor: pointer;
+}
+
+.achievement-unlock-overlay.achievement-unlock-visible {
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+}
+
+.achievement-unlock-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 32px;
+}
+
+.achievement-unlock-badge {
+    transform: scale(0.3);
+    opacity: 0;
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease, margin 0.6s ease;
+    margin: 0;
+}
+
+.achievement-unlock-badge.achievement-unlock-badge-animate {
+    transform: scale(2.2);
+    opacity: 1;
+    /* scale(2.2) grows visually from center but doesn't affect layout —
+       add margin to keep space from title above and text below */
+    margin: 64px 0;
+}
+
+.achievement-unlock-title {
+    transform: translateY(-10px);
+    opacity: 0;
+    transition: transform 0.4s ease 0.1s, opacity 0.4s ease 0.1s;
+}
+
+.achievement-unlock-title.achievement-unlock-title-animate {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.achievement-unlock-badge.achievement-unlock-badge-animate {
+    transform: scale(2.2);
+    opacity: 1;
+    /* scale(2.2) grows visually from center but doesn't affect layout —
+       add margin to push text below the scaled badge */
+    margin-bottom: 64px;
+}
+
+.achievement-unlock-badge .achievement-hex {
+    filter: drop-shadow(0 0 20px var(--achievement-ring))
+            drop-shadow(0 0 40px color-mix(in srgb, var(--achievement-accent) 60%, transparent))
+            drop-shadow(0 0 60px color-mix(in srgb, var(--achievement-ring) 30%, transparent));
+    animation: achievement-unlock-pulse 2s ease-in-out infinite 0.6s;
+}
+
+@keyframes achievement-unlock-pulse {
+    0%, 100% {
+        filter: drop-shadow(0 0 20px var(--achievement-ring))
+                drop-shadow(0 0 40px color-mix(in srgb, var(--achievement-accent) 60%, transparent))
+                drop-shadow(0 0 60px color-mix(in srgb, var(--achievement-ring) 30%, transparent));
+    }
+    50% {
+        filter: drop-shadow(0 0 30px var(--achievement-ring))
+                drop-shadow(0 0 55px color-mix(in srgb, var(--achievement-accent) 80%, transparent))
+                drop-shadow(0 0 80px color-mix(in srgb, var(--achievement-ring) 50%, transparent));
+    }
+}
+
+.achievement-unlock-text {
+    transform: translateY(20px);
+    opacity: 0;
+    transition: transform 0.5s ease 0.3s, opacity 0.5s ease 0.3s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.achievement-unlock-text.achievement-unlock-text-animate {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+@media (max-width: 600px) {
+    .achievement-unlock-badge.achievement-unlock-badge-animate {
+        transform: scale(1.8);
+        margin: 48px 0;
+    }
+}
+
+/* Touch-friendly targets on coarse-pointer devices (mobile) */
+@media (pointer: coarse) {
+    .mud-icon-btn.mud-icon-btn-size-small {
+        min-width: 40px;
+        min-height: 40px;
     }
 }
 

@@ -27,6 +27,16 @@ public class Chore
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>
+    /// Soft-delete flag. Deleted chores are hidden from UI but preserved for historical data.
+    /// </summary>
+    public bool IsDeleted { get; set; }
+
+    /// <summary>
+    /// When this chore was soft-deleted. Null if not deleted.
+    /// </summary>
+    public DateTime? DeletedAt { get; set; }
+
     public ICollection<ChoreSchedule> Schedules { get; set; } = [];
     public ICollection<ChoreTask> Tasks { get; set; } = [];
 }

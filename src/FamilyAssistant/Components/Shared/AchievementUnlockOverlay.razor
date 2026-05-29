@@ -1,0 +1,127 @@
+@using FamilyAssistant.Services
+@using FamilyAssistant.Models
+@inject IAchievementService AchievementSvc
+
+@if (_currentReveal is not null)
+{
+    <div class="achievement-unlock-overlay @(_animating ? "achievement-unlock-visible" : "")"
+         @onclick="DismissCurrent" @onkeydown="OnKeyDown" tabindex="0">
+        <div class="achievement-unlock-content">
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Default" Size="Size.Small"
+                           OnClick="DismissCurrent" aria-label="Close"
+                           Style="position: absolute; top: 16px; right: 16px; opacity: 0.6;" />
+            <MudText Typo="Typo.h4" Align="Align.Center" Class="@($"achievement-unlock-title {(_animating ? "achievement-unlock-title-animate" : "")}")"
+                     Style="color: var(--mud-palette-warning); font-weight: 500; letter-spacing: 1px;">
+                Achievement freigeschaltet!
+            </MudText>
+            <div class="achievement-unlock-badge @(_animating ? "achievement-unlock-badge-animate" : "")">
+                <AchievementHex Definition="_currentReveal" IsLocked="false" ShowTierChip="true" HeightOverride="@HeightOverride" />
+            </div>
+            <div class="achievement-unlock-text @(_animating ? "achievement-unlock-text-animate" : "")">
+                <MudText Typo="Typo.h5" Align="Align.Center" Style="color: var(--mud-palette-text-primary);">@_currentReveal.Name</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center" Class="mt-1">@_currentReveal.Condition</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center" Class="mt-2">
+                    @_currentReveal.Category · @_currentReveal.Tier
+                </MudText>
+            </div>
+            @if (_queue.Count > 0)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center" Class="mt-4">
+                    +@_queue.Count weitere
+                </MudText>
+            }
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center" Class="mt-3" Style="opacity:0.5;">
+                Tippe zum Fortfahren
+            </MudText>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int? PersonId { get; set; }
+    [Parameter] public string? HeightOverride { get; set; }
+
+    private Queue<(PersonAchievement? Entity, AchievementDefinition Definition)> _queue = new();
+    private AchievementDefinition? _currentReveal;
+    private PersonAchievement? _currentEntity;
+    private bool _animating;
+    private bool _initialized;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_initialized || PersonId is not int personId) return;
+        _initialized = true;
+
+        var unrevealed = await AchievementSvc.GetUnrevealedAsync(personId);
+        if (unrevealed.Count == 0) return;
+
+        var definitions = AchievementSvc.Definitions.ToDictionary(d => d.Key);
+
+        foreach (var entity in unrevealed)
+        {
+            if (definitions.TryGetValue(entity.AchievementKey, out var def))
+            {
+                _queue.Enqueue((entity, def));
+            }
+        }
+
+        await ShowNext();
+    }
+
+    private async Task ShowNext()
+    {
+        if (_queue.Count == 0)
+        {
+            _currentReveal = null;
+            _currentEntity = null;
+            _animating = false;
+            return;
+        }
+
+        var (entity, definition) = _queue.Dequeue();
+        _currentEntity = entity;
+        _currentReveal = definition;
+        _animating = false;
+        StateHasChanged();
+
+        // Small delay to allow DOM to render before triggering animation
+        await Task.Delay(50);
+        _animating = true;
+        StateHasChanged();
+    }
+
+    private async Task DismissCurrent()
+    {
+        if (_currentEntity is not null)
+        {
+            // Mark as revealed (real achievements only, not test mode)
+            await AchievementSvc.MarkRevealedAsync([_currentEntity.Id]);
+        }
+
+        // Show next or close
+        await ShowNext();
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Escape" or "Enter" or " ")
+        {
+            await DismissCurrent();
+        }
+    }
+
+    /// <summary>
+    /// Trigger the unlock animation for testing purposes (Dev page).
+    /// Does NOT persist anything — purely visual.
+    /// </summary>
+    public async Task ShowTestAsync(IEnumerable<AchievementDefinition> definitions)
+    {
+        _queue.Clear();
+        foreach (var def in definitions)
+        {
+            _queue.Enqueue((null, def));
+        }
+        _currentEntity = null;
+        await ShowNext();
+    }
+}

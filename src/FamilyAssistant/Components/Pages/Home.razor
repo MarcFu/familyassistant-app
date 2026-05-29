@@ -18,6 +18,10 @@
     <MudProgressCircular Indeterminate="true" />
     <MudText Class="ml-2">@L["Common.Loading"]</MudText>
 }
+else if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@string.Format(L["Common.Snackbar.Error"], _loadError)</MudAlert>
+}
 else if (!_connected)
 {
     <MudAlert Severity="Severity.Error" Class="mb-4">
@@ -66,21 +70,21 @@ else
                 @if (_myStats is not null)
                 {
                     <div class="d-flex gap-4 mb-3 flex-wrap">
-                        <MudLink Href="@($"/tasks?filter=Today&person={_currentPerson.Id}")" Color="Color.Primary" Underline="Underline.None">
-                            <MudPaper Outlined="true" Class="pa-3 d-flex flex-column align-center" Style="min-width: 80px;">
+                        <MudLink Href="@($"tasks?filter=Today&person={_currentPerson.Id}")" Color="Color.Primary" Underline="Underline.None">
+                            <MudPaper Outlined="true" Class="pa-3 d-flex flex-column align-center" Style="min-width: 80px; flex: 1 1 80px;">
                                 <MudText Typo="Typo.h5" Color="Color.Primary">@_myStats.OpenTasks</MudText>
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Home.Stats.Open"]</MudText>
                             </MudPaper>
                         </MudLink>
-                        <MudLink Href="@($"/tasks?filter=Completed&person={_currentPerson.Id}")" Color="Color.Success" Underline="Underline.None">
-                            <MudPaper Outlined="true" Class="pa-3 d-flex flex-column align-center" Style="min-width: 80px;">
+                        <MudLink Href="@($"tasks?filter=Completed&person={_currentPerson.Id}")" Color="Color.Success" Underline="Underline.None">
+                            <MudPaper Outlined="true" Class="pa-3 d-flex flex-column align-center" Style="min-width: 80px; flex: 1 1 80px;">
                                 <MudText Typo="Typo.h5" Color="Color.Success">@_myStats.CompletedThisWeek</MudText>
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Home.Stats.CompletedThisWeek"]</MudText>
                             </MudPaper>
                         </MudLink>
                         @if (_myStats.MissedThisWeek > 0)
                         {
-                            <MudPaper Outlined="true" Class="pa-3 d-flex flex-column align-center" Style="min-width: 80px;">
+                            <MudPaper Outlined="true" Class="pa-3 d-flex flex-column align-center" Style="min-width: 80px; flex: 1 1 80px;">
                                 <MudText Typo="Typo.h5" Color="Color.Error">@_myStats.MissedThisWeek</MudText>
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Home.Stats.MissedThisWeek"]</MudText>
                             </MudPaper>
@@ -102,7 +106,7 @@ else
                             </MudText>
                         </div>
                     }
-                    <MudLink Href="@($"/tasks?filter=Completed&person={_currentPerson.Id}")" Color="Color.Primary"
+                    <MudLink Href="@($"tasks?filter=Completed&person={_currentPerson.Id}")" Color="Color.Primary"
                              Typo="Typo.caption" Class="mt-1">
                         @L["Home.ShowAllCompleted"]
                     </MudLink>
@@ -123,7 +127,7 @@ else
         @if (UserContext.IsParentOrAdmin && _pendingConfirmationCount > 0)
         {
             <MudLink Href="tasks?filter=Pending" Underline="Underline.None">
-                <MudPaper Outlined="true" Class="pa-4 mb-4 d-flex align-center" Style="border-color: var(--mud-palette-warning);">
+                <MudPaper Outlined="true" Class="pa-4 mb-4 d-flex align-center" Style="border-left: 3px solid var(--mud-palette-warning);">
                     <MudIcon Icon="@Icons.Material.Filled.HourglassTop" Color="Color.Warning" Class="mr-3" />
                     <div style="flex: 1;">
                         <MudText Typo="Typo.body1">
@@ -138,7 +142,7 @@ else
         @* ── Other persons (compact cards) ── *@
         @if (_otherPersons.Count > 0)
         {
-            <MudText Typo="Typo.subtitle1" Class="mb-2 mt-2">@L["Home.Family"]</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mb-3 mt-4">@L["Home.Family"]</MudText>
             <MudGrid>
                 @foreach (var person in _otherPersons)
                 {
@@ -198,6 +202,7 @@ else
 @code {
     private bool _loading = true;
     private bool _connected;
+    private string? _loadError;
     private List<Person> _persons = [];
     private Person? _currentPerson;
     private List<Person> _otherPersons = [];
@@ -209,64 +214,73 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _connected = await HaService.TestConnectionAsync();
-
-        if (_connected)
+        try
         {
-            _persons = await Db.Persons.OrderBy(p => p.Name).ToListAsync();
+            _connected = await HaService.TestConnectionAsync();
 
-            // Redirect to setup if no persons configured yet
-            if (_persons.Count == 0)
+            if (_connected)
             {
-                Navigation.NavigateTo("setup");
-                return;
-            }
+                _persons = await Db.Persons.OrderBy(p => p.Name).ToListAsync();
 
-            // Determine current person and others
-            _currentPerson = _persons.FirstOrDefault(p => p.Id == UserContext.CurrentPersonId);
-            _otherPersons = _persons.Where(p => p.Id != UserContext.CurrentPersonId).ToList();
+                // Redirect to setup if no persons configured yet
+                if (_persons.Count == 0)
+                {
+                    Navigation.NavigateTo("setup");
+                    return;
+                }
 
-            // Load HA status for all persons
-            var haPersons = await HaService.GetPersonsAsync();
-            _haStatus = haPersons.ToDictionary(p => p.EntityId, p => p.State ?? "unknown");
+                // Determine current person and others
+                _currentPerson = _persons.FirstOrDefault(p => p.Id == UserContext.CurrentPersonId);
+                _otherPersons = _persons.Where(p => p.Id != UserContext.CurrentPersonId).ToList();
 
-            // Load stats per person (uses QueryService for consistent logic)
-            var today = DateOnly.FromDateTime(DateTime.Today);
-            var weekStart = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday);
+                // Load HA status for all persons
+                var haPersons = await HaService.GetPersonsAsync();
+                _haStatus = haPersons.ToDictionary(p => p.EntityId, p => p.State ?? "unknown");
 
-            foreach (var person in _persons)
-            {
-                var openTasks = (await TaskQuery.GetTodayTasksAsync(person.Id)).Count;
-                var completedThisWeek = (await TaskQuery.GetRecentCompletedForPersonAsync(person.Id, 100)).Count;
+                // Load stats per person (uses QueryService for consistent logic)
+                var today = DateOnly.FromDateTime(DateTime.Today);
+                var weekStart = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday);
 
-                var missedThisWeek = await Db.MissedCreditsLogs
-                    .CountAsync(m => m.PersonId == person.Id
-                        && !m.WasPaused
-                        && m.Date >= weekStart && m.Date <= today);
+                foreach (var person in _persons)
+                {
+                    var openTasks = (await TaskQuery.GetTodayTasksAsync(person.Id)).Count;
+                    var completedThisWeek = (await TaskQuery.GetRecentCompletedForPersonAsync(person.Id, 100)).Count;
 
-                _personStats[person.Id] = new PersonStats(openTasks, completedThisWeek, missedThisWeek);
-            }
+                    var missedThisWeek = await Db.MissedCreditsLogs
+                        .CountAsync(m => m.PersonId == person.Id
+                            && !m.WasPaused
+                            && m.Date >= weekStart && m.Date <= today);
 
-            // Own stats
-            if (_currentPerson is not null && _personStats.TryGetValue(_currentPerson.Id, out var myStats))
-            {
-                _myStats = myStats;
-            }
+                    _personStats[person.Id] = new PersonStats(openTasks, completedThisWeek, missedThisWeek);
+                }
 
-            // Load recent completed tasks for current user (this week, max 5)
-            if (_currentPerson is not null)
-            {
-                _myRecentTasks = await TaskQuery.GetRecentCompletedForPersonAsync(_currentPerson.Id, 5);
-            }
+                // Own stats
+                if (_currentPerson is not null && _personStats.TryGetValue(_currentPerson.Id, out var myStats))
+                {
+                    _myStats = myStats;
+                }
 
-            // Pending confirmations count (for parents)
-            if (UserContext.IsParentOrAdmin)
-            {
-                _pendingConfirmationCount = (await TaskQuery.GetPendingConfirmationAsync()).Count;
+                // Load recent completed tasks for current user (this week, max 5)
+                if (_currentPerson is not null)
+                {
+                    _myRecentTasks = await TaskQuery.GetRecentCompletedForPersonAsync(_currentPerson.Id, 5);
+                }
+
+                // Pending confirmations count (for parents)
+                if (UserContext.IsParentOrAdmin)
+                {
+                    _pendingConfirmationCount = (await TaskQuery.GetPendingConfirmationAsync()).Count;
+                }
             }
         }
-
-        _loading = false;
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     private string GetRoleLabel(PersonRole role) => role switch

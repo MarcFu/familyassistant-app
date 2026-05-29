@@ -12,15 +12,26 @@
 
 <PageTitle>@L["Nav.InternetRules"]</PageTitle>
 
-<MudText Typo="Typo.h5" Class="mb-4">@L["Nav.InternetRules"]</MudText>
+<MudText Typo="Typo.h4" Class="mb-4">@L["Nav.InternetRules"]</MudText>
 
-@if (_persons is null)
+@if (_persons is null && _loadError is null)
 {
     <MudProgressCircular Indeterminate="true" />
 }
+else if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@string.Format(L["Common.Snackbar.Error"], _loadError)</MudAlert>
+}
+else if (_persons!.Count == 0)
+{
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        @L["Internet.NoChildren"]
+        <MudLink Href="settings/persons" Color="Color.Primary" Class="ml-1">@L["Internet.NoChildren.Link"]</MudLink>
+    </MudAlert>
+}
 else
 {
-    <MudTabs Elevation="0" Outlined="true" Rounded="true" ApplyEffectsToContainer="true" Class="mb-4"
+    <MudTabs Elevation="0" Rounded="true" PanelClass="pa-4 pt-6" Class="mb-4"
              ActivePanelIndex="_activeTabIndex" ActivePanelIndexChanged="OnTabChanged">
         @foreach (var person in _persons)
         {
@@ -117,10 +128,10 @@ else
                                     GridColumns="minmax(120px, 2fr) 100px 140px minmax(100px, 2fr) auto"
                                     Grouped="true">
                         <HeaderTemplate>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Name</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Typ</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Modus</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Details</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Common.Name"]</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Common.Type"]</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Internet.Column.Mode"]</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Internet.Column.Details"]</MudText>
                             <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Common.Actions"]</MudText>
                         </HeaderTemplate>
                         <GridTemplate>
@@ -198,12 +209,15 @@ else
                     </ResponsiveList>
                 }
 
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
-                           StartIcon="@Icons.Material.Filled.Add"
-                           OnClick="@(() => AddRule(person))"
-                           Disabled="@(person.Devices.Count == 0)">
-                    @L["Internet.AddRule"]
-                </MudButton>
+                <MudTooltip Text="@(person.Devices.Count == 0 ? L["Internet.AddRule.NeedsDevice"].Value : "")"
+                            Disabled="@(person.Devices.Count > 0)">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="@(() => AddRule(person))"
+                               Disabled="@(person.Devices.Count == 0)">
+                        @L["Internet.AddRule"]
+                    </MudButton>
+                </MudTooltip>
             </MudTabPanel>
         }
     </MudTabs>
@@ -214,11 +228,19 @@ else
 
     private List<Person>? _persons;
     private int _activeTabIndex;
+    private string? _loadError;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadData();
-        SelectTabFromRoute();
+        try
+        {
+            await LoadData();
+            SelectTabFromRoute();
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
     }
 
     private void SelectTabFromRoute()
@@ -234,7 +256,14 @@ else
         if (_persons is not null && newIndex >= 0 && newIndex < _persons.Count)
         {
             var personId = _persons[newIndex].Id;
-            Navigation.NavigateTo($"internet-rules/{personId}", replace: true, forceLoad: false);
+            try
+            {
+                Navigation.NavigateTo($"internet-rules/{personId}", replace: true, forceLoad: false);
+            }
+            catch (NavigationException)
+            {
+                // Swallow: MudTabs fires ActivePanelIndexChanged during SSR disposal
+            }
         }
     }
 
@@ -294,6 +323,17 @@ else
 
     private async Task DeleteDevice(Person person, PersonDevice device)
     {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.Message, string.Format(L["Common.Confirm.DeleteDevice"], device.Label) },
+            { x => x.ConfirmText, L["Common.Confirm.Yes"].Value },
+            { x => x.CancelText, L["Common.Cancel"].Value },
+            { x => x.Destructive, true }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(L["Common.Confirm.Title"].Value, parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
         Db.PersonDevices.Remove(device);
         await Db.SaveChangesAsync();
         Snackbar.Add(string.Format(L["Internet.ConfirmDeleteDevice"].Value, device.Label), Severity.Success);
@@ -348,6 +388,17 @@ else
 
     private async Task DeleteRule(Person person, InternetRule rule)
     {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.Message, string.Format(L["Common.Confirm.DeleteRule"], rule.Name) },
+            { x => x.ConfirmText, L["Common.Confirm.Yes"].Value },
+            { x => x.CancelText, L["Common.Cancel"].Value },
+            { x => x.Destructive, true }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(L["Common.Confirm.Title"].Value, parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
         Db.InternetRules.Remove(rule);
         await Db.SaveChangesAsync();
         Snackbar.Add(string.Format(L["Internet.ConfirmDeleteRule"].Value, rule.Name), Severity.Success);

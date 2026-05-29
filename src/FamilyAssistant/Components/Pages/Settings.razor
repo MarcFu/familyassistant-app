@@ -18,7 +18,7 @@
 
 <MudText Typo="Typo.h4" Class="mb-4">@L["Settings.Title"]</MudText>
 
-<MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4"
+<MudTabs Elevation="0" Rounded="true" PanelClass="pa-4 pt-6"
          ActivePanelIndex="_activePanelIndex" ActivePanelIndexChanged="OnTabChanged">
     <MudTabPanel Text="@L["Settings.Tab.Persons"].Value" Icon="@Icons.Material.Filled.People">
         @if (_loading)
@@ -32,7 +32,7 @@
             @if (_managedPersons.Count > 0)
             {
                 <ResponsiveList Items="_managedPersons" Context="person"
-                                GridColumns="40px 120px 130px 80px 80px 1fr auto"
+                                GridColumns="40px minmax(100px, 1.5fr) minmax(100px, 1.5fr) 80px 80px 1fr auto"
                                 Breakpoint="Breakpoint.Lg"
                                 Grouped="true">
                     <HeaderTemplate>
@@ -287,16 +287,14 @@
         @if (_triggers.Count > 0)
         {
             <ResponsiveList Items="_triggers" Context="trigger"
-                            GridColumns="minmax(100px, 1.5fr) minmax(150px, 2fr) 80px minmax(100px, 1.5fr) 70px 60px auto"
-                            Breakpoint="Breakpoint.Lg"
+                            GridColumns="minmax(100px, 1.5fr) minmax(140px, 2fr) 80px minmax(100px, 1.5fr) auto"
+                            Breakpoint="Breakpoint.Md"
                             Grouped="true">
                 <HeaderTemplate>
                     <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Common.Name"]</MudText>
                     <MudText Typo="Typo.caption" Color="Color.Secondary">Entity</MudText>
                     <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Settings.Trigger.State"]</MudText>
                     <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Common.Task"]</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Settings.Trigger.Debounce"]</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Common.Status"]</MudText>
                     <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Common.Actions"]</MudText>
                 </HeaderTemplate>
                 <GridTemplate>
@@ -304,12 +302,10 @@
                     <MudText Typo="Typo.caption" Style="font-family:monospace;">@trigger.EntityId</MudText>
                     <MudChip T="string" Size="Size.Small" Color="Color.Info">@trigger.TriggerState</MudChip>
                     <MudText Typo="Typo.body2">@trigger.Chore.Name</MudText>
-                    <MudText Typo="Typo.body2">@trigger.DebounceMins min</MudText>
-                    <div>
-                        <MudSwitch T="bool" Value="trigger.IsActive" ValueChanged="@(v => ToggleTriggerAsync(trigger, v))"
-                                   Color="Color.Success" UncheckedColor="Color.Default" />
-                    </div>
                     <div class="d-flex align-center gap-1">
+                        <MudSwitch T="bool" Value="trigger.IsActive" ValueChanged="@(v => ToggleTriggerAsync(trigger, v))"
+                                   Color="Color.Success" UncheckedColor="Color.Default" Size="Size.Small"
+                                   Style="margin:0;" />
                         <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
                                        OnClick="@(() => OpenTriggerDialogAsync(trigger))" />
                         <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
@@ -492,24 +488,41 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _activePanelIndex = TabNameToIndex(Tab);
-        await LoadDataAsync();
-        await LoadIconSettingsAsync();
-        await LoadRetentionSettingsAsync();
-        await LoadTriggersAsync();
-        await LoadSystemSettingsAsync();
-        _loading = false;
-        await LoadAvailableModelsAsync();
+        try
+        {
+            _activePanelIndex = TabNameToIndex(Tab);
+            await LoadDataAsync();
+            await LoadIconSettingsAsync();
+            await LoadRetentionSettingsAsync();
+            await LoadTriggersAsync();
+            await LoadSystemSettingsAsync();
+            await LoadAvailableModelsAsync();
 
-        // Auto-test HA connection
-        _ = TestConnectionAsync();
+            // Auto-test HA connection
+            _ = TestConnectionAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(string.Format(L["Common.Snackbar.Error"], ex.Message), Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     private void OnTabChanged(int index)
     {
         _activePanelIndex = index;
         var tabName = index >= 0 && index < TabNames.Length ? TabNames[index] : TabNames[0];
-        Navigation.NavigateTo($"settings/{tabName}", replace: true);
+        try
+        {
+            Navigation.NavigateTo($"settings/{tabName}", replace: true);
+        }
+        catch (NavigationException)
+        {
+            // Swallow: MudTabs fires ActivePanelIndexChanged during SSR disposal
+        }
     }
 
     private static int TabNameToIndex(string? tab)
@@ -615,6 +628,7 @@
     {
         person.Role = newRole;
         await Db.SaveChangesAsync();
+        Snackbar.Add(string.Format(L["Settings.Snackbar.RoleChanged"], person.Name, L[$"Role.{newRole}"]), Severity.Success);
     }
 
     private async Task OpenEntityDialog(Person person)
@@ -646,11 +660,24 @@
     {
         person.IsPaused = !person.IsPaused;
         await Db.SaveChangesAsync();
+        var msg = person.IsPaused ? L["Settings.Snackbar.Paused"] : L["Settings.Snackbar.Resumed"];
+        Snackbar.Add(string.Format(msg, person.Name), Severity.Success);
         StateHasChanged();
     }
 
     private async Task RemovePerson(Person person)
     {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.Message, string.Format(L["Common.Confirm.DeletePerson"], person.Name) },
+            { x => x.ConfirmText, L["Common.Confirm.Yes"].Value },
+            { x => x.CancelText, L["Common.Cancel"].Value },
+            { x => x.Destructive, true }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(L["Common.Confirm.Title"].Value, parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
         Db.Persons.Remove(person);
         await Db.SaveChangesAsync();
         await LoadDataAsync();
@@ -678,7 +705,7 @@
             .Include(t => t.Chore)
             .OrderBy(t => t.Name)
             .ToListAsync();
-        _chores = await Db.Chores.OrderBy(c => c.Name).ToListAsync();
+        _chores = await Db.Chores.Where(c => !c.IsDeleted).OrderBy(c => c.Name).ToListAsync();
     }
 
     private async Task OpenTriggerDialogAsync(EventTrigger? trigger)
@@ -731,6 +758,17 @@
 
     private async Task DeleteTriggerAsync(EventTrigger trigger)
     {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.Message, string.Format(L["Common.Confirm.DeleteTrigger"], trigger.Name) },
+            { x => x.ConfirmText, L["Common.Confirm.Yes"].Value },
+            { x => x.CancelText, L["Common.Cancel"].Value },
+            { x => x.Destructive, true }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(L["Common.Confirm.Title"].Value, parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
         Db.EventTriggers.Remove(trigger);
         await Db.SaveChangesAsync();
         await LoadTriggersAsync();
