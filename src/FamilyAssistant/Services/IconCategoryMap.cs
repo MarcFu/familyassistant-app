@@ -1,18 +1,19 @@
 namespace FamilyAssistant.Services;
 
 /// <summary>
-/// Manual categorization of ~300 relevant Material Design icons into household-friendly categories.
+/// Manual categorization of relevant Material Design icons into household-friendly categories.
 /// </summary>
 public static class IconCategoryMap
 {
     public static readonly IReadOnlyList<IconCategory> Categories =
     [
         new("Haushalt", "Home", [
-            "Home", "CleaningServices", "Bed", "Bathtub", "Chair", "Weekend", "Shower",
+            "Home", "CleaningServices", "Vacuum", "RobotVacuum", "Broom", "SprayBottle", "Bucket",
+            "Bed", "Bathtub", "Chair", "Weekend", "Shower",
             "SingleBed", "KingBed", "DoorFront", "DoorBack", "DoorSliding", "Window",
             "Curtains", "CurtainsClosed", "Garage", "Roofing", "Foundation",
-            "Iron", "LocalLaundryService", "DryCleaningOutlet", "Checkroom",
-            "Soap", "WaterDrop", "Countertops", "TableBar", "TableRestaurant",
+            "Iron", "LocalLaundryService", "WashingMachine", "TumbleDryer", "DryCleaningOutlet", "Checkroom",
+            "Soap", "WaterDrop", "Countertops", "TableBar", "TableRestaurant", "Toilet",
             "Lamp", "Light", "Lightbulb", "WbIncandescent", "ElectricalServices",
             "Power", "Outlet", "Cable", "SensorDoor", "SensorWindow",
             "Stairs", "Elevator", "MeetingRoom", "LivingOutlined", "Deck",
@@ -28,7 +29,7 @@ public static class IconCategoryMap
             "LocalCafe", "Coffee", "CoffeeMaker", "EmojiFoodBeverage",
             "LocalBar", "Liquor", "WineBar", "SportsBar", "NightlifeOutlined",
             "WaterDamage", "LocalDrinkOutlined", "FreeBreakfast",
-            "Blender", "Microwave", "Oven", "SoupKitchen",
+            "Blender", "Microwave", "Oven", "Dishwasher", "SoupKitchen",
             "ShoppingCart", "ShoppingBasket", "LocalGroceryStore", "Store"
         ]),
 
@@ -47,7 +48,7 @@ public static class IconCategoryMap
         ]),
 
         new("Müll & Recycling", "Delete", [
-            "Delete", "DeleteForever", "DeleteSweep",
+            "Delete", "TrashCan", "DeleteForever", "DeleteSweep",
             "Recycling", "Compost", "LocalShipping",
             "Inventory2", "MoveToInbox", "Outbox", "Archive",
             "DeleteOutline"

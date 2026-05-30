@@ -97,7 +97,7 @@ public class ChoreIconGenerator
         var icon = await _ollama.GetMaterialIconAsync(name, description, url, model, ct);
 
         // Validate it's a real icon
-        if (icon is not null && KeywordIconMapper.GetMudIcon(icon) is not null)
+        if (icon is not null && IconRegistry.Exists(icon))
             return icon;
 
         // Fallback to keyword if Ollama gave invalid icon name

@@ -158,8 +158,9 @@
     // Household favorites (curated top picks)
     private static readonly string[] _householdFavorites =
     [
-        "CleaningServices", "Kitchen", "LocalLaundryService", "Bed", "Bathtub",
-        "Shower", "Delete", "Recycling", "Compost", "Pets",
+        "CleaningServices", "Vacuum", "RobotVacuum", "Broom", "Kitchen", "Dishwasher",
+        "LocalLaundryService", "WashingMachine", "TumbleDryer", "Bed", "Bathtub",
+        "Shower", "Toilet", "Delete", "TrashCan", "Recycling", "Compost", "Pets",
         "Yard", "Grass", "ShoppingCart", "Restaurant", "Coffee",
         "LocalDining", "School", "MenuBook", "FitnessCenter", "DirectionsCar",
         "Build", "Handyman", "CalendarToday", "Alarm", "Checkroom",
@@ -477,7 +478,7 @@
     private IReadOnlyList<string> GetMaterialIconsForDisplay()
     {
         if (_materialCategory == "_all")
-            return IconRegistry.All.Keys.OrderBy(k => k).Take(200).ToList();
+            return IconRegistry.All.Keys.OrderBy(k => k).ToList();
 
         if (_materialCategory is not null)
             return IconCategoryMap.GetIcons(_materialCategory);

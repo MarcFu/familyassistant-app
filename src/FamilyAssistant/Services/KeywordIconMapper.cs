@@ -10,14 +10,18 @@ public static class KeywordIconMapper
     private static readonly (string[] Keywords, string Icon)[] Mappings =
     [
         // Kitchen / Cooking
-        (["küche", "kochen", "abwasch", "geschirr", "spülmaschine", "spülen", "abtrocknen"], "Kitchen"),
+        (["küche", "kochen", "abwasch", "geschirr", "spülen", "abtrocknen"], "Kitchen"),
+        (["spülmaschine", "geschirrspüler"], "Dishwasher"),
         (["essen", "mahlzeit", "frühstück", "mittag", "abendessen", "tisch decken"], "Restaurant"),
         (["backen", "kuchen"], "BakeryDining"),
         (["einkauf", "einkaufen", "supermarkt", "laden"], "ShoppingCart"),
         
         // Cleaning
-        (["staubsaugen", "saugen", "staubsauger"], "CleaningServices"),
-        (["wischen", "moppen", "boden", "fegen"], "CleaningServices"),
+        (["staubsaugen", "saugen", "staubsauger"], "Vacuum"),
+        (["saugroboter", "roboter sauger", "robotersauger"], "RobotVacuum"),
+        (["fegen", "kehren", "besen"], "Broom"),
+        (["wischen", "moppen", "boden"], "CleaningServices"),
+        (["sprühflasche", "reiniger", "putzmittel"], "SprayBottle"),
         (["putzen", "reinigen", "sauber", "bad putzen", "badezimmer"], "CleaningServices"),
         (["staub", "abstauben", "staubwischen"], "Air"),
         (["fenster", "fenster putzen"], "Window"),
@@ -25,7 +29,9 @@ public static class KeywordIconMapper
         (["aufräumen", "ordnung", "sortieren", "zimmer aufräumen"], "Inventory2"),
         
         // Laundry
-        (["wäsche", "waschen", "waschmaschine", "trockner"], "LocalLaundryService"),
+        (["wäsche", "waschen"], "LocalLaundryService"),
+        (["waschmaschine"], "WashingMachine"),
+        (["trockner"], "TumbleDryer"),
         (["bügeln", "bügeleisen"], "Iron"),
         (["zusammenlegen", "falten", "kleidung"], "Checkroom"),
         
@@ -122,14 +128,11 @@ public static class KeywordIconMapper
     }
 
     /// <summary>
-    /// Gets the full MudBlazor icon string for rendering.
+    /// Gets the SVG path for rendering. Includes MudBlazor icons and curated Home Assistant/MDI additions.
     /// </summary>
     public static string? GetMudIcon(string iconName)
     {
-        // MudBlazor icons are accessed via Icons.Material.Filled.{Name}
-        // We store just the name and resolve at render time
-        var field = typeof(MudBlazor.Icons.Material.Filled)
-            .GetField(iconName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-        return field?.GetValue(null) as string;
+        // We store just the icon name and resolve it at render time.
+        return IconRegistry.GetSvg(iconName);
     }
 }
