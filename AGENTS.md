@@ -78,6 +78,17 @@
 - **Textfelder** verwenden `DebouncedTextField` (400ms Verzögerung, Client-Side-Filterung auf bereits geladenen Daten).
 - Filter-Zustand darf über Query-Parameter deep-linkbar sein (z.B. `?filter=Completed&person=3`).
 
+## UI-Pattern: Picker Dialogs (Home Assistant Selector Style)
+
+- **Echte Objekt-/Entity-Auswahl** (Chores, HA-Entities, größere Device-Multi-Selects) nutzt den HA-style `PickerDialog<TValue>` statt langer `MudSelect`/Comboboxen.
+- **Picker-Optionen** werden über `PickerOption<TValue>` gemappt: Titel, Subtitle/Detail, Icon, optionaler Chip, Suchtext.
+- **Formular-Summary:** Ausgewähltes Objekt wird als `MudPaper Outlined="true" Class="pa-3"` angezeigt. Inhalt/Identität oben, Aktion (`Auswählen`/`Ändern`) getrennt darunter oder rechts nur wenn genug Platz. Lange Namen dürfen umbrechen.
+- **Dialog-Liste:** Suchfeld oben (`DebouncedTextField`), darunter eine outlined List-Card mit Dividern und Touch-Zeilen (mind. 48px).
+- **HA-Entity-IDs** müssen vollständig sichtbar sein (`WrapText=true`, monospace, `overflow-wrap:anywhere`), niemals nur ellipsisiert.
+- **Kleine feste Enums/Filter** bleiben `MudSelect` (z.B. Rollen, Sprache, Filter, Rhythmus). Kein Picker für 2-5 statische Optionen.
+- **Adaptive Multi-Selects:** Kleine direkte Listen (Richtwert `<= 5`) dürfen inline bleiben; größere Listen wechseln auf Multi-Picker.
+- **Cache:** HA-Entity-Listen kommen über `IHomeAssistantService`; `/api/states` wird im Service kurz gecacht (aktuell 60s), nicht in einzelnen Picker-Komponenten.
+
 ## UI-Pattern: Editierbare Entitäten
 
 - **Standard-Pattern:** Shared Dialog für Create UND Edit (gleiche Komponente).

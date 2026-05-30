@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- HA-style searchable picker dialogs for Chores, Home Assistant entities, trigger entities, and larger device multi-selects
+- 60s Home Assistant entity state cache for picker data to reduce repeated `/api/states` calls
+
 ### Fixed
 - BUG-006: Reduced Home Assistant CPU spikes by skipping unchanged REST state writes, repeated todo item adds, and redundant switch service calls
 

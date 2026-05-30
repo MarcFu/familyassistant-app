@@ -126,6 +126,8 @@ docker run -p 8099:8099 -e SUPERVISOR_TOKEN=... familyassistant
 
 - **MudBlazor v9.4.0**: `MudAvatar` has no `Image` property — use `<img>` as ChildContent
 - **Searchfields**: Always use `Clearable="true"` for X-to-clear UX
+- **Picker dialogs**: Large object/entity selections use HA-style searchable picker dialogs (`PickerDialog<TValue>`) instead of long dropdowns. Small static enum/filter selections stay as `MudSelect`.
+- **HA entity cache**: Home Assistant entity state lists used by pickers are cached for 60 seconds in `HomeAssistantService` to avoid repeated `/api/states` calls.
 - **Permanent tasks**: Never expire, never "missed", always 1 open instance
 - **Task generation is idempotent**: Safe to trigger multiple times (checks uniqueness by ScheduleId + DueDate + OccurrenceIndex)
 - **Credits sync to HA**: Background service updates HA sensor entities periodically

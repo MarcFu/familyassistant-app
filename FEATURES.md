@@ -69,6 +69,7 @@ Status: `done` | `partial` | `planned`
 | Dark Mode (default) | done | Full MudBlazor dark palette (HA-style colors) |
 | Light Mode | done | PaletteLight defined, reactive to HA theme preference |
 | HA-style Cards | done | Outlined cards (no elevation), pill buttons, FAB pattern |
+| HA-style Pickers | done | Searchable outlined picker dialogs for Chores, HA entities, trigger entities, and larger device multi-selects |
 | Mobile Layout | done | Responsive, direct camera access on mobile (`capture="environment"`) |
 | Onboarding / Setup | done | First-run setup page: HA connection check, person import, role assignment, first chore |
 
@@ -110,6 +111,7 @@ Status: `done` | `partial` | `planned`
 | SQLite DB | done | EF Core with migrations, persistent at `/data/familyassistant.db` |
 | Backup / Restore | done | ZIP backup format with manifest, local backup storage, startup restore, and pre-restore safety backup |
 | Docker / Add-on | done | Dockerfile with `/data` volume, `config.yaml` for HA Add-on |
+| HA Entity State Cache | done | 60s `IMemoryCache` for `/api/states` used by entity pickers to reduce HA load and picker latency |
 | Dev Page | done | User switching, testing tools |
 | Settings Page | done | Admin configuration UI (Ollama, HA, schedules) |
 | System Status | done | HA connection status (REST + WebSocket) in Settings > System tab |

@@ -195,6 +195,7 @@ The app is **well-built** and follows many HA conventions correctly (outlined ca
 | 42 | Touch targets mobile | [x] Done | CSS `@media (pointer: coarse)` → 40px min on small icon buttons |
 | 41 | Triggers column density | [x] Done | Reduced from 7 to 5 columns (merged switch into actions, dropped debounce from grid). Breakpoint Lg→Md |
 | 37 | Tasks overflow menu | [x] Done | Secondary actions (Unclaim, Cancel) moved into MudMenu 3-dot overflow; primary actions (Comment, Claim, Done, Confirm) stay visible |
+| — | Picker dialogs | [x] Done | Long object/entity dropdowns replaced with HA-style searchable outlined picker dialogs; HA entity IDs wrap fully and `/api/states` is cached for 60s |
 
 ### Not Yet Addressed (Backlog)
 
