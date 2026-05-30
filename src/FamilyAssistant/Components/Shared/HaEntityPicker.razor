@@ -185,16 +185,17 @@
         if (!_loaded)
             await LoadEntitiesAsync();
 
-        var parameters = new DialogParameters<PickerDialog<string>>
+        var parameters = new DialogParameters
         {
-            { x => x.Options, BuildOptions() },
-            { x => x.SelectedValue, SelectedValue },
-            { x => x.SelectedValues, MultiSelect ? _selectedSet.ToList() : [] },
-            { x => x.MultiSelect, MultiSelect },
-            { x => x.Clearable, true },
-            { x => x.WrapText, true },
-            { x => x.SearchPlaceholder, L["EntityPicker.SearchPlaceholder"].Value },
-            { x => x.EmptyText, _allEntities.Count == 0 ? L["EntityPicker.NoEntities"].Value : L["EntityPicker.NoMatch"].Value }
+            { nameof(PickerDialog<string>.Options), BuildOptions() },
+            { nameof(PickerDialog<string>.SelectedValue), SelectedValue },
+            { nameof(PickerDialog<string>.SelectedValues), MultiSelect ? _selectedSet.ToList() : [] },
+            { nameof(PickerDialog<string>.MultiSelect), MultiSelect },
+            { nameof(PickerDialog<string>.Clearable), true },
+            { nameof(PickerDialog<string>.WrapText), true },
+            { nameof(PickerDialog<string>.InitialVisibleCount), 150 },
+            { nameof(PickerDialog<string>.SearchPlaceholder), L["EntityPicker.SearchPlaceholder"].Value },
+            { nameof(PickerDialog<string>.EmptyText), _allEntities.Count == 0 ? L["EntityPicker.NoEntities"].Value : L["EntityPicker.NoMatch"].Value }
         };
 
         var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true };

@@ -152,6 +152,9 @@
     [Parameter]
     public bool WrapText { get; set; }
 
+    [Parameter]
+    public int InitialVisibleCount { get; set; }
+
     private readonly HashSet<TValue> _selectedValues = [];
     private string? _searchText;
 
@@ -198,7 +201,12 @@
     private List<PickerOption<TValue>> FilterOptions()
     {
         if (string.IsNullOrWhiteSpace(_searchText))
+        {
+            if (InitialVisibleCount > 0 && Options.Count > InitialVisibleCount)
+                return Options.Take(InitialVisibleCount).ToList();
+
             return Options.ToList();
+        }
 
         var terms = _searchText
             .Split([' ', ',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
