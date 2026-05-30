@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- BUG-006: Reduced Home Assistant CPU spikes by skipping unchanged REST state writes, repeated todo item adds, and redundant switch service calls
+
 ## [0.1.7] - 2025-05-29
 
 ### Added

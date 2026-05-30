@@ -1,6 +1,7 @@
 using FamilyAssistant.Data;
 using FamilyAssistant.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Concurrent;
 
 namespace FamilyAssistant.Services;
 
@@ -14,6 +15,7 @@ public class InternetEnforcementService : BackgroundService
     private readonly IHomeAssistantService _haService;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<InternetEnforcementService> _logger;
+    private readonly ConcurrentDictionary<string, bool> _lastAppliedSwitchStates = new();
 
     private static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(60);
 
@@ -156,9 +158,15 @@ public class InternetEnforcementService : BackgroundService
     {
         try
         {
+            // BUG-006: Only call HA when the desired state changed; repeating switch.turn_on/off every minute spikes HAOS CPU.
+            if (_lastAppliedSwitchStates.TryGetValue(entityId, out var previous) && previous == turnOn)
+                return;
+
             var service = turnOn ? "turn_on" : "turn_off";
             await _haService.CallServiceAsync("switch", service,
                 new { entity_id = entityId }, ct);
+
+            _lastAppliedSwitchStates[entityId] = turnOn;
 
             _logger.LogDebug("Switch {Entity} → {State}", entityId, turnOn ? "ON" : "OFF");
         }

@@ -1,6 +1,8 @@
 using FamilyAssistant.Data;
 using FamilyAssistant.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Concurrent;
+using System.Text.Json;
 
 namespace FamilyAssistant.Services;
 
@@ -14,7 +16,11 @@ public class HomeAssistantSyncService : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<HomeAssistantSyncService> _logger;
 
+    private readonly ConcurrentDictionary<string, string> _lastEntityStateSignatures = new();
+    private readonly ConcurrentDictionary<string, HashSet<int>> _syncedTodoTaskIdsByEntity = new();
+
     private static readonly TimeSpan Interval = TimeSpan.FromMinutes(5);
+    private static readonly JsonSerializerOptions SignatureJsonOptions = new(JsonSerializerDefaults.Web);
 
     public HomeAssistantSyncService(IServiceScopeFactory scopeFactory, ILogger<HomeAssistantSyncService> logger)
     {
@@ -68,7 +74,7 @@ public class HomeAssistantSyncService : BackgroundService
 
             try
             {
-                await haService.SetEntityStateAsync(entityId, person.Credits.ToString(), attributes, ct);
+                await SetEntityStateIfChangedAsync(haService, entityId, person.Credits.ToString(), attributes, ct);
             }
             catch (Exception ex)
             {
@@ -121,7 +127,7 @@ public class HomeAssistantSyncService : BackgroundService
                     ["icon"] = "mdi:clipboard-check-outline"
                 };
 
-                await haService.SetEntityStateAsync(
+                await SetEntityStateIfChangedAsync(haService,
                     person.HaTodoEntityId,
                     tasks.Count.ToString(),
                     attributes,
@@ -129,8 +135,23 @@ public class HomeAssistantSyncService : BackgroundService
 
                 // For actual todo items, use the todo.add_item / todo.update_item services
                 // This requires the person to have a real HA todo list entity (from Local To-do integration)
+                var syncedTaskIds = _syncedTodoTaskIdsByEntity.GetOrAdd(person.HaTodoEntityId, _ => []);
+                var currentTaskIds = tasks.Select(t => t.Id).ToHashSet();
+
+                lock (syncedTaskIds)
+                {
+                    syncedTaskIds.IntersectWith(currentTaskIds);
+                }
+
                 foreach (var task in tasks)
                 {
+                    lock (syncedTaskIds)
+                    {
+                        // BUG-006: Avoid re-adding the same HA todo items every sync cycle.
+                        if (syncedTaskIds.Contains(task.Id))
+                            continue;
+                    }
+
                     var summary = $"{task.Chore.Name}" +
                         (task.OccurrenceLabel is not null ? $" ({task.OccurrenceLabel})" : "") +
                         $" — {task.Chore.CreditsReward} Credits";
@@ -150,6 +171,11 @@ public class HomeAssistantSyncService : BackgroundService
                             item = summary,
                             due_date = task.DueDate.ToString("yyyy-MM-dd")
                         }, ct);
+
+                        lock (syncedTaskIds)
+                        {
+                            syncedTaskIds.Add(task.Id);
+                        }
                     }
                     catch
                     {
@@ -163,6 +189,23 @@ public class HomeAssistantSyncService : BackgroundService
                 _logger.LogWarning(ex, "Failed to sync todo list for {Person}", person.Name);
             }
         }
+    }
+
+    private async Task SetEntityStateIfChangedAsync(
+        IHomeAssistantService haService,
+        string entityId,
+        string state,
+        Dictionary<string, object?> attributes,
+        CancellationToken ct)
+    {
+        var signature = state + "|" + JsonSerializer.Serialize(attributes, SignatureJsonOptions);
+
+        // BUG-006: Skip unchanged REST writes to avoid periodic HAOS CPU spikes.
+        if (_lastEntityStateSignatures.TryGetValue(entityId, out var previous) && previous == signature)
+            return;
+
+        await haService.SetEntityStateAsync(entityId, state, attributes, ct);
+        _lastEntityStateSignatures[entityId] = signature;
     }
 
     private static string SanitizeName(string name)
