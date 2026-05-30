@@ -185,6 +185,8 @@
         if (!_loaded)
             await LoadEntitiesAsync();
 
+        // BUG-008: Generic DialogParameters<PickerDialog<string>> crashed in production for the
+        // trigger entity picker after adding InitialVisibleCount. Use named parameters instead.
         var parameters = new DialogParameters
         {
             { nameof(PickerDialog<string>.Options), BuildOptions() },
