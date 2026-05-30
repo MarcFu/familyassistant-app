@@ -1,0 +1,92 @@
+@inject FamilyAssistant.Data.AppDbContext Db
+@inject IStringLocalizer<SharedResource> L
+@using FamilyAssistant.Components.Shared.Pickers
+@using Microsoft.EntityFrameworkCore
+
+@if (_loading)
+{
+    <MudDialog>
+        <DialogContent>
+            <div class="d-flex justify-center pa-4">
+                <MudProgressCircular Indeterminate="true" />
+            </div>
+        </DialogContent>
+    </MudDialog>
+}
+else
+{
+    <PickerDialog TValue="int"
+                  Options="_options"
+                  SelectedValues="SelectedValues"
+                  SearchPlaceholder="@L["Dialog.ChorePicker.SearchPlaceholder"].Value"
+                  EmptyText="@L["Dialog.ChorePicker.NoMatch"].Value"
+                  EmptyActionText="@L["Dialog.AdHoc.Custom"].Value"
+                  EmptyActionKey="custom" />
+}
+
+@code {
+    [Parameter]
+    public int? SelectedChoreId { get; set; }
+
+    [Parameter]
+    public bool IncludeInactive { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<Chore>? Chores { get; set; }
+
+    private bool _loading = true;
+    private List<PickerOption<int>> _options = [];
+    private IReadOnlyCollection<int> SelectedValues => SelectedChoreId.HasValue ? [SelectedChoreId.Value] : [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var chores = Chores is not null
+            ? Chores.Where(c => !c.IsDeleted && (IncludeInactive || c.IsActive)).ToList()
+            : await Db.Chores
+                .Where(c => !c.IsDeleted && (IncludeInactive || c.IsActive))
+                .ToListAsync();
+
+        _options = chores
+            .OrderBy(c => c.IsActive ? 0 : 1)
+            .ThenBy(c => c.Name)
+            .Select(ToOption)
+            .ToList();
+        _loading = false;
+    }
+
+    private PickerOption<int> ToOption(Chore chore)
+    {
+        var (icon, iconText, iconMarkup) = ResolveIcon(chore.Icon);
+
+        return new PickerOption<int>
+        {
+            Value = chore.Id,
+            Title = chore.IsActive ? chore.Name : string.Format(L["Common.InactivePrefix"].Value, chore.Name),
+            Subtitle = chore.Description,
+            Icon = icon,
+            IconText = iconText,
+            IconMarkup = iconMarkup,
+            IconColor = chore.IconColor,
+            ChipText = chore.IsActive ? $"{chore.CreditsReward} Cr" : L["Common.Inactive"].Value,
+            ChipColor = chore.IsActive ? Color.Success : Color.Warning,
+            SearchText = $"{chore.Name} {chore.Description} {chore.CreditsReward}"
+        };
+    }
+
+    private static (string? Icon, string? IconText, string? IconMarkup) ResolveIcon(string? icon)
+    {
+        if (string.IsNullOrWhiteSpace(icon))
+            return (Icons.Material.Filled.TaskAlt, null, null);
+
+        if (IsEmoji(icon))
+            return (null, icon, null);
+
+        if (icon.StartsWith("svg:"))
+            return (null, null, System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(icon[4..])));
+
+        return (IconRegistry.GetSvg(icon) ?? Icons.Material.Filled.TaskAlt, null, null);
+    }
+
+    private static bool IsEmoji(string s) =>
+        !string.IsNullOrEmpty(s) && !s.All(c => c < 128);
+}

@@ -75,6 +75,12 @@
   <data name="EntityPicker.NoEntities"><value>Keine Entitäten für diese Domain gefunden.</value></data>
   <data name="EntityPicker.NoMatch"><value>Kein Treffer für diese Suche.</value></data>
   <data name="EntityPicker.CountInfo"><value>{0} von {1} angezeigt</value></data>
+  <data name="Picker.SearchPlaceholder"><value>Suchen...</value></data>
+  <data name="Picker.NoResults"><value>Keine Treffer gefunden.</value></data>
+  <data name="Picker.CountInfo"><value>{0} von {1} angezeigt</value></data>
+  <data name="Picker.NoSelection"><value>Nichts ausgewählt</value></data>
+  <data name="Picker.Select"><value>Auswählen</value></data>
+  <data name="Picker.Change"><value>Ändern</value></data>
   <data name="Common.InactivePrefix"><value>[inaktiv] {0}</value></data>
   <data name="Common.ConnectionError"><value>Verbindungsfehler: {0}</value></data>
   <data name="Common.Snackbar.Error"><value>Fehler: {0}</value></data>
@@ -421,6 +427,7 @@
   <data name="Dialog.Trigger.State"><value>Trigger-Zustand</value></data>
   <data name="Dialog.Trigger.StatePlaceholder"><value>z.B. on, fertig, open</value></data>
   <data name="Dialog.Trigger.StateHelper"><value>Zustand bei dem die Aufgabe erstellt wird</value></data>
+  <data name="Dialog.Trigger.UseCurrentState"><value>Aktuellen Zustand übernehmen ({0})</value></data>
   <data name="Dialog.Trigger.Debounce"><value>Debounce (Minuten)</value></data>
   <data name="Dialog.Trigger.DebounceHelper"><value>Mindestabstand zwischen zwei Auslösungen (0 = kein Debounce)</value></data>
   <data name="Dialog.PersonEntity.Title"><value>Verknüpfungen: {0}</value></data>
@@ -443,9 +450,15 @@
   <data name="Dialog.AdHoc.ExistingChore"><value>Bestehende Hausarbeit</value></data>
   <data name="Dialog.AdHoc.Custom"><value>Eigene Aufgabe</value></data>
   <data name="Dialog.AdHoc.ChoreLabel"><value>Hausarbeit</value></data>
+  <data name="Dialog.AdHoc.NoChoreSelected"><value>Keine Hausarbeit ausgewählt</value></data>
+  <data name="Dialog.AdHoc.SelectChore"><value>Auswählen</value></data>
+  <data name="Dialog.AdHoc.ChangeChore"><value>Ändern</value></data>
   <data name="Dialog.AdHoc.TaskName"><value>Aufgabenname</value></data>
   <data name="Dialog.AdHoc.AssignTo"><value>Zuweisen an</value></data>
   <data name="Dialog.AdHoc.DueDate"><value>Fällig am (optional)</value></data>
+  <data name="Dialog.ChorePicker.Title"><value>Hausarbeit auswählen</value></data>
+  <data name="Dialog.ChorePicker.SearchPlaceholder"><value>Hausarbeit suchen...</value></data>
+  <data name="Dialog.ChorePicker.NoMatch"><value>Keine passende Hausarbeit gefunden.</value></data>
   <data name="Dialog.Comments.Title"><value>Kommentare — {0}</value></data>
   <data name="Dialog.Comments.Empty"><value>Noch keine Kommentare. Schreib den ersten!</value></data>
   <data name="Dialog.Comments.Label"><value>Kommentar</value></data>

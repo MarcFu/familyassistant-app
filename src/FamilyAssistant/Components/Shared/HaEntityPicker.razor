@@ -1,127 +1,92 @@
 @inject IHomeAssistantService HaService
+@inject IDialogService DialogService
 @inject IStringLocalizer<SharedResource> L
 
-@if (MultiSelect)
-{
-    @* ─── Multi-Select: Searchable checkbox list ─── *@
-    <div class="ha-entity-picker @Class">
-        <MudTextField T="string" @bind-Value="_searchText" Label="@Label" Variant="Variant.Filled"
-                      Immediate="true" DebounceInterval="200"
-                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                      Placeholder="@L["EntityPicker.SearchPlaceholder"].Value" />
+<div class="ha-entity-picker @Class">
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <MudText Typo="Typo.subtitle2" Class="mb-1">@Label</MudText>
+    }
 
-        @if (_selectedSet.Count > 0)
+    <MudPaper Outlined="true" Class="pa-3">
+        @if (!_loaded)
         {
-            <div class="d-flex flex-wrap gap-1 mt-2 mb-1">
-                @foreach (var id in _selectedSet)
-                {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled"
-                             OnClose="@(() => RemoveSelection(id))">
-                        @GetShortName(id)
-                    </MudChip>
-                }
+            <div class="d-flex align-center gap-2">
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Common.Loading"]</MudText>
             </div>
         }
-
-        <MudPaper Outlined="true" Class="mt-2 pa-0" Style="max-height: 240px; overflow-y: auto;">
-            @if (!_loaded)
-            {
-                <div class="d-flex justify-center pa-4">
-                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                </div>
-            }
-            else if (FilteredEntities.Count == 0)
-            {
-                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-3">
-                    @(_allEntities.Count == 0 ? L["EntityPicker.NoEntities"].Value : L["EntityPicker.NoMatch"].Value)
-                </MudText>
-            }
-            else
-            {
-                <MudList T="string" Dense="true" Class="pa-0">
-                    @foreach (var entity in FilteredEntities)
-                    {
-                        var isSelected = _selectedSet.Contains(entity.EntityId);
-                        <MudListItem T="string" Dense="true" OnClick="@(() => ToggleSelection(entity.EntityId))"
-                                     Class="@(isSelected ? "mud-primary-text" : "")">
-                            <div class="d-flex align-center gap-2" style="width: 100%;">
-                                <MudCheckBox T="bool" Value="@isSelected" Dense="true" ReadOnly="true"
-                                             Color="Color.Primary" Size="Size.Small"
-                                             Class="ma-0 pa-0" style="min-width: 28px;" />
-                                <MudIcon Icon="@GetDomainIcon(entity)" Size="Size.Small"
-                                         Color="@GetStateColor(entity)" />
-                                <div style="flex: 1; min-width: 0;">
-                                    <MudText Typo="Typo.body2" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                        @GetFriendlyName(entity)
-                                    </MudText>
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary"
-                                             Style="font-family: monospace; font-size: 0.7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                        @entity.EntityId
-                                    </MudText>
-                                </div>
-                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
-                                         Color="@GetStateColor(entity)"
-                                         Style="font-size: 0.65rem; height: 20px; min-height: 20px;">
-                                    @entity.State
-                                </MudChip>
-                            </div>
-                        </MudListItem>
-                    }
-                </MudList>
-            }
-        </MudPaper>
-
-        @if (_loaded && _allEntities.Count > 0)
+        else if (MultiSelect)
         {
-            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
-                @string.Format(L["EntityPicker.CountInfo"].Value, FilteredEntities.Count, _allEntities.Count)
-            </MudText>
-        }
-    </div>
-}
-else
-{
-    @* ─── Single-Select: Enhanced Autocomplete ─── *@
-    <MudAutocomplete T="string" Label="@Label" Value="SelectedValue" ValueChanged="OnSingleValueChanged"
-                     SearchFunc="SearchEntities" Variant="Variant.Filled"
-                     Clearable="true" Class="@Class" ShowProgressIndicator="true"
-                     MaxItems="100" Dense="true" CoerceValue="true">
-        <ItemTemplate Context="entityId">
-            @{
-                var entity = _allEntities.FirstOrDefault(e => e.EntityId == entityId);
-            }
-            <div class="d-flex align-center gap-2 py-1" style="width: 100%;">
-                <MudIcon Icon="@GetDomainIcon(entity)" Size="Size.Small"
-                         Color="@GetStateColor(entity)" />
-                <div style="flex: 1; min-width: 0;">
-                    <MudText Typo="Typo.body2">
-                        @(entity is not null ? GetFriendlyName(entity) : entityId)
-                    </MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary"
-                             Style="font-family: monospace; font-size: 0.7rem;">
-                        @entityId
-                    </MudText>
-                </div>
-                @if (entity is not null)
+            <div class="d-flex flex-column gap-2">
+                @if (_selectedSet.Count == 0)
                 {
-                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
-                             Color="@GetStateColor(entity)"
-                             Style="font-size: 0.65rem; height: 20px; min-height: 20px;">
-                        @entity.State
-                    </MudChip>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Picker.NoSelection"]</MudText>
                 }
+                else
+                {
+                    <div class="d-flex flex-wrap gap-1">
+                        @foreach (var id in _selectedSet)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled"
+                                     OnClose="@(() => RemoveSelection(id))">
+                                @GetShortName(id)
+                            </MudChip>
+                        }
+                    </div>
+                }
+
+                <div class="d-flex justify-end">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Search" OnClick="OpenPickerAsync">
+                        @(_selectedSet.Count == 0 ? L["Picker.Select"] : L["Picker.Change"])
+                    </MudButton>
+                </div>
             </div>
-        </ItemTemplate>
-        <ItemSelectedTemplate Context="entityId">
-            @{
-                var entity = _allEntities.FirstOrDefault(e => e.EntityId == entityId);
-                var displayName = entity is not null ? GetFriendlyName(entity) : entityId;
-            }
-            <span>@displayName</span>
-            <span style="color: var(--mud-palette-text-secondary); font-size: 0.75rem; margin-left: 8px; font-family: monospace;">@entityId</span>
-        </ItemSelectedTemplate>
-    </MudAutocomplete>
-}
+        }
+        else
+        {
+            <div class="d-flex flex-column gap-2">
+                @if (SelectedEntity is not null)
+                {
+                    <div class="d-flex align-start gap-3">
+                        <MudIcon Icon="@GetDomainIcon(SelectedEntity)" Size="Size.Medium" Color="@GetStateColor(SelectedEntity)" />
+                        <div style="flex: 1; min-width: 0;">
+                            <MudText Typo="Typo.body2" Style="overflow-wrap: anywhere;">@GetFriendlyName(SelectedEntity)</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display: block; overflow-wrap: anywhere; font-family: monospace;">
+                                @SelectedEntity.EntityId
+                            </MudText>
+                            @if (!string.IsNullOrWhiteSpace(GetEntityDetail(SelectedEntity)))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Tertiary" Style="display: block; overflow-wrap: anywhere;">
+                                    @GetEntityDetail(SelectedEntity)
+                                </MudText>
+                            }
+                        </div>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetStateColor(SelectedEntity)">
+                            @SelectedEntity.State
+                        </MudChip>
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(SelectedValue))
+                {
+                    <MudText Typo="Typo.body2" Style="overflow-wrap: anywhere; font-family: monospace;">@SelectedValue</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Picker.NoSelection"]</MudText>
+                }
+
+                <div class="d-flex justify-end">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Search" OnClick="OpenPickerAsync">
+                        @(string.IsNullOrWhiteSpace(SelectedValue) ? L["Picker.Select"] : L["Picker.Change"])
+                    </MudButton>
+                </div>
+            </div>
+        }
+    </MudPaper>
+</div>
 
 @code {
     /// <summary>
@@ -154,23 +119,14 @@ else
     [Parameter]
     public EventCallback<ICollection<string>> SelectedValuesChanged { get; set; }
 
-    // --- Internal state ---
     private List<HaEntityState> _allEntities = [];
     private IReadOnlyDictionary<string, HaEntityRegistryInfo> _registry = new Dictionary<string, HaEntityRegistryInfo>();
     private HashSet<string> _selectedSet = [];
-    private string _searchText = "";
     private bool _loaded;
 
-    private List<HaEntityState> FilteredEntities
-    {
-        get
-        {
-            if (string.IsNullOrWhiteSpace(_searchText))
-                return _allEntities;
-
-            return RankedSearch(_searchText, _allEntities);
-        }
-    }
+    private HaEntityState? SelectedEntity => string.IsNullOrWhiteSpace(SelectedValue)
+        ? null
+        : _allEntities.FirstOrDefault(e => e.EntityId == SelectedValue);
 
     protected override async Task OnInitializedAsync()
     {
@@ -205,7 +161,6 @@ else
                 .ThenBy(e => e.EntityId)
                 .ToList();
 
-            // Load registry data for area/device info (best-effort, non-blocking)
             try
             {
                 _registry = await HaService.GetEntityRegistryAsync();
@@ -223,125 +178,55 @@ else
         _loaded = true;
     }
 
-    // ─── Ranked Multi-Term Search ───────────────────────────────
-
-    /// <summary>
-    /// Splits input into terms (by space/comma), filters entities where ALL terms match
-    /// somewhere (name, entity_id, area, device), then ranks results by relevance.
-    /// </summary>
-    private List<HaEntityState> RankedSearch(string input, List<HaEntityState> entities)
+    private async Task OpenPickerAsync()
     {
-        var terms = input
-            .Split([' ', ',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(t => t.ToLowerInvariant())
-            .Where(t => t.Length > 0)
-            .ToArray();
+        if (!_loaded)
+            await LoadEntitiesAsync();
 
-        if (terms.Length == 0)
-            return entities;
-
-        var scored = new List<(HaEntityState Entity, int Score)>();
-
-        foreach (var entity in entities)
+        var parameters = new DialogParameters<PickerDialog<string>>
         {
-            var score = ScoreEntity(entity, terms, input.ToLowerInvariant());
-            if (score > 0)
-                scored.Add((entity, score));
-        }
+            { x => x.Options, BuildOptions() },
+            { x => x.SelectedValue, SelectedValue },
+            { x => x.SelectedValues, MultiSelect ? _selectedSet.ToList() : [] },
+            { x => x.MultiSelect, MultiSelect },
+            { x => x.Clearable, true },
+            { x => x.WrapText, true },
+            { x => x.SearchPlaceholder, L["EntityPicker.SearchPlaceholder"].Value },
+            { x => x.EmptyText, _allEntities.Count == 0 ? L["EntityPicker.NoEntities"].Value : L["EntityPicker.NoMatch"].Value }
+        };
 
-        return scored
-            .OrderByDescending(s => s.Score)
-            .ThenBy(s => GetFriendlyName(s.Entity))
-            .Select(s => s.Entity)
-            .ToList();
-    }
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true };
+        var dialog = await DialogService.ShowAsync<PickerDialog<string>>(Label ?? L["Picker.Select"].Value, parameters, options);
+        var result = await dialog.Result;
 
-    private int ScoreEntity(HaEntityState entity, string[] terms, string fullInput)
-    {
-        var name = GetFriendlyName(entity).ToLowerInvariant();
-        var id = entity.EntityId.ToLowerInvariant();
+        if (result is null || result.Canceled || result.Data is not PickerDialogResult<string> pickerResult)
+            return;
 
-        // Get area/device info
-        _registry.TryGetValue(entity.EntityId, out var regInfo);
-        var area = regInfo?.AreaName?.ToLowerInvariant() ?? "";
-        var device = regInfo?.DeviceName?.ToLowerInvariant() ?? "";
-
-        // Combined searchable text
-        var combined = $"{name} {id} {area} {device}";
-
-        // ALL terms must match somewhere (AND logic)
-        foreach (var term in terms)
+        if (MultiSelect)
         {
-            if (!combined.Contains(term))
-                return 0; // term not found anywhere → no match
+            _selectedSet = pickerResult.Values.ToHashSet();
+            SelectedValues = _selectedSet.ToList();
+            await SelectedValuesChanged.InvokeAsync(SelectedValues);
         }
-
-        // ─── Scoring (all terms matched) ────────────────────────
-        var score = 0;
-
-        // Bonus: exact full input as substring in name
-        if (name.Contains(fullInput.Trim()))
-            score += 15;
-
-        // Bonus: name starts with first term
-        if (terms.Length > 0 && name.StartsWith(terms[0]))
-            score += 10;
-
-        foreach (var term in terms)
-        {
-            // Term in friendly name (high value)
-            if (name.Contains(term))
-                score += 5;
-
-            // Term in area or device name (medium value)
-            if (area.Contains(term) || device.Contains(term))
-                score += 3;
-
-            // Term in entity_id (low value)
-            if (id.Contains(term))
-                score += 1;
-        }
-
-        // Bonus: shorter names rank higher (more specific match)
-        if (name.Length < 20) score += 2;
-        if (name.Length < 10) score += 2;
-
-        return score;
-    }
-
-    // ─── Single-Select ──────────────────────────────────────────
-
-    private async Task OnSingleValueChanged(string? value)
-    {
-        SelectedValue = value;
-        await SelectedValueChanged.InvokeAsync(value);
-    }
-
-    private Task<IEnumerable<string>> SearchEntities(string? searchText, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(searchText))
-        {
-            return Task.FromResult(_allEntities.Select(e => e.EntityId));
-        }
-
-        var results = RankedSearch(searchText, _allEntities)
-            .Select(e => e.EntityId);
-
-        return Task.FromResult(results);
-    }
-
-    // ─── Multi-Select ───────────────────────────────────────────
-
-    private async Task ToggleSelection(string entityId)
-    {
-        if (_selectedSet.Contains(entityId))
-            _selectedSet.Remove(entityId);
         else
-            _selectedSet.Add(entityId);
-
-        SelectedValues = _selectedSet.ToList();
-        await SelectedValuesChanged.InvokeAsync(SelectedValues);
+        {
+            SelectedValue = pickerResult.Values.Count > 0 ? pickerResult.Values[0] : null;
+            await SelectedValueChanged.InvokeAsync(SelectedValue);
+        }
     }
+
+    private IReadOnlyList<PickerOption<string>> BuildOptions()
+        => _allEntities.Select(entity => new PickerOption<string>
+        {
+            Value = entity.EntityId,
+            Title = GetFriendlyName(entity),
+            Subtitle = entity.EntityId,
+            Detail = GetEntityDetail(entity),
+            Icon = GetDomainIcon(entity),
+            ChipText = entity.State,
+            ChipColor = GetStateColor(entity),
+            SearchText = $"{GetFriendlyName(entity)} {entity.EntityId} {GetEntityDetail(entity)} {entity.State}"
+        }).ToList();
 
     private async Task RemoveSelection(string entityId)
     {
@@ -349,8 +234,6 @@ else
         SelectedValues = _selectedSet.ToList();
         await SelectedValuesChanged.InvokeAsync(SelectedValues);
     }
-
-    // ─── Helpers ────────────────────────────────────────────────
 
     private string GetShortName(string entityId)
     {
@@ -360,9 +243,22 @@ else
             var name = GetFriendlyName(entity);
             return name.Length > 25 ? name[..22] + "..." : name;
         }
-        // Fallback: show part after dot
+
         var dotIdx = entityId.IndexOf('.');
         return dotIdx >= 0 ? entityId[(dotIdx + 1)..] : entityId;
+    }
+
+    private string? GetEntityDetail(HaEntityState entity)
+    {
+        _registry.TryGetValue(entity.EntityId, out var regInfo);
+
+        return (regInfo?.AreaName, regInfo?.DeviceName) switch
+        {
+            ({ Length: > 0 } area, { Length: > 0 } device) => $"{area} / {device}",
+            ({ Length: > 0 } area, _) => area,
+            (_, { Length: > 0 } device) => device,
+            _ => null
+        };
     }
 
     private static string GetFriendlyName(HaEntityState entity)
@@ -371,20 +267,13 @@ else
         {
             return name.ToString() ?? entity.EntityId;
         }
+
         return entity.EntityId;
     }
 
     private static string GetDomainIcon(HaEntityState? entity)
     {
         if (entity is null) return Icons.Material.Filled.HelpOutline;
-
-        // Check for custom icon in attributes
-        if (entity.Attributes.TryGetValue("icon", out var iconAttr) && iconAttr is not null)
-        {
-            var iconStr = iconAttr.ToString() ?? "";
-            // mdi icons can't be used directly, map common ones
-            // For now, fall through to domain-based
-        }
 
         var domain = entity.EntityId.Split('.')[0];
         return domain switch

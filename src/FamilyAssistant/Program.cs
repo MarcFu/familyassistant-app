@@ -32,6 +32,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddMudServices();
+builder.Services.AddMemoryCache();
 
 builder.Services.Configure<FormOptions>(options =>
 {

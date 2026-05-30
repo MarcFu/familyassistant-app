@@ -1,5 +1,6 @@
 @inject FamilyAssistant.Data.AppDbContext Db
 @inject FamilyAssistant.Services.UserContextService UserContext
+@inject IDialogService DialogService
 @inject IStringLocalizer<SharedResource> L
 @using Microsoft.EntityFrameworkCore
 
@@ -25,31 +26,39 @@
 
         @if (_mode == AdHocMode.ExistingChore)
         {
-            <MudSelect T="int?" @bind-Value="_selectedChoreId" Label="@L["Dialog.AdHoc.ChoreLabel"].Value" Variant="Variant.Filled"
-                       Margin="Margin.Dense" Clearable="true" Class="mb-3">
-                @foreach (var chore in _chores)
-                {
-                    <MudSelectItem T="int?" Value="@chore.Id">
-                        @if (chore.Icon is not null)
-                        {
-                            @if (IsEmoji(chore.Icon))
+            <MudPaper Outlined="true" Class="pa-3 mb-3">
+                <div class="d-flex align-start gap-3">
+                    @if (SelectedChore is not null)
+                    {
+                        @RenderChoreIcon(SelectedChore)
+                        <div style="flex: 1; min-width: 0;">
+                            <MudText Typo="Typo.body2" Style="overflow-wrap: anywhere;">
+                                @SelectedChore.Name
+                            </MudText>
+                            @if (!string.IsNullOrWhiteSpace(SelectedChore.Description))
                             {
-                                <span class="mr-1">@chore.Icon</span>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display: block; overflow-wrap: anywhere;">
+                                    @SelectedChore.Description
+                                </MudText>
                             }
-                            else
-                            {
-                                var svg = FamilyAssistant.Services.IconRegistry.GetSvg(chore.Icon);
-                                if (svg is not null)
-                                {
-                                    <MudIcon Icon="@svg" Size="Size.Small" Class="mr-1"
-                                             Style="@(chore.IconColor is not null ? $"color: {chore.IconColor};" : "")" />
-                                }
-                            }
-                        }
-                        @chore.Name (@chore.CreditsReward Credits)
-                    </MudSelectItem>
-                }
-            </MudSelect>
+                        </div>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.TaskAlt" Color="Color.Secondary" />
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Style="flex: 1;">
+                            @L["Dialog.AdHoc.NoChoreSelected"]
+                        </MudText>
+                    }
+                </div>
+
+                <div class="d-flex justify-end mt-2">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Search" OnClick="OpenChorePickerAsync">
+                        @(SelectedChore is null ? L["Picker.Select"] : L["Picker.Change"])
+                    </MudButton>
+                </div>
+            </MudPaper>
         }
         else
         {
@@ -97,6 +106,10 @@
     private int? _assignToPersonId;
     private DateTime? _dueDate = DateTime.Today;
 
+    private Chore? SelectedChore => _selectedChoreId.HasValue
+        ? _chores.FirstOrDefault(c => c.Id == _selectedChoreId.Value)
+        : null;
+
     protected override async Task OnInitializedAsync()
     {
         _chores = await Db.Chores.Where(c => c.IsActive && !c.IsDeleted).OrderBy(c => c.Name).ToListAsync();
@@ -119,6 +132,29 @@
             return false;
 
         return true;
+    }
+
+    private async Task OpenChorePickerAsync()
+    {
+        var parameters = new DialogParameters<ChorePickerDialog>
+        {
+            { x => x.SelectedChoreId, _selectedChoreId }
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true };
+        var dialog = await DialogService.ShowAsync<ChorePickerDialog>(L["Dialog.ChorePicker.Title"].Value, parameters, options);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled || result.Data is not PickerDialogResult<int> pickerResult)
+            return;
+
+        if (pickerResult.ActionKey == "custom")
+        {
+            _mode = AdHocMode.Custom;
+            return;
+        }
+
+        _selectedChoreId = pickerResult.Value;
     }
 
     private async Task Submit()
@@ -163,6 +199,40 @@
     }
 
     private void Cancel() => MudDialog.Cancel();
+
+    private RenderFragment RenderChoreIcon(Chore chore) => @<div style="min-width: 24px; display: flex; justify-content: center;">
+        @if (chore.Icon is not null)
+        {
+            @if (IsEmoji(chore.Icon))
+            {
+                <span style="font-size: 1.4rem; line-height: 1;">@chore.Icon</span>
+            }
+            else if (chore.Icon.StartsWith("svg:"))
+            {
+                var svgData = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(chore.Icon[4..]));
+                <div style="width: 24px; height: 24px; color: @(chore.IconColor ?? "currentColor"); display: inline-flex;">
+                    @((MarkupString)svgData)
+                </div>
+            }
+            else
+            {
+                var svg = FamilyAssistant.Services.IconRegistry.GetSvg(chore.Icon);
+                if (svg is not null)
+                {
+                    <MudIcon Icon="@svg" Size="Size.Medium"
+                             Style="@(chore.IconColor is not null ? $"color: {chore.IconColor};" : "")" />
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.TaskAlt" Size="Size.Medium" />
+                }
+            }
+        }
+        else
+        {
+            <MudIcon Icon="@Icons.Material.Filled.TaskAlt" Size="Size.Medium" />
+        }
+    </div>;
 
     private static bool IsEmoji(string s) =>
         !string.IsNullOrEmpty(s) && !s.All(c => c < 128);

@@ -1,0 +1,281 @@
+@typeparam TValue
+@inject IStringLocalizer<SharedResource> L
+
+<MudDialog Style="max-width: 640px;">
+    <DialogContent>
+        <DebouncedTextField Value="@_searchText" ValueChanged="OnSearchChanged"
+                            Placeholder="@SearchPlaceholder"
+                            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                            Class="mb-3" />
+
+        <MudPaper Outlined="true" Class="pa-0" Style="max-height: min(62vh, 520px); overflow-y: auto;">
+            @if (FilteredOptions.Count == 0)
+            {
+                <div class="pa-4 d-flex flex-column align-center gap-2">
+                    <MudIcon Icon="@Icons.Material.Filled.SearchOff" Color="Color.Secondary" />
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">@EmptyText</MudText>
+                    @if (!string.IsNullOrWhiteSpace(EmptyActionText))
+                    {
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="SubmitEmptyAction">
+                            @EmptyActionText
+                        </MudButton>
+                    }
+                </div>
+            }
+            else
+            {
+                @for (var i = 0; i < FilteredOptions.Count; i++)
+                {
+                    var option = FilteredOptions[i];
+                    if (i > 0)
+                    {
+                        <MudDivider />
+                    }
+
+                    <MudListItem T="string" Disabled="@option.Disabled" OnClick="@(() => SelectOption(option))"
+                                 Class="@(IsSelected(option) ? "mud-primary-text" : null)">
+                        <div class="d-flex align-center gap-3 py-1" style="width: 100%; min-height: 48px;">
+                            @if (MultiSelect)
+                            {
+                                <MudCheckBox T="bool" Value="@IsSelected(option)" ReadOnly="true"
+                                             Color="Color.Primary" Size="Size.Small" Class="ma-0 pa-0" />
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(option.IconText))
+                            {
+                                <span style="font-size: 1.4rem; line-height: 1; min-width: 24px; text-align: center;">@option.IconText</span>
+                            }
+                            else if (!string.IsNullOrWhiteSpace(option.IconMarkup))
+                            {
+                                <div style="width: 24px; height: 24px; color: @(option.IconColor ?? "currentColor"); display: inline-flex; flex-shrink: 0;">
+                                    @((MarkupString)option.IconMarkup)
+                                </div>
+                            }
+                            else if (!string.IsNullOrWhiteSpace(option.Icon))
+                            {
+                                <MudIcon Icon="@option.Icon" Size="Size.Medium"
+                                         Style="@(option.IconColor is not null ? $"color: {option.IconColor};" : null)" />
+                            }
+
+                            <div style="flex: 1; min-width: 0;">
+                                <MudText Typo="Typo.body2" Style="@PrimaryTextStyle">
+                                    @option.Title
+                                </MudText>
+                                @if (!string.IsNullOrWhiteSpace(option.Subtitle))
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="@SecondaryTextStyle">
+                                        @option.Subtitle
+                                    </MudText>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(option.Detail))
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Tertiary" Style="@SecondaryTextStyle">
+                                        @option.Detail
+                                    </MudText>
+                                }
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(option.ChipText))
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@option.ChipColor">
+                                    @option.ChipText
+                                </MudChip>
+                            }
+
+                            @if (!MultiSelect && IsSelected(option))
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Primary" />
+                            }
+                        </div>
+                    </MudListItem>
+                }
+            }
+        </MudPaper>
+
+        @if (Options.Count > 0)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                @string.Format(L["Picker.CountInfo"].Value, FilteredOptions.Count, Options.Count)
+            </MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (Clearable)
+        {
+            <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="ClearSelection">@L["Common.Clear"]</MudButton>
+        }
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">@L["Common.Cancel"]</MudButton>
+        @if (MultiSelect)
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SubmitMultiSelect" StartIcon="@Icons.Material.Filled.Check">
+                @ConfirmText
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public IReadOnlyList<PickerOption<TValue>> Options { get; set; } = [];
+
+    [Parameter]
+    public TValue? SelectedValue { get; set; }
+
+    [Parameter]
+    public IReadOnlyCollection<TValue> SelectedValues { get; set; } = [];
+
+    [Parameter]
+    public bool MultiSelect { get; set; }
+
+    [Parameter]
+    public string? SearchPlaceholder { get; set; }
+
+    [Parameter]
+    public string? EmptyText { get; set; }
+
+    [Parameter]
+    public string? EmptyActionText { get; set; }
+
+    [Parameter]
+    public string? EmptyActionKey { get; set; }
+
+    [Parameter]
+    public string? ConfirmText { get; set; }
+
+    [Parameter]
+    public bool Clearable { get; set; }
+
+    [Parameter]
+    public bool WrapText { get; set; }
+
+    private readonly HashSet<TValue> _selectedValues = [];
+    private string? _searchText;
+
+    private List<PickerOption<TValue>> FilteredOptions => FilterOptions();
+    private string PrimaryTextStyle => WrapText
+        ? "overflow-wrap: anywhere;"
+        : "white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+    private string SecondaryTextStyle => WrapText
+        ? "display: block; overflow-wrap: anywhere;"
+        : "display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+
+    protected override void OnParametersSet()
+    {
+        SearchPlaceholder ??= L["Picker.SearchPlaceholder"].Value;
+        EmptyText ??= L["Picker.NoResults"].Value;
+        ConfirmText ??= L["Common.Apply"].Value;
+
+        _selectedValues.Clear();
+        if (MultiSelect)
+        {
+            foreach (var value in SelectedValues)
+            {
+                _selectedValues.Add(value);
+            }
+        }
+        else if (SelectedValues.Count > 0)
+        {
+            _selectedValues.Add(SelectedValues.First());
+        }
+        else if (SelectedValue is not null)
+        {
+            _selectedValues.Add(SelectedValue);
+        }
+    }
+
+    private void OnSearchChanged(string? value)
+    {
+        _searchText = value;
+    }
+
+    private List<PickerOption<TValue>> FilterOptions()
+    {
+        if (string.IsNullOrWhiteSpace(_searchText))
+            return Options.ToList();
+
+        var terms = _searchText
+            .Split([' ', ',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(t => t.ToLowerInvariant())
+            .ToArray();
+
+        if (terms.Length == 0)
+            return Options.ToList();
+
+        return Options
+            .Select(o => (Option: o, Score: ScoreOption(o, terms, _searchText.ToLowerInvariant())))
+            .Where(x => x.Score > 0)
+            .OrderByDescending(x => x.Score)
+            .ThenBy(x => x.Option.Title)
+            .Select(x => x.Option)
+            .ToList();
+    }
+
+    private static int ScoreOption(PickerOption<TValue> option, string[] terms, string fullInput)
+    {
+        var searchable = string.Join(' ', option.Title, option.Subtitle, option.Detail, option.ChipText, option.SearchText)
+            .ToLowerInvariant();
+
+        foreach (var term in terms)
+        {
+            if (!searchable.Contains(term))
+                return 0;
+        }
+
+        var score = 1;
+        if (option.Title.Contains(fullInput.Trim(), StringComparison.OrdinalIgnoreCase))
+            score += 15;
+        if (terms.Length > 0 && option.Title.StartsWith(terms[0], StringComparison.OrdinalIgnoreCase))
+            score += 10;
+
+        foreach (var term in terms)
+        {
+            if (option.Title.Contains(term, StringComparison.OrdinalIgnoreCase))
+                score += 5;
+            if ((option.Subtitle ?? "").Contains(term, StringComparison.OrdinalIgnoreCase))
+                score += 3;
+            if ((option.Detail ?? "").Contains(term, StringComparison.OrdinalIgnoreCase))
+                score += 2;
+        }
+
+        return score;
+    }
+
+    private bool IsSelected(PickerOption<TValue> option) => _selectedValues.Contains(option.Value);
+
+    private void SelectOption(PickerOption<TValue> option)
+    {
+        if (option.Disabled)
+            return;
+
+        if (!MultiSelect)
+        {
+            MudDialog.Close(DialogResult.Ok(new PickerDialogResult<TValue>([option.Value])));
+            return;
+        }
+
+        if (!_selectedValues.Add(option.Value))
+        {
+            _selectedValues.Remove(option.Value);
+        }
+    }
+
+    private void SubmitMultiSelect()
+    {
+        MudDialog.Close(DialogResult.Ok(new PickerDialogResult<TValue>(_selectedValues.ToList())));
+    }
+
+    private void SubmitEmptyAction()
+    {
+        MudDialog.Close(DialogResult.Ok(new PickerDialogResult<TValue>([], EmptyActionKey)));
+    }
+
+    private void ClearSelection()
+    {
+        MudDialog.Close(DialogResult.Ok(new PickerDialogResult<TValue>([])));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

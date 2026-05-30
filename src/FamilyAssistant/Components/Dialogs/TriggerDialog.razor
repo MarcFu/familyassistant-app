@@ -1,4 +1,7 @@
 @using FamilyAssistant.Models
+@using System.Text.Json
+@inject IDialogService DialogService
+@inject IHomeAssistantService HaService
 @inject IStringLocalizer<SharedResource> L
 
 <MudDialog>
@@ -9,27 +12,74 @@
         <MudTextField @bind-Value="_name" Label="@L["Common.Name"].Value" Required="true" RequiredError="@L["Validation.NameRequired"].Value"
                       Variant="Variant.Filled" Class="mb-3" Placeholder="@L["Dialog.Trigger.NamePlaceholder"].Value" />
 
-        <MudTextField @bind-Value="_entityId" Label="@L["Dialog.Trigger.EntityId"].Value" Required="true" RequiredError="@L["Validation.EntityIdRequired"].Value"
-                      Variant="Variant.Filled" Class="mb-3" Placeholder="input_select.dish_washer_status"
-                      Style="font-family: monospace;" />
+        <HaEntityPicker Domain="input_select,input_boolean,binary_sensor,sensor,switch,light,person,device_tracker,cover,lock"
+                        Label="@L["Dialog.Trigger.EntityId"].Value" Class="mb-3"
+                        SelectedValue="@_entityId"
+                        SelectedValueChanged="OnEntityIdChanged" />
 
-        <MudTextField @bind-Value="_triggerState" Label="@L["Dialog.Trigger.State"].Value" Required="true" RequiredError="@L["Validation.StateRequired"].Value"
-                      Variant="Variant.Filled" Class="mb-3" Placeholder="@L["Dialog.Trigger.StatePlaceholder"].Value"
-                      HelperText="@L["Dialog.Trigger.StateHelper"].Value" />
+        @if (_triggerStateOptions.Count > 0)
+        {
+            <MudSelect T="string" @bind-Value="_triggerState" Label="@L["Dialog.Trigger.State"].Value"
+                       Variant="Variant.Filled" Class="mb-2" Required="true" RequiredError="@L["Validation.StateRequired"].Value">
+                @foreach (var state in _triggerStateOptions)
+                {
+                    <MudSelectItem T="string" Value="@state">@state</MudSelectItem>
+                }
+            </MudSelect>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
+                @L["Dialog.Trigger.StateHelper"]
+            </MudText>
+        }
+        else
+        {
+            <MudTextField @bind-Value="_triggerState" Label="@L["Dialog.Trigger.State"].Value" Required="true" RequiredError="@L["Validation.StateRequired"].Value"
+                          Variant="Variant.Filled" Class="mb-2" Placeholder="@L["Dialog.Trigger.StatePlaceholder"].Value"
+                          HelperText="@L["Dialog.Trigger.StateHelper"].Value" />
+        }
 
-        <MudSelect T="int?" @bind-Value="_choreId" Label="@L["Common.Task"].Value" Variant="Variant.Filled" Class="mb-3"
-                   Required="true" RequiredError="@L["Validation.ChoreRequired"].Value">
-            @foreach (var chore in ActiveChores)
-            {
-                <MudSelectItem T="int?" Value="@chore.Id">@chore.Name</MudSelectItem>
-            }
-            @foreach (var chore in InactiveChores)
-            {
-                <MudSelectItem T="int?" Value="@chore.Id">
-                    @(string.Format(L["Common.InactivePrefix"].Value, chore.Name))
-                </MudSelectItem>
-            }
-        </MudSelect>
+        @if (_selectedEntityState is not null)
+        {
+            <div class="d-flex justify-end mb-3">
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.ContentPaste" OnClick="UseCurrentState">
+                    @string.Format(L["Dialog.Trigger.UseCurrentState"].Value, _selectedEntityState.State)
+                </MudButton>
+            </div>
+        }
+
+        <MudPaper Outlined="true" Class="pa-3 mb-3">
+            <div class="d-flex align-start gap-3">
+                @if (SelectedChore is not null)
+                {
+                    @RenderChoreIcon(SelectedChore)
+                    <div style="flex: 1; min-width: 0;">
+                        <MudText Typo="Typo.body2" Style="overflow-wrap: anywhere;">
+                            @(SelectedChore.IsActive ? SelectedChore.Name : string.Format(L["Common.InactivePrefix"].Value, SelectedChore.Name))
+                        </MudText>
+                        @if (!string.IsNullOrWhiteSpace(SelectedChore.Description))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display: block; overflow-wrap: anywhere;">
+                                @SelectedChore.Description
+                            </MudText>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.TaskAlt" Color="Color.Secondary" />
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Style="flex: 1;">
+                        @L["Validation.ChoreRequired"]
+                    </MudText>
+                }
+            </div>
+
+            <div class="d-flex justify-end mt-2">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Search" OnClick="OpenChorePickerAsync">
+                    @(SelectedChore is null ? L["Picker.Select"] : L["Picker.Change"])
+                </MudButton>
+            </div>
+        </MudPaper>
 
         <MudNumericField @bind-Value="_debounceMins" Label="@L["Dialog.Trigger.Debounce"].Value" Variant="Variant.Filled"
                          Min="0" Max="1440" Step="5" Class="mb-3"
@@ -59,6 +109,9 @@
     private string _triggerState = "";
     private int? _choreId;
     private int _debounceMins = 60;
+    private HaEntityState? _selectedEntityState;
+    private string? _loadedStateEntityId;
+    private List<string> _triggerStateOptions = [];
 
     private bool IsValid =>
         !string.IsNullOrWhiteSpace(_name) &&
@@ -66,10 +119,9 @@
         !string.IsNullOrWhiteSpace(_triggerState) &&
         _choreId is not null;
 
-    private IEnumerable<Chore> ActiveChores => Chores.Where(c => c.IsActive).OrderBy(c => c.Name);
-    private IEnumerable<Chore> InactiveChores => Chores.Where(c => !c.IsActive).OrderBy(c => c.Name);
+    private Chore? SelectedChore => _choreId.HasValue ? Chores.FirstOrDefault(c => c.Id == _choreId.Value) : null;
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         if (Trigger is not null)
         {
@@ -78,6 +130,11 @@
             _triggerState = Trigger.TriggerState;
             _choreId = Trigger.ChoreId;
             _debounceMins = Trigger.DebounceMins;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_entityId) && _loadedStateEntityId != _entityId)
+        {
+            await LoadEntityStateAsync(_entityId);
         }
     }
 
@@ -98,6 +155,148 @@
 
         MudDialog.Close(DialogResult.Ok(result));
     }
+
+    private async Task OpenChorePickerAsync()
+    {
+        var parameters = new DialogParameters<ChorePickerDialog>
+        {
+            { x => x.SelectedChoreId, _choreId },
+            { x => x.IncludeInactive, true },
+            { x => x.Chores, Chores }
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true };
+        var dialog = await DialogService.ShowAsync<ChorePickerDialog>(L["Dialog.ChorePicker.Title"].Value, parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is PickerDialogResult<int> pickerResult && pickerResult.Values.Count > 0)
+        {
+            _choreId = pickerResult.Values[0];
+        }
+    }
+
+    private async Task OnEntityIdChanged(string? value)
+    {
+        _entityId = value ?? "";
+        _triggerState = "";
+        _triggerStateOptions = [];
+        _selectedEntityState = null;
+        _loadedStateEntityId = null;
+
+        if (!string.IsNullOrWhiteSpace(_entityId))
+        {
+            await LoadEntityStateAsync(_entityId);
+        }
+    }
+
+    private async Task LoadEntityStateAsync(string entityId)
+    {
+        _selectedEntityState = await HaService.GetEntityStateAsync(entityId);
+        _loadedStateEntityId = entityId;
+        _triggerStateOptions = BuildTriggerStateOptions(_selectedEntityState);
+
+        if (_triggerStateOptions.Count > 0 && !string.IsNullOrWhiteSpace(_triggerState) && !_triggerStateOptions.Contains(_triggerState))
+        {
+            _triggerStateOptions.Add(_triggerState);
+        }
+    }
+
+    private void UseCurrentState()
+    {
+        if (_selectedEntityState is null)
+            return;
+
+        _triggerState = _selectedEntityState.State;
+        if (_triggerStateOptions.Count > 0 && !_triggerStateOptions.Contains(_triggerState))
+        {
+            _triggerStateOptions.Add(_triggerState);
+            _triggerStateOptions = _triggerStateOptions.OrderBy(s => s).ToList();
+        }
+    }
+
+    private static List<string> BuildTriggerStateOptions(HaEntityState? entity)
+    {
+        if (entity is null)
+            return [];
+
+        if (entity.Attributes.TryGetValue("options", out var optionsValue))
+        {
+            var options = ReadStringArray(optionsValue);
+            if (options.Count > 0)
+                return options;
+        }
+
+        var domain = entity.EntityId.Split('.')[0];
+        var states = domain switch
+        {
+            "input_boolean" or "switch" or "light" or "binary_sensor" => new List<string> { "on", "off" },
+            "person" or "device_tracker" => new List<string> { "home", "not_home" },
+            "cover" => new List<string> { "open", "closed", "opening", "closing" },
+            "lock" => new List<string> { "locked", "unlocked", "locking", "unlocking" },
+            _ => new List<string>()
+        };
+
+        if (!string.IsNullOrWhiteSpace(entity.State) && states.Count > 0 && !states.Contains(entity.State))
+        {
+            states.Add(entity.State);
+        }
+
+        return states;
+    }
+
+    private static List<string> ReadStringArray(object? value)
+    {
+        if (value is JsonElement element && element.ValueKind == JsonValueKind.Array)
+        {
+            return element.EnumerateArray()
+                .Where(e => e.ValueKind == JsonValueKind.String)
+                .Select(e => e.GetString())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Cast<string>()
+                .ToList();
+        }
+
+        if (value is IEnumerable<object> values)
+        {
+            return values
+                .Select(v => v?.ToString())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Cast<string>()
+                .ToList();
+        }
+
+        return [];
+    }
+
+    private RenderFragment RenderChoreIcon(Chore chore) => @<div style="min-width: 24px; display: flex; justify-content: center;">
+        @if (chore.Icon is not null)
+        {
+            @if (IsEmoji(chore.Icon))
+            {
+                <span style="font-size: 1.4rem; line-height: 1;">@chore.Icon</span>
+            }
+            else if (chore.Icon.StartsWith("svg:"))
+            {
+                var svgData = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(chore.Icon[4..]));
+                <div style="width: 24px; height: 24px; color: @(chore.IconColor ?? "currentColor"); display: inline-flex;">
+                    @((MarkupString)svgData)
+                </div>
+            }
+            else
+            {
+                var svg = IconRegistry.GetSvg(chore.Icon);
+                <MudIcon Icon="@(svg ?? Icons.Material.Filled.TaskAlt)" Size="Size.Medium"
+                         Style="@(chore.IconColor is not null ? $"color: {chore.IconColor};" : "")" />
+            }
+        }
+        else
+        {
+            <MudIcon Icon="@Icons.Material.Filled.TaskAlt" Size="Size.Medium" />
+        }
+    </div>;
+
+    private static bool IsEmoji(string s) =>
+        !string.IsNullOrEmpty(s) && !s.All(c => c < 128);
 
     private void Cancel() => MudDialog.Cancel();
 }

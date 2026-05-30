@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FamilyAssistant.Configuration;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
 namespace FamilyAssistant.Services;
@@ -14,6 +15,10 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly HomeAssistantOptions _config;
     private readonly ILogger<HomeAssistantService> _logger;
+    private readonly IMemoryCache _cache;
+
+    private const string EntityStatesCacheKey = "ha:states:all";
+    private static readonly TimeSpan EntityStatesCacheDuration = TimeSpan.FromSeconds(60);
 
     // ─── WebSocket State ────────────────────────────────────────
     private ClientWebSocket? _ws;
@@ -44,11 +49,16 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    public HomeAssistantService(IHttpClientFactory httpClientFactory, IOptions<HomeAssistantOptions> options, ILogger<HomeAssistantService> logger)
+    public HomeAssistantService(
+        IHttpClientFactory httpClientFactory,
+        IOptions<HomeAssistantOptions> options,
+        ILogger<HomeAssistantService> logger,
+        IMemoryCache cache)
     {
         _httpClientFactory = httpClientFactory;
         _config = options.Value;
         _logger = logger;
+        _cache = cache;
     }
 
     public bool IsWebSocketConnected => _ws?.State == WebSocketState.Open;
@@ -198,16 +208,10 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
     {
         try
         {
-            using var client = CreateHttpClient();
-            var response = await client.GetAsync("states", ct);
-            response.EnsureSuccessStatusCode();
-
-            var states = await response.Content.ReadFromJsonAsync<List<HaStateResponse>>(JsonOptions, ct);
-            if (states is null) return [];
+            var states = await GetAllEntityStatesCachedAsync(ct);
 
             return states
                 .Where(s => s.EntityId.StartsWith($"{domain}."))
-                .Select(s => new HaEntityState(s.EntityId, s.State, s.Attributes))
                 .ToList();
         }
         catch (Exception ex)
@@ -215,6 +219,27 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
             _logger.LogError(ex, "Failed to get entities for domain {Domain}", domain);
             return [];
         }
+    }
+
+    private async Task<IReadOnlyList<HaEntityState>> GetAllEntityStatesCachedAsync(CancellationToken ct)
+    {
+        return await _cache.GetOrCreateAsync(EntityStatesCacheKey, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = EntityStatesCacheDuration;
+
+            using var client = CreateHttpClient();
+            var response = await client.GetAsync("states", ct);
+            response.EnsureSuccessStatusCode();
+
+            var states = await response.Content.ReadFromJsonAsync<List<HaStateResponse>>(JsonOptions, ct);
+            var result = states?
+                .Select(s => new HaEntityState(s.EntityId, s.State, s.Attributes))
+                .ToList() ?? [];
+
+            _logger.LogDebug("Loaded {Count} Home Assistant entity states", result.Count);
+
+            return result;
+        }) ?? [];
     }
 
     // ─── Entity Registry (cached) ──────────────────────────────

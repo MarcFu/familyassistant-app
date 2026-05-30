@@ -75,6 +75,12 @@
   <data name="EntityPicker.NoEntities"><value>No entities found for this domain.</value></data>
   <data name="EntityPicker.NoMatch"><value>No match for this search.</value></data>
   <data name="EntityPicker.CountInfo"><value>{0} of {1} shown</value></data>
+  <data name="Picker.SearchPlaceholder"><value>Search...</value></data>
+  <data name="Picker.NoResults"><value>No results found.</value></data>
+  <data name="Picker.CountInfo"><value>{0} of {1} shown</value></data>
+  <data name="Picker.NoSelection"><value>Nothing selected</value></data>
+  <data name="Picker.Select"><value>Select</value></data>
+  <data name="Picker.Change"><value>Change</value></data>
   <data name="Common.InactivePrefix"><value>[inactive] {0}</value></data>
   <data name="Common.ConnectionError"><value>Connection error: {0}</value></data>
   <data name="Common.Snackbar.Error"><value>Error: {0}</value></data>
@@ -421,6 +427,7 @@
   <data name="Dialog.Trigger.State"><value>Trigger state</value></data>
   <data name="Dialog.Trigger.StatePlaceholder"><value>e.g. on, done, open</value></data>
   <data name="Dialog.Trigger.StateHelper"><value>State at which the task is created</value></data>
+  <data name="Dialog.Trigger.UseCurrentState"><value>Use current state ({0})</value></data>
   <data name="Dialog.Trigger.Debounce"><value>Debounce (minutes)</value></data>
   <data name="Dialog.Trigger.DebounceHelper"><value>Minimum interval between two triggers (0 = no debounce)</value></data>
   <data name="Dialog.PersonEntity.Title"><value>Links: {0}</value></data>
@@ -443,9 +450,15 @@
   <data name="Dialog.AdHoc.ExistingChore"><value>Existing chore</value></data>
   <data name="Dialog.AdHoc.Custom"><value>Custom task</value></data>
   <data name="Dialog.AdHoc.ChoreLabel"><value>Chore</value></data>
+  <data name="Dialog.AdHoc.NoChoreSelected"><value>No chore selected</value></data>
+  <data name="Dialog.AdHoc.SelectChore"><value>Select</value></data>
+  <data name="Dialog.AdHoc.ChangeChore"><value>Change</value></data>
   <data name="Dialog.AdHoc.TaskName"><value>Task name</value></data>
   <data name="Dialog.AdHoc.AssignTo"><value>Assign to</value></data>
   <data name="Dialog.AdHoc.DueDate"><value>Due date (optional)</value></data>
+  <data name="Dialog.ChorePicker.Title"><value>Select chore</value></data>
+  <data name="Dialog.ChorePicker.SearchPlaceholder"><value>Search chores...</value></data>
+  <data name="Dialog.ChorePicker.NoMatch"><value>No matching chore found.</value></data>
   <data name="Dialog.Comments.Title"><value>Comments — {0}</value></data>
   <data name="Dialog.Comments.Empty"><value>No comments yet. Write the first one!</value></data>
   <data name="Dialog.Comments.Label"><value>Comment</value></data>

@@ -1,4 +1,5 @@
 @using FamilyAssistant.Models
+@inject IDialogService DialogService
 @inject IStringLocalizer<SharedResource> L
 
 <MudDialog>
@@ -33,11 +34,44 @@
         }
         else
         {
-            @foreach (var device in AvailableDevices)
+            @if (AvailableDevices.Count <= InlineDevicePickerLimit)
             {
-                var isSelected = _selectedDeviceIds.Contains(device.Id);
-                <MudCheckBox T="bool" Value="@isSelected" Label="@device.Label" Class="mb-1"
-                             ValueChanged="@(v => ToggleDevice(device.Id, v))" />
+                @foreach (var device in AvailableDevices)
+                {
+                    var isSelected = _selectedDeviceIds.Contains(device.Id);
+                    <MudCheckBox T="bool" Value="@isSelected" Label="@device.Label" Class="mb-1"
+                                 ValueChanged="@(v => ToggleDevice(device.Id, v))" />
+                }
+            }
+            else
+            {
+                <MudPaper Outlined="true" Class="pa-3 mb-3">
+                    <div class="d-flex flex-column gap-2">
+                        @if (_selectedDeviceIds.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Picker.NoSelection"]</MudText>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach (var device in SelectedDevices)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled"
+                                             OnClose="@(() => ToggleDevice(device.Id, false))">
+                                        @device.Label
+                                    </MudChip>
+                                }
+                            </div>
+                        }
+
+                        <div class="d-flex justify-end">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.Search" OnClick="OpenDevicePickerAsync">
+                                @(_selectedDeviceIds.Count == 0 ? L["Picker.Select"] : L["Picker.Change"])
+                            </MudButton>
+                        </div>
+                    </div>
+                </MudPaper>
             }
         }
 
@@ -132,6 +166,7 @@
     private int _detectionThreshold = 5;
     private int _gracePeriod = 5;
     private HashSet<int> _selectedDeviceIds = [];
+    private const int InlineDevicePickerLimit = 5;
 
     private bool IsValid =>
         !string.IsNullOrWhiteSpace(_name) &&
@@ -140,6 +175,10 @@
         _windowEnd is not null;
 
     private readonly record struct DayOption(string Label, DaysOfWeek Flag);
+
+    private IEnumerable<PersonDevice> SelectedDevices => AvailableDevices
+        .Where(d => _selectedDeviceIds.Contains(d.Id))
+        .OrderBy(d => d.Label);
 
     private readonly DayOption[] _dayOptions =
     [
@@ -176,6 +215,62 @@
         else
             _selectedDeviceIds.Remove(deviceId);
     }
+
+    private async Task OpenDevicePickerAsync()
+    {
+        var parameters = new DialogParameters<PickerDialog<int>>
+        {
+            { x => x.Options, BuildDevicePickerOptions() },
+            { x => x.SelectedValues, _selectedDeviceIds.ToList() },
+            { x => x.MultiSelect, true },
+            { x => x.SearchPlaceholder, L["Picker.SearchPlaceholder"].Value },
+            { x => x.EmptyText, L["Picker.NoResults"].Value }
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true };
+        var dialog = await DialogService.ShowAsync<PickerDialog<int>>(L["Dialog.Rule.Devices"].Value, parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is PickerDialogResult<int> pickerResult)
+        {
+            _selectedDeviceIds = pickerResult.Values.ToHashSet();
+        }
+    }
+
+    private IReadOnlyList<PickerOption<int>> BuildDevicePickerOptions()
+        => AvailableDevices
+            .OrderBy(d => d.Label)
+            .Select(d => new PickerOption<int>
+            {
+                Value = d.Id,
+                Title = d.Label,
+                Subtitle = d.InternetSwitchEntity,
+                Detail = d.DetectionEntity,
+                Icon = GetDeviceRoleIcon(d.Role),
+                ChipText = GetDeviceRoleLabel(d.Role),
+                ChipColor = d.Role switch
+                {
+                    DeviceRole.SchoolOnly => Color.Info,
+                    DeviceRole.GamingOnly => Color.Warning,
+                    _ => Color.Default
+                },
+                SearchText = $"{d.Label} {d.InternetSwitchEntity} {d.DetectionEntity} {d.GamingBlockEntity} {GetDeviceRoleLabel(d.Role)}"
+            })
+            .ToList();
+
+    private string GetDeviceRoleLabel(DeviceRole role) => role switch
+    {
+        DeviceRole.SchoolOnly => L["Device.Role.SchoolOnly"].Value,
+        DeviceRole.GamingOnly => L["Device.Role.GamingOnly"].Value,
+        _ => L["Device.Role.Shared"].Value
+    };
+
+    private static string GetDeviceRoleIcon(DeviceRole role) => role switch
+    {
+        DeviceRole.SchoolOnly => Icons.Material.Filled.School,
+        DeviceRole.GamingOnly => Icons.Material.Filled.SportsEsports,
+        _ => Icons.Material.Filled.Devices
+    };
 
     private void ToggleDay(DaysOfWeek day)
     {

@@ -71,6 +71,12 @@
   <data name="Common.Role"><value>Rôle</value></data>
   <data name="Common.Credits"><value>Crédits</value></data>
   <data name="Common.SelectedCount"><value>{0} sélectionné(s)</value></data>
+  <data name="Picker.SearchPlaceholder"><value>Rechercher...</value></data>
+  <data name="Picker.NoResults"><value>Aucun résultat trouvé.</value></data>
+  <data name="Picker.CountInfo"><value>{0} sur {1} affichés</value></data>
+  <data name="Picker.NoSelection"><value>Rien de sélectionné</value></data>
+  <data name="Picker.Select"><value>Choisir</value></data>
+  <data name="Picker.Change"><value>Modifier</value></data>
   <data name="Common.InactivePrefix"><value>[inactif] {0}</value></data>
   <data name="Common.ConnectionError"><value>Erreur de connexion : {0}</value></data>
   <data name="Common.Snackbar.Error"><value>Erreur : {0}</value></data>
@@ -417,6 +423,7 @@
   <data name="Dialog.Trigger.State"><value>État déclencheur</value></data>
   <data name="Dialog.Trigger.StatePlaceholder"><value>ex. on, done, open</value></data>
   <data name="Dialog.Trigger.StateHelper"><value>État auquel la tâche est créée</value></data>
+  <data name="Dialog.Trigger.UseCurrentState"><value>Utiliser l'état actuel ({0})</value></data>
   <data name="Dialog.Trigger.Debounce"><value>Anti-rebond (minutes)</value></data>
   <data name="Dialog.Trigger.DebounceHelper"><value>Intervalle minimum entre deux déclenchements (0 = pas d'anti-rebond)</value></data>
   <data name="Dialog.PersonEntity.Title"><value>Liens : {0}</value></data>
@@ -436,9 +443,15 @@
   <data name="Dialog.AdHoc.ExistingChore"><value>Corvée existante</value></data>
   <data name="Dialog.AdHoc.Custom"><value>Tâche personnalisée</value></data>
   <data name="Dialog.AdHoc.ChoreLabel"><value>Corvée</value></data>
+  <data name="Dialog.AdHoc.NoChoreSelected"><value>Aucune corvée sélectionnée</value></data>
+  <data name="Dialog.AdHoc.SelectChore"><value>Choisir</value></data>
+  <data name="Dialog.AdHoc.ChangeChore"><value>Modifier</value></data>
   <data name="Dialog.AdHoc.TaskName"><value>Nom de la tâche</value></data>
   <data name="Dialog.AdHoc.AssignTo"><value>Assigner à</value></data>
   <data name="Dialog.AdHoc.DueDate"><value>Date d'échéance (optionnel)</value></data>
+  <data name="Dialog.ChorePicker.Title"><value>Choisir une corvée</value></data>
+  <data name="Dialog.ChorePicker.SearchPlaceholder"><value>Rechercher des corvées...</value></data>
+  <data name="Dialog.ChorePicker.NoMatch"><value>Aucune corvée correspondante trouvée.</value></data>
   <data name="Dialog.Comments.Title"><value>Commentaires — {0}</value></data>
   <data name="Dialog.Comments.Empty"><value>Pas encore de commentaires. Écris le premier !</value></data>
   <data name="Dialog.Comments.Label"><value>Commentaire</value></data>
