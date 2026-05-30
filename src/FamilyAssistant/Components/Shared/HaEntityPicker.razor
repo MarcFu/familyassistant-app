@@ -52,7 +52,12 @@
                     <div class="d-flex align-start gap-3">
                         <MudIcon Icon="@GetDomainIcon(SelectedEntity)" Size="Size.Medium" Color="@GetStateColor(SelectedEntity)" />
                         <div style="flex: 1; min-width: 0;">
-                            <MudText Typo="Typo.body2" Style="overflow-wrap: anywhere;">@GetFriendlyName(SelectedEntity)</MudText>
+                            <div class="d-flex flex-wrap align-start gap-2" style="width: 100%;">
+                                <MudText Typo="Typo.body2" Style="flex: 1 1 12rem; min-width: 0; overflow-wrap: anywhere;">@GetFriendlyName(SelectedEntity)</MudText>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetStateColor(SelectedEntity)">
+                                    @SelectedEntity.State
+                                </MudChip>
+                            </div>
                             <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display: block; overflow-wrap: anywhere; font-family: monospace;">
                                 @SelectedEntity.EntityId
                             </MudText>
@@ -63,9 +68,6 @@
                                 </MudText>
                             }
                         </div>
-                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetStateColor(SelectedEntity)">
-                            @SelectedEntity.State
-                        </MudChip>
                     </div>
                 }
                 else if (!string.IsNullOrWhiteSpace(SelectedValue))

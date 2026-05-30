@@ -501,6 +501,10 @@
   <data name="Dialog.PersonEntity.Notify"><value>Notifications</value></data>
   <data name="Dialog.PersonEntity.NotifyHint"><value>Service de notification HA pour les alertes push (p.ex. alertes de budget).</value></data>
   <data name="Dialog.PersonEntity.NotifyLabel"><value>Entité de notification</value></data>
+  <data name="Dialog.PersonEntity.NotifyTestButton"><value>Tester la notification</value></data>
+  <data name="Dialog.PersonEntity.NotifyTestTitle"><value>Test FamilyAssistant pour {0}</value></data>
+  <data name="Dialog.PersonEntity.NotifyTestMessage"><value>Les notifications push pour {0} sont configurées correctement.</value></data>
+  <data name="Dialog.PersonEntity.NotifyTestSent"><value>Notification de test envoyée à {0}.</value></data>
   <data name="EntityPicker.SearchPlaceholder"><value>Rechercher (nom ou ID d'entité)...</value></data>
   <data name="EntityPicker.NoEntities"><value>Aucune entité trouvée pour ce domaine.</value></data>
   <data name="EntityPicker.NoMatch"><value>Aucun résultat pour cette recherche.</value></data>

@@ -35,6 +35,7 @@ Built with C# Blazor Server (.NET 9), MudBlazor v9, EF Core + SQLite.
 - Import persons from HA (with avatar images via proxy endpoint)
 - Sync credits to HA sensors (`sensor.familyassistant_<name>_credits`)
 - Sync open tasks to HA todo lists (configurable per person)
+- Link per-person HA notify entities and send a test push notification from the person links dialog
 - Auto-detects Add-on mode (SUPERVISOR_TOKEN) vs dev mode (Long-Lived Token)
 
 ### Persons & Roles
@@ -128,6 +129,7 @@ docker run -p 8099:8099 -e SUPERVISOR_TOKEN=... familyassistant
 - **Searchfields**: Always use `Clearable="true"` for X-to-clear UX
 - **Picker dialogs**: Large object/entity selections use HA-style searchable picker dialogs (`PickerDialog<TValue>`) instead of long dropdowns. Small static enum/filter selections stay as `MudSelect`.
 - **HA entity cache**: Home Assistant entity state lists used by pickers are cached for 60 seconds in `HomeAssistantService` to avoid repeated `/api/states` calls.
+- **Week-based task logic**: Monday is always treated as the start of the current week, including on Sundays, for task filters, dashboard stats, and X-times-per-week generation.
 - **Permanent tasks**: Never expire, never "missed", always 1 open instance
 - **Task generation is idempotent**: Safe to trigger multiple times (checks uniqueness by ScheduleId + DueDate + OccurrenceIndex)
 - **Credits sync to HA**: Background service updates HA sensor entities periodically

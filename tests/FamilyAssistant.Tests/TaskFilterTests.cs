@@ -67,7 +67,7 @@ public class TaskFilterTests
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
     private static DateOnly Yesterday => Today.AddDays(-1);
     private static DateOnly Tomorrow => Today.AddDays(1);
-    private static DateOnly ThisMonday => Today.AddDays(-(int)Today.DayOfWeek + (int)DayOfWeek.Monday);
+    private static DateOnly ThisMonday => Today.AddDays(-(((int)Today.DayOfWeek + 6) % 7));
     private static DateOnly ThisSunday => ThisMonday.AddDays(6);
 
     #endregion

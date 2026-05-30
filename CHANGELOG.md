@@ -10,9 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - HA-style searchable picker dialogs for Chores, Home Assistant entities, trigger entities, and larger device multi-selects
 - 60s Home Assistant entity state cache for picker data to reduce repeated `/api/states` calls
+- Per-person notify entity test button in the person links dialog
 
 ### Fixed
 - BUG-006: Reduced Home Assistant CPU spikes by skipping unchanged REST state writes, repeated todo item adds, and redundant switch service calls
+- BUG-007: Fixed mobile picker row wrapping and Sunday-based week calculations for task filters, dashboard stats, and X-times-per-week scheduling
 
 ## [0.1.7] - 2025-05-29
 

@@ -34,7 +34,7 @@
 
                     <MudListItem T="string" Disabled="@option.Disabled" OnClick="@(() => SelectOption(option))"
                                  Class="@(IsSelected(option) ? "mud-primary-text" : null)">
-                        <div class="d-flex align-center gap-3 py-1" style="width: 100%; min-height: 48px;">
+                        <div class="d-flex align-start gap-3 py-1" style="width: 100%; min-height: 48px;">
                             @if (MultiSelect)
                             {
                                 <MudCheckBox T="bool" Value="@IsSelected(option)" ReadOnly="true"
@@ -58,9 +58,21 @@
                             }
 
                             <div style="flex: 1; min-width: 0;">
-                                <MudText Typo="Typo.body2" Style="@PrimaryTextStyle">
-                                    @option.Title
-                                </MudText>
+                                <div class="d-flex flex-wrap align-start gap-2" style="width: 100%;">
+                                    <MudText Typo="Typo.body2" Style="@TitleRowTextStyle">
+                                        @option.Title
+                                    </MudText>
+                                    @if (!string.IsNullOrWhiteSpace(option.ChipText))
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@option.ChipColor">
+                                            @option.ChipText
+                                        </MudChip>
+                                    }
+                                    @if (!MultiSelect && IsSelected(option))
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Primary" />
+                                    }
+                                </div>
                                 @if (!string.IsNullOrWhiteSpace(option.Subtitle))
                                 {
                                     <MudText Typo="Typo.caption" Color="Color.Secondary" Style="@SecondaryTextStyle">
@@ -75,17 +87,6 @@
                                 }
                             </div>
 
-                            @if (!string.IsNullOrWhiteSpace(option.ChipText))
-                            {
-                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@option.ChipColor">
-                                    @option.ChipText
-                                </MudChip>
-                            }
-
-                            @if (!MultiSelect && IsSelected(option))
-                            {
-                                <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Primary" />
-                            }
                         </div>
                     </MudListItem>
                 }
@@ -158,6 +159,9 @@
     private string PrimaryTextStyle => WrapText
         ? "overflow-wrap: anywhere;"
         : "white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+    private string TitleRowTextStyle => WrapText
+        ? "flex: 1 1 12rem; min-width: 0; overflow-wrap: anywhere;"
+        : PrimaryTextStyle;
     private string SecondaryTextStyle => WrapText
         ? "display: block; overflow-wrap: anywhere;"
         : "display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";

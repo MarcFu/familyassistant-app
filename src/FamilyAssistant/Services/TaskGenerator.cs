@@ -253,7 +253,7 @@ public class TaskGenerator
                 var spacing = 7.0 / timesPerWeek;
                 for (var d = from; d <= to;)
                 {
-                    var weekStart = d.AddDays(-(int)d.DayOfWeek + (int)DayOfWeek.Monday);
+                    var weekStart = d.AddDays(-(((int)d.DayOfWeek + 6) % 7));
                     for (int i = 0; i < timesPerWeek; i++)
                     {
                         var taskDay = weekStart.AddDays((int)(i * spacing));

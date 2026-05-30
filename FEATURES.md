@@ -47,6 +47,7 @@ Status: `done` | `partial` | `planned`
 | WebSocket Connection | done | Persistent WS with auth, message loop, auto-reconnect |
 | Person Sync | done | Import person entities + entity pictures from HA |
 | Todo List Sync | done | Push open tasks to HA todo lists per person (every 5 min) |
+| Notify Entity Linking | done | Link per-person HA notify entities and send a test push notification from the person links dialog |
 | Credit Sensor Sync | done | Push credit balances as HA sensor entities |
 | Theme Sync | done | Read dark/light mode from HA frontend user data via WebSocket |
 | State Subscriptions | done | Subscribe to entity `state_changed` events with entity filtering |

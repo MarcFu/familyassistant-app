@@ -239,7 +239,7 @@ else
 
                 // Load stats per person (uses QueryService for consistent logic)
                 var today = DateOnly.FromDateTime(DateTime.Today);
-                var weekStart = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday);
+                var weekStart = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
 
                 foreach (var person in _persons)
                 {

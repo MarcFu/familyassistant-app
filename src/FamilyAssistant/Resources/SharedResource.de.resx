@@ -441,6 +441,10 @@
   <data name="Dialog.PersonEntity.Notify"><value>Benachrichtigungen</value></data>
   <data name="Dialog.PersonEntity.NotifyHint"><value>HA Notify-Dienst für Push-Benachrichtigungen (z.B. Budget-Warnungen).</value></data>
   <data name="Dialog.PersonEntity.NotifyLabel"><value>Notify-Entität</value></data>
+  <data name="Dialog.PersonEntity.NotifyTestButton"><value>Test-Benachrichtigung</value></data>
+  <data name="Dialog.PersonEntity.NotifyTestTitle"><value>FamilyAssistant-Test für {0}</value></data>
+  <data name="Dialog.PersonEntity.NotifyTestMessage"><value>Push-Benachrichtigungen für {0} sind korrekt eingerichtet.</value></data>
+  <data name="Dialog.PersonEntity.NotifyTestSent"><value>Test-Benachrichtigung an {0} gesendet.</value></data>
   <data name="Dialog.AdHocTask.Title"><value>Ad-hoc Aufgabe erstellen</value></data>
   <data name="Dialog.AdHoc.Description"><value>Erstellt eine einmalige Aufgabe (ohne wiederkehrenden Zeitplan).</value></data>
   <data name="Dialog.AdHoc.ForWhom"><value>Für wen?</value></data>

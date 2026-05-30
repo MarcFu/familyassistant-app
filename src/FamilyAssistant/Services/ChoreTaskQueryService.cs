@@ -155,13 +155,16 @@ public class ChoreTaskQueryService : IChoreTaskQueryService
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
         var weekStart = GetWeekStart(today);
+        var weekStartUtc = weekStart.ToDateTime(TimeOnly.MinValue).ToUniversalTime();
+        var todayEndUtc = today.AddDays(1).ToDateTime(TimeOnly.MinValue).ToUniversalTime();
 
         return await _db.ChoreTasks
             .Include(t => t.Chore)
             .Where(t => (t.CompletedByPersonId == personId || t.ClaimedByPersonId == personId)
                 && t.Status == ChoreTaskStatus.Confirmed
                 && t.CompletedAt != null
-                && t.DueDate >= weekStart)
+                && t.CompletedAt >= weekStartUtc
+                && t.CompletedAt < todayEndUtc)
             .OrderByDescending(t => t.CompletedAt)
             .Take(maxCount)
             .ToListAsync();
@@ -193,7 +196,8 @@ public class ChoreTaskQueryService : IChoreTaskQueryService
 
     private static DateOnly GetWeekStart(DateOnly date)
     {
-        return date.AddDays(-(int)date.DayOfWeek + (int)DayOfWeek.Monday);
+        var daysSinceMonday = ((int)date.DayOfWeek + 6) % 7;
+        return date.AddDays(-daysSinceMonday);
     }
 
     #endregion
