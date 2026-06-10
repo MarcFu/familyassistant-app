@@ -55,12 +55,17 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Home Assistant API client (Singleton — holds long-lived WebSocket)
 builder.Services.AddHttpClient("HomeAssistant");
 builder.Services.AddSingleton<IHomeAssistantService, HomeAssistantService>();
+builder.Services.AddScoped<RecipeAiImportEnhancer>();
+builder.Services.AddHttpClient<RecipeImportService>();
 
 // Task generation (scoped — used by background service + UI)
 builder.Services.AddScoped<TaskGenerator>();
 
 // Task query service (scoped — filter logic for tasks page + dashboard)
 builder.Services.AddScoped<IChoreTaskQueryService, ChoreTaskQueryService>();
+builder.Services.AddScoped<IFeatureFlagsService, FeatureFlagsService>();
+builder.Services.AddScoped<ITraceSettingsService, TraceSettingsService>();
+builder.Services.AddSingleton<RecipeImportTraceService>();
 
 // Achievement evaluation (scoped — needs DbContext)
 builder.Services.AddScoped<IAchievementService, AchievementService>();
@@ -68,7 +73,7 @@ builder.Services.AddScoped<IAchievementService, AchievementService>();
 // Icon generation (Ollama + keyword fallback)
 builder.Services.AddHttpClient<OllamaIconService>(client =>
 {
-    client.Timeout = TimeSpan.FromMinutes(5); // SVG generation can take 2-3 min with large models
+    client.Timeout = TimeSpan.FromMinutes(30); // Local recipe AI can take several minutes on small hardware.
 });
 builder.Services.AddScoped<ChoreIconGenerator>();
 
@@ -77,6 +82,8 @@ builder.Services.AddScoped<UserContextService>();
 
 // Attachment storage (image resize + disk storage)
 builder.Services.AddSingleton<AttachmentStorageService>();
+builder.Services.AddSingleton<RecipeImageStorageService>();
+builder.Services.AddSingleton<RecipeImportCandidateControlService>();
 
 // Backup/restore (DB + task attachments)
 builder.Services.AddSingleton<BackupRestoreService>();
@@ -92,6 +99,7 @@ builder.Services.AddHostedService<TaskGenerationService>();
 builder.Services.AddHostedService<HomeAssistantSyncService>();
 builder.Services.AddHostedService<HaWebSocketStartupService>();
 builder.Services.AddHostedService<AttachmentCleanupService>();
+builder.Services.AddHostedService<RecipeImportCandidateWorker>();
 builder.Services.AddHostedService<HaEventTriggerService>();
 builder.Services.AddHostedService<InternetEnforcementService>();
 
@@ -189,6 +197,21 @@ app.MapGet("/api/attachment/{attachmentId:int}", async (int attachmentId, AppDbC
     return Results.File(fullPath, attachment.ContentType, attachment.FileName);
 });
 
+// Recipe image proxy: serves stored recipe images from disk
+app.MapGet("/api/recipe-image/{imageId:int}", async (int imageId, AppDbContext db, RecipeImageStorageService storage, HttpContext httpContext, CancellationToken ct) =>
+{
+    var image = await db.RecipeImages.FindAsync([imageId], ct);
+    if (image is null)
+        return Results.NotFound();
+
+    var fullPath = storage.GetFullPath(image.FilePath);
+    if (!File.Exists(fullPath))
+        return Results.NotFound();
+
+    httpContext.Response.Headers.CacheControl = "public, max-age=86400";
+    return Results.File(fullPath, image.ContentType, image.FileName);
+});
+
 // Upload endpoint: receives files via HTTP POST (bypasses SignalR for large camera images)
 // Antiforgery disabled: JS-based upload from Blazor client requires this
 app.MapPost("/api/upload-attachment", async (HttpRequest request, AppDbContext db, AttachmentStorageService storage, CancellationToken ct) =>
@@ -252,6 +275,63 @@ app.MapPost("/api/upload-attachment", async (HttpRequest request, AppDbContext d
     }
 
     return Results.Ok(results);
+}).DisableAntiforgery();
+
+// Recipe image upload: receives recipe photos via HTTP POST
+// Antiforgery disabled: JS-based upload from Blazor client requires this
+app.MapPost("/api/upload-recipe-image", async (HttpRequest request, AppDbContext db, RecipeImageStorageService storage, CancellationToken ct) =>
+{
+    if (!request.HasFormContentType)
+        return Results.BadRequest("Expected multipart/form-data");
+
+    var form = await request.ReadFormAsync(ct);
+    var recipeIdStr = form["recipeId"].FirstOrDefault();
+
+    if (!int.TryParse(recipeIdStr, out var recipeId))
+        return Results.BadRequest("Missing or invalid recipeId");
+
+    var recipe = await db.Recipes.Include(r => r.Images).FirstOrDefaultAsync(r => r.Id == recipeId, ct);
+    if (recipe is null)
+        return Results.NotFound("Recipe not found");
+
+    if (form.Files.Count == 0)
+        return Results.BadRequest("No files provided");
+
+    var file = form.Files[0];
+    if (file.Length == 0)
+        return Results.BadRequest("Empty file");
+
+    if (file.Length > 10 * 1024 * 1024)
+        return Results.BadRequest($"File '{file.FileName}' exceeds 10 MB limit");
+
+    var allowedContentTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp", "image/heic", "image/heif" };
+    if (!allowedContentTypes.Any(ct => file.ContentType.StartsWith(ct, StringComparison.OrdinalIgnoreCase)))
+        return Results.BadRequest($"File type '{file.ContentType}' not allowed. Only images are accepted.");
+
+    foreach (var existingImage in recipe.Images)
+    {
+        existingImage.IsPrimary = false;
+    }
+
+    var safeFileName = Path.GetFileName(file.FileName);
+    await using var stream = file.OpenReadStream();
+    var (relativePath, contentType, fileSize) = await storage.StoreImageAsync(recipeId, stream, safeFileName, ct);
+
+    var image = new RecipeImage
+    {
+        RecipeId = recipeId,
+        FileName = safeFileName,
+        ContentType = contentType,
+        FilePath = relativePath,
+        FileSize = fileSize,
+        IsPrimary = true,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    db.RecipeImages.Add(image);
+    await db.SaveChangesAsync(ct);
+
+    return Results.Ok(new { image.Id, image.FileName, image.FileSize });
 }).DisableAntiforgery();
 
 // Backup creation must not happen through GET: browsers/proxies may retry or prefetch downloads.

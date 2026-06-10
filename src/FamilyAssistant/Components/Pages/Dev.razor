@@ -6,6 +6,7 @@
 @inject FamilyAssistant.Services.HaThemeService ThemeService
 @inject FamilyAssistant.Services.HaUserPreferencesService PrefsService
 @inject FamilyAssistant.Services.IHomeAssistantService HaService
+@inject FamilyAssistant.Services.ITraceSettingsService TraceSettings
 @inject FamilyAssistant.Data.AppDbContext Db
 @inject ISnackbar Snackbar
 @inject IStringLocalizer<SharedResource> L
@@ -249,6 +250,23 @@
                 <tr><td><strong>Build</strong></td><td>@GetBuildTimestamp()</td></tr>
             </tbody>
         </MudSimpleTable>
+    </MudCard>
+
+    <MudCard Elevation="1" Class="pa-4">
+        <MudText Typo="Typo.h6" Class="mb-3">Verbose Tracing</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            Bereichsspezifische Trace-Schalter für Rohdaten, Zwischenstände, Prompts und Modellantworten.
+        </MudText>
+        <div class="d-flex justify-space-between align-start gap-3 flex-wrap">
+            <div style="min-width:0; flex:1;">
+                <MudText Typo="Typo.subtitle2">Recipe Import Trace</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Speichert Parser-Zwischenstände, Prompts, LLM-Rohantworten und Validierungsdaten für neue Rezeptimporte.
+                </MudText>
+            </div>
+            <MudSwitch T="bool" Value="_recipeImportTraceEnabled" ValueChanged="ToggleRecipeImportTraceAsync"
+                       Color="Color.Primary" Label="Enabled" />
+        </div>
     </MudCard>
 
     @* ── HA User Mapping ── *@
@@ -554,6 +572,7 @@
     private string _themeMode = "auto"; // "auto", "light", "dark"
     private MudColor _devPrimaryColor = new("#03a9f4");
     private MudColor _devAccentColor = new("#ff9800");
+    private bool _recipeImportTraceEnabled;
     private AchievementUnlockOverlay? _unlockOverlay;
 
     [Inject] private IAchievementService AchievementSvc { get; set; } = null!;
@@ -596,6 +615,7 @@
         _selectedPersonId = UserContext.CurrentPersonId;
         _mode = Environment.GetEnvironmentVariable("SUPERVISOR_TOKEN") is not null ? "Add-on (Production)" : "Development";
         _dbPath = Db.Database.GetDbConnection().DataSource ?? "?";
+        _recipeImportTraceEnabled = await TraceSettings.IsRecipeImportTraceEnabledAsync();
         await LoadAchievementStateAsync();
         await RefreshHaPersons();
     }
@@ -650,6 +670,13 @@
         var assembly = System.Reflection.Assembly.GetExecutingAssembly();
         var buildTime = File.GetLastWriteTimeUtc(assembly.Location);
         return buildTime.ToString("yyyy-MM-dd HH:mm:ss") + " UTC";
+    }
+
+    private async Task ToggleRecipeImportTraceAsync(bool enabled)
+    {
+        _recipeImportTraceEnabled = enabled;
+        await TraceSettings.SetRecipeImportTraceEnabledAsync(enabled);
+        Snackbar.Add(enabled ? "Recipe Import Trace aktiviert." : "Recipe Import Trace deaktiviert.", Severity.Success);
     }
 
     private async Task OnPersonChanged(int? personId)

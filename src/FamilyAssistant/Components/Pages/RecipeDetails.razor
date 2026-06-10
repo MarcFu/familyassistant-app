@@ -1,0 +1,325 @@
+@page "/recipes/{RecipeId:int}"
+@rendermode InteractiveServer
+@inject FamilyAssistant.Data.AppDbContext Db
+@inject IFeatureFlagsService FeatureFlags
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<SharedResource> L
+@inject NavigationManager Navigation
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>@(_recipe?.Name ?? L["PageTitle.Recipes"])</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_recipe is null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@L["Recipes.Snackbar.NotFound"]</MudAlert>
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToList">
+        @L["Recipes.BackToList"]
+    </MudButton>
+}
+else
+{
+    var primaryImage = _recipe.Images.OrderByDescending(i => i.IsPrimary).ThenBy(i => i.CreatedAt).FirstOrDefault();
+
+    <div class="d-flex justify-space-between align-start gap-3 flex-wrap mb-4">
+        <div>
+            <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToList" Class="mb-2">
+                @L["Recipes.BackToList"]
+            </MudButton>
+            <MudText Typo="Typo.h4">@_recipe.Name</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@(_recipe.Category?.Name ?? L["Recipes.NoCategory"].Value)</MudText>
+        </div>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit" OnClick="OpenEditDialog">
+            @L["Common.Edit"]
+        </MudButton>
+    </div>
+
+    <MudGrid>
+        <MudItem xs="12" md="5">
+            <MudPaper Outlined="true" Class="pa-3 mb-3">
+                @if (primaryImage is not null)
+                {
+                    <img src="api/recipe-image/@primaryImage.Id" alt="@_recipe.Name"
+                         style="width:100%; max-height:320px; object-fit:cover; border-radius:12px; margin-bottom:12px;" />
+                }
+
+                @if (!string.IsNullOrWhiteSpace(_recipe.Description))
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">@_recipe.Description</MudText>
+                }
+
+                <div class="d-flex gap-1 flex-wrap mb-3">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary">
+                        @string.Format(L["Recipes.ServingsChip"].Value, RecipeScalingHelper.FormatQuantity(_recipe.BaseServings))
+                    </MudChip>
+                    @if (_recipe.TotalTimeMinutes is int totalTime)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@string.Format(L["Recipes.TotalTimeChip"].Value, totalTime)</MudChip>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_recipe.Difficulty))
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@_recipe.Difficulty</MudChip>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_recipe.SourceUrl))
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Href="@_recipe.SourceUrl" Target="_blank">@(_recipe.SourceName ?? L["Recipes.Source"].Value)</MudChip>
+                    }
+                </div>
+
+                @if (_recipe.Tags.Count > 0)
+                {
+                    <div class="d-flex gap-1 flex-wrap mb-3">
+                        @foreach (var tag in _recipe.Tags.OrderBy(t => t.Name))
+                        {
+                            <MudChip T="string" Size="Size.Small">@tag.Name</MudChip>
+                        }
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(_recipe.Notes))
+                {
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@_recipe.Notes</MudAlert>
+                }
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="7">
+            <MudPaper Outlined="true" Class="pa-3 mb-3">
+                <div class="d-flex gap-2 align-center mb-3 flex-wrap">
+                    <MudNumericField T="decimal" Value="_targetServings" Min="1" Max="50"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense"
+                                     Label="@L["Recipes.TargetServings"].Value"
+                                     ValueChanged="OnTargetServingsChanged"
+                                     Style="max-width:160px;" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @string.Format(L["Recipes.BaseServingsInfo"].Value, RecipeScalingHelper.FormatQuantity(_recipe.BaseServings))
+                    </MudText>
+                </div>
+
+                <MudText Typo="Typo.h6" Class="mb-2">@L["Recipes.Ingredients"]</MudText>
+                @foreach (var group in GetIngredientGroups(_recipe))
+                {
+                    @if (!string.IsNullOrWhiteSpace(group.Name))
+                    {
+                        <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mt-3 mb-1">@group.Name</MudText>
+                    }
+                    @foreach (var ingredient in group.Ingredients)
+                    {
+                        <MudText Typo="Typo.body2" Class="mb-1">@FormatIngredient(_recipe, ingredient)</MudText>
+                    }
+                }
+            </MudPaper>
+
+            <MudPaper Outlined="true" Class="pa-3">
+                <MudText Typo="Typo.h6" Class="mb-2">@L["Recipes.Steps"]</MudText>
+                @foreach (var step in _recipe.Steps.OrderBy(s => s.SortOrder))
+                {
+                    @if (!string.IsNullOrWhiteSpace(step.Section))
+                    {
+                        <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mt-3 mb-1">@step.Section</MudText>
+                    }
+                    <MudText Typo="Typo.body2" Class="mb-2">
+                        <strong>@step.SortOrder.</strong>
+                        @foreach (var segment in GetStepSegments(step))
+                        {
+                            if (segment.Ingredient is not null)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined" Class="mx-1 recipe-step-ingredient-chip">
+                                    @FormatIngredientChip(_recipe, segment.Ingredient)
+                                </MudChip>
+                            }
+                            else
+                            {
+                                @segment.Text
+                            }
+                        }
+                    </MudText>
+                    var unplacedIngredients = GetUnplacedStepIngredients(step).ToList();
+                    @if (unplacedIngredients.Count > 0)
+                    {
+                        <div class="d-flex gap-1 flex-wrap mb-2">
+                            @foreach (var ingredient in unplacedIngredients)
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                                    @FormatIngredientChip(_recipe, ingredient)
+                                </MudChip>
+                            }
+                        </div>
+                    }
+                    @foreach (var stepImage in step.Images.Where(i => !string.IsNullOrWhiteSpace(i.SourceUrl)).Take(1))
+                    {
+                        <img src="@stepImage.SourceUrl" alt="@step.Instruction"
+                             style="width:100%; max-height:180px; object-fit:cover; border-radius:12px; margin:4px 0 8px;" />
+                    }
+                    @if (step.GroupNumber > 1)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Outlined" Class="mb-2">
+                            @string.Format(L["Recipes.ParallelGroup"].Value, step.GroupNumber)
+                        </MudChip>
+                    }
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter]
+    public int RecipeId { get; set; }
+
+    private bool _loading = true;
+    private Recipe? _recipe;
+    private decimal _targetServings;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await FeatureFlags.IsRecipesEnabledAsync())
+        {
+            Navigation.NavigateTo("");
+            return;
+        }
+
+        _recipe = await Db.Recipes
+            .AsNoTracking()
+            .Include(r => r.Category)
+            .Include(r => r.Tags)
+            .Include(r => r.Images)
+            .Include(r => r.Ingredients)
+                .ThenInclude(i => i.Group)
+            .Include(r => r.Steps)
+                .ThenInclude(s => s.Ingredients)
+                    .ThenInclude(link => link.RecipeIngredient)
+            .Include(r => r.Steps)
+                .ThenInclude(s => s.Images)
+            .FirstOrDefaultAsync(r => r.Id == RecipeId);
+
+        _targetServings = _recipe?.BaseServings ?? 1;
+        _loading = false;
+    }
+
+    private void BackToList() => Navigation.NavigateTo("recipes");
+
+    private async Task OpenEditDialog()
+    {
+        var parameters = new DialogParameters<RecipeDialog>
+        {
+            { x => x.RecipeId, RecipeId }
+        };
+
+        var dialog = await DialogService.ShowAsync<RecipeDialog>(L["Dialog.Recipe.EditTitle"].Value, parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+        }
+    }
+
+    private void OnTargetServingsChanged(decimal value) => _targetServings = value <= 0 ? 1 : value;
+
+    private string FormatIngredient(Recipe recipe, RecipeIngredient ingredient)
+    {
+        var parts = new List<string>();
+        if (ingredient.Quantity is decimal quantity)
+        {
+            var scaled = RecipeScalingHelper.ScaleQuantity(quantity, recipe.BaseServings, _targetServings);
+            parts.Add(RecipeScalingHelper.FormatQuantity(scaled));
+        }
+
+        if (!string.IsNullOrWhiteSpace(ingredient.Unit))
+        {
+            parts.Add(ingredient.Unit!);
+        }
+
+        parts.Add(ingredient.Name);
+        var ingredientWithoutNote = string.Join(" ", parts);
+
+        if (!string.IsNullOrWhiteSpace(ingredient.Note)
+            && !string.Equals(ingredient.Note.Trim(), ingredient.Name.Trim(), StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(ingredient.Note.Trim(), ingredientWithoutNote.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            parts.Add($"({ingredient.Note})");
+        }
+
+        return string.Join(" ", parts);
+    }
+
+    private string FormatIngredientChip(Recipe recipe, RecipeIngredient ingredient)
+    {
+        var parts = new List<string>();
+        if (ingredient.Quantity is decimal quantity)
+        {
+            var scaled = RecipeScalingHelper.ScaleQuantity(quantity, recipe.BaseServings, _targetServings);
+            parts.Add(RecipeScalingHelper.FormatQuantity(scaled));
+        }
+
+        if (!string.IsNullOrWhiteSpace(ingredient.Unit))
+        {
+            parts.Add(ingredient.Unit!);
+        }
+
+        parts.Add(ingredient.Name);
+        return string.Join(" ", parts);
+    }
+
+    private IEnumerable<StepDisplaySegment> GetStepSegments(RecipeStep step)
+    {
+        var ingredientsByToken = step.Ingredients
+            .Select(link => link.RecipeIngredient)
+            .Where(i => !string.IsNullOrWhiteSpace(i.MarkerToken))
+            .GroupBy(i => i.MarkerToken, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+        var markup = string.IsNullOrWhiteSpace(step.InstructionMarkup) ? step.Instruction : step.InstructionMarkup;
+        var segments = RecipeStepMarkupHelper.Parse(markup).ToList();
+
+        if (segments.Count == 0)
+        {
+            yield return new StepDisplaySegment(step.Instruction, null);
+            yield break;
+        }
+
+        foreach (var segment in segments)
+        {
+            if (segment.IsIngredient)
+            {
+                if (ingredientsByToken.TryGetValue(segment.IngredientToken!, out var ingredient))
+                {
+                    yield return new StepDisplaySegment(null, ingredient);
+                }
+
+                continue;
+            }
+
+            if (!string.IsNullOrEmpty(segment.Text))
+            {
+                yield return new StepDisplaySegment(segment.Text, null);
+            }
+        }
+    }
+
+    private IEnumerable<RecipeIngredient> GetUnplacedStepIngredients(RecipeStep step)
+    {
+        var placedTokens = RecipeStepMarkupHelper.ExtractTokens(step.InstructionMarkup);
+        return step.Ingredients
+            .Select(link => link.RecipeIngredient)
+            .Where(i => string.IsNullOrWhiteSpace(i.MarkerToken) || !placedTokens.Contains(i.MarkerToken))
+            .OrderBy(i => i.SortOrder);
+    }
+
+    private static IEnumerable<IngredientDisplayGroup> GetIngredientGroups(Recipe recipe)
+    {
+        return recipe.Ingredients
+            .OrderBy(i => i.Group?.SortOrder ?? int.MaxValue)
+            .ThenBy(i => i.SortOrder)
+            .GroupBy(i => i.Group?.Name ?? "")
+            .Select(g => new IngredientDisplayGroup(g.Key, g.ToList()));
+    }
+
+    private sealed record IngredientDisplayGroup(string Name, List<RecipeIngredient> Ingredients);
+
+    private sealed record StepDisplaySegment(string? Text, RecipeIngredient? Ingredient);
+}

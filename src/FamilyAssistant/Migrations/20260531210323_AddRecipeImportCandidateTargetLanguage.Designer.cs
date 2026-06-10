@@ -3,6 +3,7 @@ using System;
 using FamilyAssistant.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FamilyAssistant.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260531210323_AddRecipeImportCandidateTargetLanguage")]
+    partial class AddRecipeImportCandidateTargetLanguage
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.16");
@@ -724,10 +727,6 @@ namespace FamilyAssistant.Migrations
                     b.Property<int?>("GroupId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("MarkerToken")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -750,8 +749,6 @@ namespace FamilyAssistant.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("GroupId");
-
-                    b.HasIndex("RecipeId", "MarkerToken");
 
                     b.HasIndex("RecipeId", "SortOrder");
 
@@ -792,9 +789,6 @@ namespace FamilyAssistant.Migrations
 
                     b.Property<string>("Instruction")
                         .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("InstructionMarkup")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RecipeId")

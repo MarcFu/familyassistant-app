@@ -43,6 +43,7 @@
   <data name="Common.Apply"><value>Übernehmen</value></data>
   <data name="Common.Submit"><value>Absenden</value></data>
   <data name="Common.Refresh"><value>Aktualisieren</value></data>
+  <data name="Common.Copy"><value>Kopieren</value></data>
   <data name="Common.Remove"><value>Entfernen</value></data>
   <data name="Common.Clear"><value>Leeren</value></data>
   <data name="Common.Load"><value>Laden</value></data>
@@ -96,6 +97,7 @@
   <data name="Common.Confirm.ResetCredits"><value>Credits von „{0}" wirklich auf {1} zurücksetzen?</value></data>
   <data name="Common.Confirm.DeleteBackup"><value>Backup „{0}" wirklich löschen?</value></data>
   <data name="Common.Confirm.DeleteChore"><value>Aufgabe „{0}" wirklich löschen? Bestehende Tasks bleiben erhalten.</value></data>
+  <data name="Common.Confirm.DeleteRecipe"><value>Rezept „{0}" wirklich löschen?</value></data>
   <data name="Common.Confirm.Yes"><value>Ja, fortfahren</value></data>
 
   <!-- ═══ Roles ═══ -->
@@ -120,7 +122,10 @@
   <data name="Nav.Chores"><value>Hausarbeiten</value></data>
   <data name="Nav.InternetRules"><value>Internetregeln</value></data>
   <data name="Nav.Admin"><value>Admin</value></data>
+  <data name="Nav.Labs"><value>Labs</value></data>
   <data name="Nav.Dev"><value>Dev</value></data>
+  <data name="Nav.Recipes"><value>Rezepte</value></data>
+  <data name="Nav.RecipeImports"><value>Rezept-Importe</value></data>
   <data name="Nav.Settings"><value>Einstellungen</value></data>
 
   <!-- ═══ PageTitles ═══ -->
@@ -129,7 +134,11 @@
   <data name="PageTitle.Chores"><value>Hausarbeiten - FamilyAssistant</value></data>
   <data name="PageTitle.Settings"><value>Einstellungen - FamilyAssistant</value></data>
   <data name="PageTitle.Admin"><value>Admin - FamilyAssistant</value></data>
+  <data name="PageTitle.Labs"><value>Labs - FamilyAssistant</value></data>
   <data name="PageTitle.Dev"><value>Dev - FamilyAssistant</value></data>
+  <data name="PageTitle.Recipes"><value>Rezepte - FamilyAssistant</value></data>
+  <data name="PageTitle.RecipeImports"><value>Rezept-Importe - FamilyAssistant</value></data>
+  <data name="PageTitle.RecipeImportDetails"><value>Rezept-Import - FamilyAssistant</value></data>
   <data name="PageTitle.Setup"><value>Einrichtung - FamilyAssistant</value></data>
   <data name="PageTitle.Profile"><value>Profil - FamilyAssistant</value></data>
 
@@ -331,6 +340,7 @@
   <data name="Settings.Snackbar.RoleChanged"><value>Rolle von {0} geändert zu {1}.</value></data>
   <data name="Settings.Snackbar.Paused"><value>{0} pausiert.</value></data>
   <data name="Settings.Snackbar.Resumed"><value>{0} wieder aktiv.</value></data>
+  <data name="Settings.Snackbar.PersonImported"><value>{0} hinzugefügt.</value></data>
   <data name="Settings.Snackbar.RestOk"><value>REST API erreichbar ({0}ms)</value></data>
   <data name="Settings.Snackbar.RestFailed"><value>REST API nicht erreichbar</value></data>
   <data name="Settings.Snackbar.EventMonitorFailed"><value>Event-Monitor konnte nicht gestartet werden: {0}</value></data>
@@ -398,6 +408,150 @@
   <data name="Dev.InfoPersons"><value>Personen</value></data>
   <data name="Dev.Snackbar.Cleared"><value>Benutzerkontext gelöscht — Gast-Modus.</value></data>
   <data name="Dev.Snackbar.Set"><value>Benutzerkontext: {0}</value></data>
+
+  <!-- ═══ Labs ═══ -->
+  <data name="Labs.Title"><value>Labs</value></data>
+  <data name="Labs.Description"><value>Experimentelle Funktionen können hier zur Laufzeit aktiviert werden. Sie sind noch nicht fertig und können sich ändern.</value></data>
+  <data name="Labs.ExperimentalBadge"><value>Experimentell</value></data>
+  <data name="Labs.Feature.Enabled"><value>Aktiviert</value></data>
+  <data name="Labs.Recipes.Title"><value>Rezeptdatenbank</value></data>
+  <data name="Labs.Recipes.Description"><value>Erster MS1-Wurf mit lokaler Rezeptverwaltung, Zutaten, Schritten, Portionsskalierung und Foto.</value></data>
+  <data name="Labs.Recipes.Snackbar.Enabled"><value>Rezeptdatenbank aktiviert.</value></data>
+  <data name="Labs.Recipes.Snackbar.Disabled"><value>Rezeptdatenbank deaktiviert.</value></data>
+
+  <!-- ═══ Recipes ═══ -->
+  <data name="Recipes.Title"><value>Rezepte</value></data>
+  <data name="Recipes.Empty"><value>Noch keine Rezepte vorhanden. Lege das erste Rezept an.</value></data>
+  <data name="Recipes.Create"><value>Rezept erstellen</value></data>
+  <data name="Recipes.Import"><value>Importieren</value></data>
+  <data name="Recipes.Details"><value>Details</value></data>
+  <data name="Recipes.BackToList"><value>Zurück zu Rezepten</value></data>
+  <data name="Recipes.ImportQueue"><value>Import-Queue</value></data>
+  <data name="Recipes.ImportQueue.Started"><value>Import wurde angefordert.</value></data>
+  <data name="Recipes.ImportQueue.Review"><value>Prüfen</value></data>
+  <data name="Recipes.ImportQueue.Retry"><value>Erneut versuchen</value></data>
+  <data name="Recipes.ImportQueue.Cancel"><value>Abbrechen</value></data>
+  <data name="Recipes.ImportQueue.Cancelled"><value>Import abgebrochen.</value></data>
+  <data name="Recipes.ImportQueue.ProposalMissing"><value>Import-Vorschlag nicht gefunden.</value></data>
+  <data name="Recipes.ImportQueue.WithAi"><value>mit AI</value></data>
+  <data name="Recipes.ImportQueue.NoAi"><value>ohne AI</value></data>
+  <data name="Recipes.ImportQueue.Status.Requested"><value>Angefordert</value></data>
+  <data name="Recipes.ImportQueue.Status.Fetching"><value>Lädt Quelle</value></data>
+  <data name="Recipes.ImportQueue.Status.Parsing"><value>Parsing</value></data>
+  <data name="Recipes.ImportQueue.Status.EnhancingWithAi"><value>AI läuft</value></data>
+  <data name="Recipes.ImportQueue.Status.ProposalReady"><value>Vorschlag bereit</value></data>
+  <data name="Recipes.ImportQueue.Status.Failed"><value>Fehlgeschlagen</value></data>
+  <data name="Recipes.ImportQueue.Status.Cancelled"><value>Abgebrochen</value></data>
+  <data name="Recipes.ImportQueue.Status.Accepted"><value>Übernommen</value></data>
+  <data name="Recipes.ImportQueue.Status.Paused"><value>Pausiert</value></data>
+  <data name="Recipes.ImportQueue.Status.Interrupted"><value>Unterbrochen</value></data>
+  <data name="Recipes.ImportCandidates"><value>Import-Kandidaten</value></data>
+  <data name="Recipes.ImportCandidates.Description"><value>Persistente Rezeptimporte mit Pause, Resume, Retry und JSON-Export.</value></data>
+  <data name="Recipes.ImportCandidates.Open"><value>Importe öffnen</value></data>
+  <data name="Recipes.ImportCandidates.OpenCount"><value>{0} offene Import-Kandidaten.</value></data>
+  <data name="Recipes.ImportCandidates.Empty"><value>Keine Import-Kandidaten vorhanden.</value></data>
+  <data name="Recipes.ImportCandidates.Candidate"><value>Import-Kandidat</value></data>
+  <data name="Recipes.ImportCandidates.Details"><value>Details</value></data>
+  <data name="Recipes.ImportCandidates.NotFound"><value>Import-Kandidat nicht gefunden.</value></data>
+  <data name="Recipes.ImportCandidates.State"><value>Status</value></data>
+  <data name="Recipes.ImportCandidates.Attempts"><value>{0} Versuch(e)</value></data>
+  <data name="Recipes.ImportCandidates.Pause"><value>Pausieren</value></data>
+  <data name="Recipes.ImportCandidates.Resume"><value>Fortsetzen</value></data>
+  <data name="Recipes.ImportCandidates.Paused"><value>Import pausiert.</value></data>
+  <data name="Recipes.ImportCandidates.PauseRequested"><value>Pause angefordert. Der laufende Schritt wird abgebrochen.</value></data>
+  <data name="Recipes.ImportCandidates.JsonExport"><value>JSON-Export</value></data>
+  <data name="Recipes.ImportCandidates.JsonCopied"><value>JSON in die Zwischenablage kopiert.</value></data>
+  <data name="Recipes.BackToRecipes"><value>Zurück zu Rezepten</value></data>
+  <data name="Recipes.Category"><value>Kategorie</value></data>
+  <data name="Recipes.NoCategory"><value>Ohne Kategorie</value></data>
+  <data name="Recipes.NewCategory"><value>Neue Kategorie</value></data>
+  <data name="Recipes.NewCategoryHint"><value>Optional neue Oberkategorie anlegen</value></data>
+  <data name="Recipes.Source"><value>Quelle</value></data>
+  <data name="Recipes.SourceUrl"><value>Quell-Link</value></data>
+  <data name="Recipes.SourceName"><value>Quelle</value></data>
+  <data name="Recipes.SourceType"><value>Quelltyp</value></data>
+  <data name="Recipes.SourceType.Manual"><value>Manuell</value></data>
+  <data name="Recipes.SourceType.Url"><value>URL</value></data>
+  <data name="Recipes.SourceType.Text"><value>Text</value></data>
+  <data name="Recipes.SourceType.WhatsApp"><value>WhatsApp</value></data>
+  <data name="Recipes.SourceType.Instagram"><value>Instagram</value></data>
+  <data name="Recipes.SourceText"><value>Originaltext</value></data>
+  <data name="Recipes.Notes"><value>Notizen</value></data>
+  <data name="Recipes.Difficulty"><value>Schwierigkeit</value></data>
+  <data name="Recipes.WorkTime"><value>Arbeitszeit (min)</value></data>
+  <data name="Recipes.CookTime"><value>Koch-/Backzeit (min)</value></data>
+  <data name="Recipes.RestTime"><value>Ruhezeit (min)</value></data>
+  <data name="Recipes.TotalTime"><value>Gesamtzeit (min)</value></data>
+  <data name="Recipes.TotalTimeChip"><value>{0} min gesamt</value></data>
+  <data name="Recipes.Tags"><value>Tags</value></data>
+  <data name="Recipes.TagsHint"><value>Kommagetrennt, z.B. vegan, glutenfrei</value></data>
+  <data name="Recipes.BaseServings"><value>Basisportionen</value></data>
+  <data name="Recipes.TargetServings"><value>Zielportionen</value></data>
+  <data name="Recipes.BaseServingsInfo"><value>Basis: {0}</value></data>
+  <data name="Recipes.ServingsChip"><value>{0} Portionen</value></data>
+  <data name="Recipes.Ingredients"><value>Zutaten</value></data>
+  <data name="Recipes.AddIngredient"><value>Zutat hinzufügen</value></data>
+  <data name="Recipes.Quantity"><value>Menge</value></data>
+  <data name="Recipes.Unit"><value>Einheit</value></data>
+  <data name="Recipes.Note"><value>Hinweis</value></data>
+  <data name="Recipes.IngredientGroup"><value>Zutatengruppe</value></data>
+  <data name="Recipes.IngredientGroupHint"><value>z.B. Für den Boden, Marinade</value></data>
+  <data name="Recipes.IngredientPlaceholder"><value>Zutat</value></data>
+  <data name="Recipes.Steps"><value>Schritte</value></data>
+  <data name="Recipes.AddStep"><value>Schritt hinzufügen</value></data>
+  <data name="Recipes.StepText"><value>Zubereitungsschritt</value></data>
+  <data name="Recipes.StepMarkup"><value>Zubereitung mit Zutaten-Chips</value></data>
+  <data name="Recipes.StepMarkupHint"><value>Text eingeben; Zutaten-Chips per Klick an der Cursorposition einfügen.</value></data>
+  <data name="Recipes.StepMarkupPreview"><value>Vorschau</value></data>
+  <data name="Recipes.StepSection"><value>Abschnitt</value></data>
+  <data name="Recipes.StepImageUrl"><value>Schritt-Bild URL</value></data>
+  <data name="Recipes.StepIngredients"><value>Zutaten in diesem Schritt</value></data>
+  <data name="Recipes.UnplacedStepIngredients"><value>Verlinkt, aber nicht im Text platziert</value></data>
+  <data name="Recipes.PositionIngredientChipsWithAi"><value>AI-Chips positionieren</value></data>
+  <data name="Recipes.ParallelGroup"><value>Parallelgruppe {0}</value></data>
+  <data name="Recipes.ParallelGroupLabel"><value>Parallelgruppe</value></data>
+  <data name="Recipes.Photo"><value>Foto</value></data>
+  <data name="Recipes.Snackbar.Deleted"><value>Rezept „{0}“ gelöscht.</value></data>
+  <data name="Recipes.Snackbar.NotFound"><value>Rezept nicht gefunden.</value></data>
+  <data name="Recipes.Snackbar.IngredientChipsPositioned"><value>AI hat Zutaten-Chips im Editor positioniert. Bitte prüfen und speichern.</value></data>
+  <data name="Recipes.Snackbar.ImageUploaded"><value>Rezeptfoto hochgeladen.</value></data>
+
+  <!-- ═══ Dialog.Recipe ═══ -->
+  <data name="Dialog.Recipe.CreateTitle"><value>Neues Rezept</value></data>
+  <data name="Dialog.Recipe.EditTitle"><value>Rezept bearbeiten</value></data>
+  <data name="Dialog.Recipe.IngredientsHint"><value>Zutaten strukturiert erfassen. Mengen werden bei anderer Portionsgröße automatisch umgerechnet.</value></data>
+  <data name="Dialog.Recipe.StepsHint"><value>Schritte können Zutaten referenzieren. Gleiche Parallelgruppen-Nummer bedeutet: parallel möglich.</value></data>
+  <data name="Dialog.Recipe.SaveBeforePhoto"><value>Bitte das Rezept zuerst speichern, bevor du ein Foto hochlädst.</value></data>
+  <data name="Dialog.Recipe.ImportedImageHint"><value>Das importierte Bild wird beim Speichern heruntergeladen.</value></data>
+  <data name="Dialog.Recipe.ImportedImageError"><value>Rezept gespeichert, aber Bildimport fehlgeschlagen: {0}</value></data>
+  <data name="Dialog.Recipe.PasteImage"><value>Bild aus Zwischenablage einfügen</value></data>
+  <data name="Dialog.Recipe.PasteImageHint"><value>Fokussiere diese Karte und füge ein kopiertes Bild mit Strg+V ein. Das Bild wird beim Speichern als Hauptfoto übernommen.</value></data>
+  <data name="Dialog.Recipe.PastedImageReady"><value>Bild aus Zwischenablage übernommen.</value></data>
+  <data name="Dialog.Recipe.PasteImageTooLarge"><value>Das Bild ist zu groß (max. 10 MB).</value></data>
+  <data name="Dialog.Recipe.QualityReport"><value>AI-Qualitätsbericht</value></data>
+  <data name="Dialog.RecipeImport.Title"><value>Rezept importieren</value></data>
+  <data name="Dialog.RecipeImport.ReviewTitle"><value>Import prüfen</value></data>
+  <data name="Dialog.RecipeImport.Description"><value>Importiere eine Rezept-URL oder füge einen weitergeleiteten Rezepttext ein.</value></data>
+  <data name="Dialog.RecipeImport.TabUrl"><value>URL</value></data>
+  <data name="Dialog.RecipeImport.TabText"><value>Text</value></data>
+  <data name="Dialog.RecipeImport.Url"><value>Rezept-URL</value></data>
+  <data name="Dialog.RecipeImport.Text"><value>Rezepttext</value></data>
+  <data name="Dialog.RecipeImport.TextPlaceholder"><value>WhatsApp-Text, Instagram-Caption oder manuelles Rezept einfügen...</value></data>
+  <data name="Dialog.RecipeImport.Quality"><value>Import-Qualität</value></data>
+  <data name="Dialog.RecipeImport.Quality.SimpleParsing"><value>Einfaches Parsing (ohne AI)</value></data>
+  <data name="Dialog.RecipeImport.Quality.QuickAi"><value>Schnelle AI</value></data>
+  <data name="Dialog.RecipeImport.Quality.MediumAi"><value>Ausgewogene AI</value></data>
+  <data name="Dialog.RecipeImport.Quality.HighAi"><value>Beste Qualität (High AI)</value></data>
+  <data name="Dialog.RecipeImport.QualityHint.SimpleParsing"><value>Nur deterministische Extraktion. Schnell, aber meist mit manueller Nacharbeit.</value></data>
+  <data name="Dialog.RecipeImport.QualityHint.QuickAi"><value>Ein kurzer AI-Pass für bessere Strukturierung.</value></data>
+  <data name="Dialog.RecipeImport.QualityHint.MediumAi"><value>Gründlicher AI-Pass mit Validierung der Grundstruktur.</value></data>
+  <data name="Dialog.RecipeImport.QualityHint.HighAi"><value>Mehrstufig: Extraction, Validation und Refinement. Kann 10-15 Minuten dauern, soll aber möglichst übernahmefertig sein.</value></data>
+  <data name="Dialog.RecipeImport.Enqueue"><value>Import anfordern</value></data>
+  <data name="Dialog.RecipeImport.Queueing"><value>Import wird angefordert...</value></data>
+  <data name="Dialog.RecipeImport.Requested"><value>Import angefordert.</value></data>
+  <data name="Dialog.RecipeImport.Starting"><value>Import wird vorbereitet...</value></data>
+  <data name="Dialog.RecipeImport.Abort"><value>Abbrechen</value></data>
+  <data name="Dialog.RecipeImport.Aborted"><value>Import abgebrochen.</value></data>
 
   <!-- ═══ Dialogs ═══ -->
   <data name="Dialog.ChoreCreate.Title"><value>Neue Hausarbeit</value></data>

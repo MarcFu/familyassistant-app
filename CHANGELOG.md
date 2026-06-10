@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - BUG-006: Reduced Home Assistant CPU spikes by skipping unchanged REST state writes, repeated todo item adds, and redundant switch service calls
 - BUG-007: Fixed mobile picker row wrapping and Sunday-based week calculations for task filters, dashboard stats, and X-times-per-week scheduling
 - BUG-008: Fixed production circuit crashes when opening the trigger entity picker after adding the initial HA entity render limit
+- BUG-009: Fixed importing available Home Assistant persons when clicking the plus button in settings
+- BUG-010: Added continuous Home Assistant WebSocket reconnect with subscription restore after disconnects
 
 ## [0.1.7] - 2025-05-29
 

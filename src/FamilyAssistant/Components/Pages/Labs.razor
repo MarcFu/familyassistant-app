@@ -1,0 +1,58 @@
+@page "/labs"
+@rendermode InteractiveServer
+@inject AddonOptionsService AddonOptions
+@inject IFeatureFlagsService FeatureFlags
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<SharedResource> L
+@inject NavigationManager Navigation
+
+<PageTitle>@L["PageTitle.Labs"]</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-2">@L["Labs.Title"]</MudText>
+<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">@L["Labs.Description"]</MudText>
+
+@if (_loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudPaper Outlined="true" Class="pa-4">
+        <div class="d-flex justify-space-between align-start flex-wrap gap-3">
+            <div style="min-width: 0;">
+                <div class="d-flex align-center gap-2 mb-1 flex-wrap">
+                    <MudText Typo="Typo.h6">@L["Labs.Recipes.Title"]</MudText>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">@L["Labs.ExperimentalBadge"]</MudChip>
+                </div>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Labs.Recipes.Description"]</MudText>
+            </div>
+            <MudSwitch T="bool" Value="_recipesEnabled" ValueChanged="ToggleRecipesAsync"
+                       Color="Color.Primary" Label="@L["Labs.Feature.Enabled"].Value" />
+        </div>
+    </MudPaper>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _recipesEnabled;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AddonOptions.DevMode)
+        {
+            Navigation.NavigateTo("");
+            return;
+        }
+
+        _recipesEnabled = await FeatureFlags.IsRecipesEnabledAsync();
+        _loading = false;
+    }
+
+    private async Task ToggleRecipesAsync(bool enabled)
+    {
+        _recipesEnabled = enabled;
+        await FeatureFlags.SetRecipesEnabledAsync(enabled);
+        Snackbar.Add(enabled ? L["Labs.Recipes.Snackbar.Enabled"] : L["Labs.Recipes.Snackbar.Disabled"], Severity.Success);
+        StateHasChanged();
+    }
+}

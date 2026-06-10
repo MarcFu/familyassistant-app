@@ -23,9 +23,16 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
     // ─── WebSocket State ────────────────────────────────────────
     private ClientWebSocket? _ws;
     private readonly SemaphoreSlim _wsLock = new(1, 1);
+    private readonly object _reconnectLock = new();
+    private readonly CancellationTokenSource _disposeCts = new();
     private int _messageId;
     private CancellationTokenSource? _wsLoopCts;
     private Task? _wsLoopTask;
+    private Task? _reconnectTask;
+    private bool _disposed;
+
+    private static readonly TimeSpan ReconnectInitialDelay = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan ReconnectMaxDelay = TimeSpan.FromMinutes(1);
 
     // Pending requests waiting for a response (id → TaskCompletionSource)
     private readonly ConcurrentDictionary<int, TaskCompletionSource<JsonElement>> _pendingRequests = new();
@@ -388,6 +395,10 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
             if (_ws?.State == WebSocketState.Open)
                 return;
 
+            _wsLoopCts?.Cancel();
+            _wsLoopCts?.Dispose();
+            _wsLoopCts = null;
+            _wsLoopTask = null;
             _ws?.Dispose();
             _ws = new ClientWebSocket();
 
@@ -403,8 +414,9 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
             var msg = await ReceiveMessageAsync(ct);
             if (msg.GetProperty("type").GetString() != "auth_required")
             {
-                _logger.LogError("Unexpected first WebSocket message: {Type}", msg.GetProperty("type").GetString());
-                return;
+                var messageType = msg.GetProperty("type").GetString();
+                _logger.LogError("Unexpected first WebSocket message: {Type}", messageType);
+                throw new InvalidOperationException($"Unexpected first WebSocket message: {messageType}");
             }
 
             // Send auth
@@ -417,13 +429,13 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
             {
                 _logger.LogError("WebSocket auth failed: {Type}", authResult);
                 await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Auth failed", ct);
-                return;
+                throw new InvalidOperationException($"WebSocket auth failed: {authResult}");
             }
 
             _logger.LogInformation("WebSocket connected and authenticated to Home Assistant");
 
             // Start message loop
-            _wsLoopCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            _wsLoopCts = CancellationTokenSource.CreateLinkedTokenSource(ct, _disposeCts.Token);
             _wsLoopTask = Task.Run(() => WebSocketMessageLoop(_wsLoopCts.Token), _wsLoopCts.Token);
 
             // Notify subscribers (theme service, etc.)
@@ -502,26 +514,69 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
             }
         }
 
-        // Attempt reconnect if not intentionally cancelled
-        if (!ct.IsCancellationRequested)
+        if (!ct.IsCancellationRequested && !_disposeCts.IsCancellationRequested)
         {
-            _ = Task.Run(async () =>
+            FailPendingWebSocketRequests(new WebSocketException("WebSocket disconnected"));
+            if (_monitorSubscriptionId != 0)
+                _monitorSubscriptionId = 0;
+
+            StartReconnectLoop();
+        }
+    }
+
+    private void StartReconnectLoop()
+    {
+        lock (_reconnectLock)
+        {
+            if (_disposed)
+                return;
+
+            if (_reconnectTask is { IsCompleted: false })
+                return;
+
+            // BUG-010: Keep retrying after a dropped HA WebSocket instead of making one reconnect attempt.
+            _reconnectTask = Task.Run(() => ReconnectLoopAsync(_disposeCts.Token), _disposeCts.Token);
+        }
+    }
+
+    private async Task ReconnectLoopAsync(CancellationToken ct)
+    {
+        var delay = ReconnectInitialDelay;
+
+        while (!ct.IsCancellationRequested)
+        {
+            try
             {
-                await Task.Delay(TimeSpan.FromSeconds(5), ct);
-                _logger.LogInformation("Attempting WebSocket reconnect...");
-                try
-                {
-                    await ConnectWebSocketAsync(ct);
-                    // Re-subscribe after reconnect
-                    await ResubscribeAllAsync(ct);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "WebSocket reconnect failed, will retry in 30s");
-                    await Task.Delay(TimeSpan.FromSeconds(30), ct);
-                    // Recursive retry (with backoff built into the loop above)
-                }
-            }, ct);
+                await Task.Delay(delay, ct);
+                _logger.LogInformation("Attempting Home Assistant WebSocket reconnect...");
+
+                await ConnectWebSocketAsync(ct);
+                await ResubscribeAllAsync(ct);
+
+                if (IsEventLoggingEnabled)
+                    await StartEventMonitorAsync(ct);
+
+                _logger.LogInformation("Home Assistant WebSocket reconnected successfully");
+                return;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Home Assistant WebSocket reconnect failed; retrying in {Delay}s", delay.TotalSeconds);
+                delay = TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds * 2, ReconnectMaxDelay.TotalSeconds));
+            }
+        }
+    }
+
+    private void FailPendingWebSocketRequests(Exception exception)
+    {
+        foreach (var (id, tcs) in _pendingRequests.ToArray())
+        {
+            if (_pendingRequests.TryRemove(id, out _))
+                tcs.TrySetException(exception);
         }
     }
 
@@ -718,8 +773,12 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
+        _disposeCts.Cancel();
         _wsLoopCts?.Cancel();
         _ws?.Dispose();
+        FailPendingWebSocketRequests(new ObjectDisposedException(nameof(HomeAssistantService)));
+        _disposeCts.Dispose();
         _wsLock.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -796,7 +855,11 @@ public class HomeAssistantService : IHomeAssistantService, IDisposable
 
     public async Task StopEventMonitorAsync(CancellationToken ct = default)
     {
-        if (_monitorSubscriptionId == 0) return;
+        if (_monitorSubscriptionId == 0)
+        {
+            IsEventLoggingEnabled = false;
+            return;
+        }
 
         if (IsWebSocketConnected)
         {

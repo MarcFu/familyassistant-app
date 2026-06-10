@@ -1,0 +1,139 @@
+@inject FamilyAssistant.Data.AppDbContext Db
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<SharedResource> L
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">@L["Dialog.RecipeImport.Description"]</MudText>
+        <MudTabs ActivePanelIndex="_activePanelIndex" ActivePanelIndexChanged="OnActivePanelChanged" Rounded="true" Class="mb-3">
+            <MudTabPanel Text="@L["Dialog.RecipeImport.TabUrl"].Value">
+                <MudTextField @bind-Value="_url" Label="@L["Dialog.RecipeImport.Url"].Value"
+                              Placeholder="https://..." Variant="Variant.Filled" Disabled="_submitting" Class="mt-3 mb-3" />
+            </MudTabPanel>
+            <MudTabPanel Text="@L["Dialog.RecipeImport.TabText"].Value">
+                <MudSelect T="RecipeSourceType" @bind-Value="_textSourceType" Label="@L["Recipes.SourceType"].Value"
+                           Variant="Variant.Filled" Disabled="_submitting" Class="mt-3 mb-3">
+                    <MudSelectItem T="RecipeSourceType" Value="RecipeSourceType.Text">@L["Recipes.SourceType.Text"]</MudSelectItem>
+                    <MudSelectItem T="RecipeSourceType" Value="RecipeSourceType.WhatsApp">@L["Recipes.SourceType.WhatsApp"]</MudSelectItem>
+                    <MudSelectItem T="RecipeSourceType" Value="RecipeSourceType.Instagram">@L["Recipes.SourceType.Instagram"]</MudSelectItem>
+                </MudSelect>
+                <MudTextField @bind-Value="_text" Label="@L["Dialog.RecipeImport.Text"].Value"
+                              Placeholder="@L["Dialog.RecipeImport.TextPlaceholder"].Value"
+                              Variant="Variant.Filled" Lines="10" Disabled="_submitting" Class="mb-3" />
+            </MudTabPanel>
+        </MudTabs>
+        <MudPaper Outlined="true" Class="pa-3 mb-3">
+            <MudSelect T="RecipeImportQuality" @bind-Value="_quality" Label="@L["Dialog.RecipeImport.Quality"].Value"
+                       Variant="Variant.Filled" Disabled="_submitting" Class="mb-2">
+                <MudSelectItem T="RecipeImportQuality" Value="RecipeImportQuality.SimpleParsing">@L["Dialog.RecipeImport.Quality.SimpleParsing"]</MudSelectItem>
+                <MudSelectItem T="RecipeImportQuality" Value="RecipeImportQuality.QuickAi">@L["Dialog.RecipeImport.Quality.QuickAi"]</MudSelectItem>
+                <MudSelectItem T="RecipeImportQuality" Value="RecipeImportQuality.MediumAi">@L["Dialog.RecipeImport.Quality.MediumAi"]</MudSelectItem>
+                <MudSelectItem T="RecipeImportQuality" Value="RecipeImportQuality.HighAi">@L["Dialog.RecipeImport.Quality.HighAi"]</MudSelectItem>
+            </MudSelect>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@GetQualityHint()</MudText>
+        </MudPaper>
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+        }
+        @if (_submitting)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-2" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Dialog.RecipeImport.Queueing"]</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="CancelOrAbort">
+            @L["Common.Cancel"]
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download"
+                   Disabled="@(_submitting || !CanImport)" OnClick="ImportAsync">
+            @L["Dialog.RecipeImport.Enqueue"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private string? _url;
+    private string? _text;
+    private RecipeSourceType _textSourceType = RecipeSourceType.WhatsApp;
+    private RecipeImportQuality _quality = RecipeImportQuality.HighAi;
+    private string? _error;
+    private bool _submitting;
+    private int _activePanelIndex;
+
+    private bool CanImport => _activePanelIndex == 0
+        ? !string.IsNullOrWhiteSpace(_url)
+        : !string.IsNullOrWhiteSpace(_text);
+
+    private async Task ImportAsync()
+    {
+        if (!CanImport)
+        {
+            return;
+        }
+
+        _submitting = true;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            var candidate = new RecipeImportCandidate
+            {
+                SourceType = _activePanelIndex == 0 ? RecipeSourceType.Url : _textSourceType,
+                SourceUrl = _activePanelIndex == 0 ? _url!.Trim() : null,
+                SourceText = _activePanelIndex == 0 ? null : _text!.Trim(),
+                TargetLanguage = GetCurrentLanguage(),
+                Quality = _quality,
+                Status = RecipeImportCandidateStatus.Requested,
+                ProgressPercent = 0,
+                ProgressMessage = L["Dialog.RecipeImport.Requested"].Value,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            Db.RecipeImportCandidates.Add(candidate);
+            await Db.SaveChangesAsync();
+            MudDialog.Close(DialogResult.Ok(candidate.Id));
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            Snackbar.Add(string.Format(L["Common.Snackbar.Error"], ex.Message), Severity.Error);
+        }
+        finally
+        {
+            _submitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnActivePanelChanged(int index)
+    {
+        _activePanelIndex = index;
+        _error = null;
+    }
+
+    private string GetQualityHint() => _quality switch
+    {
+        RecipeImportQuality.SimpleParsing => L["Dialog.RecipeImport.QualityHint.SimpleParsing"].Value,
+        RecipeImportQuality.QuickAi => L["Dialog.RecipeImport.QualityHint.QuickAi"].Value,
+        RecipeImportQuality.MediumAi => L["Dialog.RecipeImport.QualityHint.MediumAi"].Value,
+        RecipeImportQuality.HighAi => L["Dialog.RecipeImport.QualityHint.HighAi"].Value,
+        _ => string.Empty
+    };
+
+    private static string GetCurrentLanguage()
+    {
+        var language = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.ToLowerInvariant();
+        return language is "de" or "fr" ? language : "en";
+    }
+
+    private void CancelOrAbort()
+    {
+        MudDialog.Cancel();
+    }
+}

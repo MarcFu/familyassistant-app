@@ -185,7 +185,12 @@
                                     <MudText Typo="Typo.body1">@person.FriendlyName</MudText>
                                     <MudText Typo="Typo.caption" Color="Color.Secondary">@person.EntityId</MudText>
                                 </div>
-                                <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary" />
+                                @* BUG-009: The nested icon button must import directly; its click does not reliably bubble to the card. *@
+                                <span @onclick:stopPropagation="true">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary"
+                                                   Disabled="_importingPersonEntityIds.Contains(person.EntityId)"
+                                                   OnClick="@(() => ImportPerson(person))" />
+                                </span>
                             </div>
                         </MudPaper>
                     </MudItem>
@@ -466,6 +471,7 @@
     private int _activePanelIndex;
     private List<Person> _managedPersons = [];
     private List<HaPerson> _availablePersons = [];
+    private HashSet<string> _importingPersonEntityIds = [];
 
     // Icon settings
     private IconMode _iconMode = IconMode.Keyword;
@@ -608,20 +614,41 @@
 
     private async Task ImportPerson(HaPerson haPerson)
     {
-        var person = new Person
-        {
-            HaEntityId = haPerson.EntityId,
-            Name = haPerson.FriendlyName,
-            EntityPicture = haPerson.EntityPicture,
-            HaUserId = haPerson.UserId,
-            Role = PersonRole.Child, // Default, can be changed
-            Credits = 0
-        };
+        if (!_importingPersonEntityIds.Add(haPerson.EntityId))
+            return;
 
-        Db.Persons.Add(person);
-        await Db.SaveChangesAsync();
-        await LoadDataAsync();
-        StateHasChanged();
+        try
+        {
+            if (await Db.Persons.AnyAsync(p => p.HaEntityId == haPerson.EntityId))
+            {
+                await LoadDataAsync();
+                return;
+            }
+
+            var person = new Person
+            {
+                HaEntityId = haPerson.EntityId,
+                Name = haPerson.FriendlyName,
+                EntityPicture = haPerson.EntityPicture,
+                HaUserId = haPerson.UserId,
+                Role = PersonRole.Child, // Default, can be changed
+                Credits = 0
+            };
+
+            Db.Persons.Add(person);
+            await Db.SaveChangesAsync();
+            Snackbar.Add(string.Format(L["Settings.Snackbar.PersonImported"], person.Name), Severity.Success);
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(string.Format(L["Common.Snackbar.Error"], ex.Message), Severity.Error);
+        }
+        finally
+        {
+            _importingPersonEntityIds.Remove(haPerson.EntityId);
+            StateHasChanged();
+        }
     }
 
     private async Task OnRoleChanged(Person person, PersonRole newRole)

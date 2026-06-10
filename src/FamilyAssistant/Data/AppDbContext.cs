@@ -20,6 +20,17 @@ public class AppDbContext : DbContext
     public DbSet<TaskAttachment> TaskAttachments => Set<TaskAttachment>();
     public DbSet<EventTrigger> EventTriggers => Set<EventTrigger>();
     public DbSet<PersonAchievement> PersonAchievements => Set<PersonAchievement>();
+    public DbSet<Recipe> Recipes => Set<Recipe>();
+    public DbSet<RecipeCategory> RecipeCategories => Set<RecipeCategory>();
+    public DbSet<RecipeTag> RecipeTags => Set<RecipeTag>();
+    public DbSet<RecipeIngredientGroup> RecipeIngredientGroups => Set<RecipeIngredientGroup>();
+    public DbSet<RecipeIngredient> RecipeIngredients => Set<RecipeIngredient>();
+    public DbSet<RecipeStep> RecipeSteps => Set<RecipeStep>();
+    public DbSet<RecipeStepIngredient> RecipeStepIngredients => Set<RecipeStepIngredient>();
+    public DbSet<RecipeImage> RecipeImages => Set<RecipeImage>();
+    public DbSet<RecipeStepImage> RecipeStepImages => Set<RecipeStepImage>();
+    public DbSet<RecipeImportCandidate> RecipeImportCandidates => Set<RecipeImportCandidate>();
+    public DbSet<RecipeImportTraceEntry> RecipeImportTraceEntries => Set<RecipeImportTraceEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -196,6 +207,133 @@ public class AppDbContext : DbContext
 
             // Each person can unlock each achievement only once
             entity.HasIndex(pa => new { pa.PersonId, pa.AchievementKey }).IsUnique();
+        });
+
+        // --- RecipeCategory ---
+        modelBuilder.Entity<RecipeCategory>(entity =>
+        {
+            entity.HasOne(c => c.ParentCategory)
+                .WithMany(c => c.Children)
+                .HasForeignKey(c => c.ParentCategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(c => new { c.ParentCategoryId, c.Name });
+        });
+
+        // --- RecipeTag ---
+        modelBuilder.Entity<RecipeTag>(entity =>
+        {
+            entity.HasIndex(t => t.Name).IsUnique();
+        });
+
+        // --- Recipe ---
+        modelBuilder.Entity<Recipe>(entity =>
+        {
+            entity.HasOne(r => r.Category)
+                .WithMany(c => c.Recipes)
+                .HasForeignKey(r => r.CategoryId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasMany(r => r.Tags)
+                .WithMany(t => t.Recipes)
+                .UsingEntity("RecipeRecipeTags");
+
+            entity.HasIndex(r => r.Name);
+        });
+
+        // --- RecipeImportCandidate ---
+        modelBuilder.Entity<RecipeImportCandidate>(entity =>
+        {
+            entity.HasIndex(j => new { j.Status, j.CreatedAt });
+            entity.HasIndex(j => j.UpdatedAt);
+            entity.HasIndex(j => j.HeartbeatAt);
+        });
+
+        // --- RecipeImportTraceEntry ---
+        modelBuilder.Entity<RecipeImportTraceEntry>(entity =>
+        {
+            entity.HasOne(e => e.Candidate)
+                .WithMany(c => c.TraceEntries)
+                .HasForeignKey(e => e.CandidateId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.CandidateId, e.AttemptNumber, e.SortOrder });
+        });
+
+        // --- RecipeIngredient ---
+        modelBuilder.Entity<RecipeIngredientGroup>(entity =>
+        {
+            entity.HasOne(g => g.Recipe)
+                .WithMany(r => r.IngredientGroups)
+                .HasForeignKey(g => g.RecipeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(g => new { g.RecipeId, g.SortOrder });
+        });
+
+        modelBuilder.Entity<RecipeIngredient>(entity =>
+        {
+            entity.HasOne(i => i.Recipe)
+                .WithMany(r => r.Ingredients)
+                .HasForeignKey(i => i.RecipeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(i => i.Group)
+                .WithMany(g => g.Ingredients)
+                .HasForeignKey(i => i.GroupId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(i => new { i.RecipeId, i.SortOrder });
+            entity.HasIndex(i => new { i.RecipeId, i.MarkerToken });
+        });
+
+        // --- RecipeStep ---
+        modelBuilder.Entity<RecipeStep>(entity =>
+        {
+            entity.HasOne(s => s.Recipe)
+                .WithMany(r => r.Steps)
+                .HasForeignKey(s => s.RecipeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(s => new { s.RecipeId, s.SortOrder });
+        });
+
+        // --- RecipeStepImage ---
+        modelBuilder.Entity<RecipeStepImage>(entity =>
+        {
+            entity.HasOne(i => i.RecipeStep)
+                .WithMany(s => s.Images)
+                .HasForeignKey(i => i.RecipeStepId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(i => new { i.RecipeStepId, i.CreatedAt });
+        });
+
+        // --- RecipeStepIngredient ---
+        modelBuilder.Entity<RecipeStepIngredient>(entity =>
+        {
+            entity.HasKey(link => new { link.RecipeStepId, link.RecipeIngredientId });
+
+            entity.HasOne(link => link.RecipeStep)
+                .WithMany(step => step.Ingredients)
+                .HasForeignKey(link => link.RecipeStepId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(link => link.RecipeIngredient)
+                .WithMany(ingredient => ingredient.StepLinks)
+                .HasForeignKey(link => link.RecipeIngredientId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // --- RecipeImage ---
+        modelBuilder.Entity<RecipeImage>(entity =>
+        {
+            entity.HasOne(i => i.Recipe)
+                .WithMany(r => r.Images)
+                .HasForeignKey(i => i.RecipeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(i => new { i.RecipeId, i.CreatedAt });
         });
     }
 }

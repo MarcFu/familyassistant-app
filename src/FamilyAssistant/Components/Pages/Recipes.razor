@@ -1,0 +1,388 @@
+@page "/recipes"
+@rendermode InteractiveServer
+@inject FamilyAssistant.Data.AppDbContext Db
+@inject IFeatureFlagsService FeatureFlags
+@inject RecipeImageStorageService RecipeImageStorage
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<SharedResource> L
+@inject NavigationManager Navigation
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>@L["PageTitle.Recipes"]</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">@L["Recipes.Title"]</MudText>
+
+@if (_loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@string.Format(L["Common.Snackbar.Error"], _loadError)</MudAlert>
+}
+else
+{
+    @if (_openImportCount > 0)
+    {
+        <MudPaper Outlined="true" Class="pa-3 mb-4">
+            <div class="d-flex justify-space-between align-center gap-2 mb-3">
+                <div>
+                    <MudText Typo="Typo.h6">@L["Recipes.ImportCandidates"]</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@string.Format(L["Recipes.ImportCandidates.OpenCount"].Value, _openImportCount)</MudText>
+                </div>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.List" OnClick="OpenImportCandidates">
+                    @L["Recipes.ImportCandidates.Open"]
+                </MudButton>
+            </div>
+        </MudPaper>
+    }
+
+    <div class="d-flex align-center flex-wrap gap-3 mb-4">
+        <DebouncedTextField Value="@_search" ValueChanged="OnSearchChanged"
+                            Placeholder="@L["Common.Search"].Value" Adornment="Adornment.Start"
+                            AdornmentIcon="@Icons.Material.Filled.Search"
+                            Variant="Variant.Filled" Margin="Margin.Dense"
+                            Style="max-width:250px;" />
+        <MudSelect T="int?" Value="_categoryId" ValueChanged="OnCategoryChanged" Variant="Variant.Filled"
+                   Margin="Margin.Dense" Style="min-width:220px;">
+            <MudSelectItem T="int?" Value="@((int?)null)">@L["Common.All"]</MudSelectItem>
+            @foreach (var category in _categories)
+            {
+                <MudSelectItem T="int?" Value="@category.Id">@GetCategoryLabel(category)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudSelect T="int?" Value="_tagId" ValueChanged="OnTagChanged" Variant="Variant.Filled"
+                   Margin="Margin.Dense" Style="min-width:220px;">
+            <MudSelectItem T="int?" Value="@((int?)null)">@L["Common.All"]</MudSelectItem>
+            @foreach (var tag in _tags)
+            {
+                <MudSelectItem T="int?" Value="@tag.Id">@tag.Name</MudSelectItem>
+            }
+        </MudSelect>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download"
+                    OnClick="OpenImportDialog">
+            @L["Recipes.Import"]
+        </MudButton>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.List"
+                   OnClick="OpenImportCandidates">
+            @L["Recipes.ImportCandidates"]
+        </MudButton>
+    </div>
+
+    @if (!_filteredRecipes.Any())
+    {
+        <MudAlert Severity="Severity.Info">@L["Recipes.Empty"]</MudAlert>
+    }
+    else
+    {
+        <div class="d-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;">
+            @foreach (var recipe in _filteredRecipes)
+            {
+                var primaryImage = recipe.Images.OrderByDescending(i => i.IsPrimary).ThenBy(i => i.CreatedAt).FirstOrDefault();
+                <MudPaper Outlined="true" Class="pa-3">
+                    @if (primaryImage is not null)
+                    {
+                        <img src="api/recipe-image/@primaryImage.Id" alt="@recipe.Name"
+                             style="width:100%; height:150px; object-fit:cover; border-radius:12px; margin-bottom:12px;" />
+                    }
+                    <div class="d-flex justify-space-between align-start gap-2 mb-2">
+                        <div style="min-width:0;">
+                            <MudText Typo="Typo.h6">@recipe.Name</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @(recipe.Category?.Name ?? L["Recipes.NoCategory"].Value)
+                            </MudText>
+                        </div>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary">
+                            @string.Format(L["Recipes.ServingsChip"].Value, RecipeScalingHelper.FormatQuantity(recipe.BaseServings))
+                        </MudChip>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(recipe.Description))
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">@recipe.Description</MudText>
+                    }
+
+                    <div class="d-flex gap-1 flex-wrap mb-3">
+                        @if (recipe.TotalTimeMinutes is int totalTime)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@string.Format(L["Recipes.TotalTimeChip"].Value, totalTime)</MudChip>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(recipe.Difficulty))
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@recipe.Difficulty</MudChip>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(recipe.SourceUrl))
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Href="@recipe.SourceUrl" Target="_blank">@(recipe.SourceName ?? L["Recipes.Source"].Value)</MudChip>
+                        }
+                    </div>
+
+                    @if (recipe.Tags.Count > 0)
+                    {
+                        <div class="d-flex gap-1 flex-wrap mb-3">
+                            @foreach (var tag in recipe.Tags.OrderBy(t => t.Name).Take(5))
+                            {
+                                <MudChip T="string" Size="Size.Small">@tag.Name</MudChip>
+                            }
+                        </div>
+                    }
+
+                    <div class="d-flex justify-end gap-1">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.MenuBook" OnClick="@(() => OpenDetails(recipe.Id))">
+                            @L["Recipes.Details"]
+                        </MudButton>
+                        <MudTooltip Text="@L["Common.Edit"].Value">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                           OnClick="@(() => OpenEditDialog(recipe.Id))" />
+                        </MudTooltip>
+                        <MudTooltip Text="@L["Common.Delete"].Value">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                           OnClick="@(() => DeleteRecipeAsync(recipe.Id))" />
+                        </MudTooltip>
+                    </div>
+                </MudPaper>
+            }
+        </div>
+    }
+}
+
+<MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+        Label="@L["Recipes.Create"].Value" Size="Size.Large" OnClick="OpenCreateDialog"
+        Style="position: fixed; bottom: 24px; right: 24px; z-index: 100;" />
+
+@code {
+    private bool _loading = true;
+    private string? _loadError;
+    private string _search = "";
+    private int? _categoryId;
+    private int? _tagId;
+    private List<RecipeCategory> _categories = [];
+    private List<RecipeTag> _tags = [];
+    private List<Recipe> _recipes = [];
+    private int _openImportCount;
+
+    private IEnumerable<Recipe> _filteredRecipes => _recipes.Where(MatchesFilter);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await FeatureFlags.IsRecipesEnabledAsync())
+        {
+            Navigation.NavigateTo("");
+            return;
+        }
+
+        try
+        {
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _categories = await Db.RecipeCategories
+            .AsNoTracking()
+            .OrderBy(c => c.Name)
+            .ToListAsync();
+
+        _tags = await Db.RecipeTags
+            .AsNoTracking()
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+
+        _recipes = await Db.Recipes
+            .AsNoTracking()
+            .Include(r => r.Category)
+            .Include(r => r.Tags)
+            .Include(r => r.Images)
+            .Include(r => r.Ingredients)
+                .ThenInclude(i => i.Group)
+            .Include(r => r.Steps)
+                .ThenInclude(s => s.Ingredients)
+                    .ThenInclude(link => link.RecipeIngredient)
+            .Include(r => r.Steps)
+                .ThenInclude(s => s.Images)
+            .OrderBy(r => r.Name)
+            .ToListAsync();
+
+        _openImportCount = await Db.RecipeImportCandidates
+            .AsNoTracking()
+            .CountAsync(c => c.Status != RecipeImportCandidateStatus.Accepted && c.Status != RecipeImportCandidateStatus.Cancelled);
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters<RecipeDialog>
+        {
+            { x => x.RecipeId, (int?)null }
+        };
+
+        var dialog = await DialogService.ShowAsync<RecipeDialog>(L["Dialog.Recipe.CreateTitle"].Value, parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await LoadDataAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenImportDialog()
+    {
+        var importDialog = await DialogService.ShowAsync<RecipeImportDialog>(L["Dialog.RecipeImport.Title"].Value,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var importResult = await importDialog.Result;
+
+        if (importResult is null || importResult.Canceled)
+        {
+            return;
+        }
+
+        Snackbar.Add(L["Recipes.ImportQueue.Started"], Severity.Info);
+        Navigation.NavigateTo("recipes/imports");
+    }
+
+    private async Task OpenEditDialog(int recipeId)
+    {
+        var parameters = new DialogParameters<RecipeDialog>
+        {
+            { x => x.RecipeId, recipeId }
+        };
+
+        var dialog = await DialogService.ShowAsync<RecipeDialog>(L["Dialog.Recipe.EditTitle"].Value, parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await LoadDataAsync();
+            StateHasChanged();
+        }
+    }
+
+    private void OpenDetails(int recipeId) => Navigation.NavigateTo($"recipes/{recipeId}");
+
+    private void OpenImportCandidates() => Navigation.NavigateTo("recipes/imports");
+
+    private async Task DeleteRecipeAsync(int recipeId)
+    {
+        var recipe = _recipes.FirstOrDefault(r => r.Id == recipeId);
+        if (recipe is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.Message, string.Format(L["Common.Confirm.DeleteRecipe"], recipe.Name) },
+            { x => x.ConfirmText, L["Common.Confirm.Yes"].Value },
+            { x => x.CancelText, L["Common.Cancel"].Value },
+            { x => x.Destructive, true }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(L["Common.Confirm.Title"].Value, parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        var entity = await Db.Recipes
+            .Include(r => r.Images)
+            .FirstOrDefaultAsync(r => r.Id == recipeId);
+        if (entity is null)
+        {
+            return;
+        }
+
+        RecipeImageStorage.DeleteRecipeImages(entity.Id);
+        Db.Recipes.Remove(entity);
+        await Db.SaveChangesAsync();
+        Snackbar.Add(string.Format(L["Recipes.Snackbar.Deleted"], recipe.Name), Severity.Success);
+        await LoadDataAsync();
+        StateHasChanged();
+    }
+
+    private Task OnSearchChanged(string? value)
+    {
+        _search = value?.Trim() ?? "";
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task OnCategoryChanged(int? value)
+    {
+        _categoryId = value;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task OnTagChanged(int? value)
+    {
+        _tagId = value;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private bool MatchesFilter(Recipe recipe)
+    {
+        if (_categoryId.HasValue && recipe.CategoryId != _categoryId.Value)
+        {
+            return false;
+        }
+
+        if (_tagId.HasValue && !recipe.Tags.Any(t => t.Id == _tagId.Value))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(_search))
+        {
+            return true;
+        }
+
+        return recipe.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || (recipe.Description?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false)
+            || recipe.Ingredients.Any(i => i.Name.Contains(_search, StringComparison.OrdinalIgnoreCase))
+            || recipe.Tags.Any(t => t.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private string GetCategoryLabel(RecipeCategory category)
+    {
+        if (category.ParentCategoryId is null)
+        {
+            return category.Name;
+        }
+
+        var parts = new List<string> { category.Name };
+        var visitedIds = new HashSet<int> { category.Id };
+        var current = category;
+        while (current.ParentCategoryId is not null)
+        {
+            var parent = _categories.FirstOrDefault(c => c.Id == current.ParentCategoryId);
+            if (parent is null || !visitedIds.Add(parent.Id))
+            {
+                break;
+            }
+
+            current = parent;
+            if (current.ParentCategoryId is null)
+            {
+                parts.Insert(0, current.Name);
+                break;
+            }
+            parts.Insert(0, current.Name);
+        }
+
+        return string.Join(" > ", parts);
+    }
+
+}

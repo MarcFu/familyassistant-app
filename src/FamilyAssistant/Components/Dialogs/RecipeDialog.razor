@@ -1,0 +1,1140 @@
+@inject FamilyAssistant.Data.AppDbContext Db
+@inject RecipeImageStorageService RecipeImageStorage
+@inject IHttpClientFactory HttpClientFactory
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<SharedResource> L
+@inject IJSRuntime JS
+@inject RecipeAiImportEnhancer RecipeAiEnhancer
+@using Microsoft.EntityFrameworkCore
+@implements IAsyncDisposable
+
+<MudDialog>
+    <DialogContent>
+        @if (_loading)
+        {
+            <MudProgressCircular Indeterminate="true" Class="mx-auto d-block my-4" />
+        }
+        else
+        {
+            <MudTextField @bind-Value="_name" Label="@L["Common.Name"].Value" Required="true"
+                          RequiredError="@L["Validation.NameRequired"].Value" Variant="Variant.Filled" Class="mb-3" />
+            <MudTextField @bind-Value="_description" Label="@L["Common.Description"].Value"
+                           Lines="3" Variant="Variant.Filled" Class="mb-3" />
+            <MudTextField @bind-Value="_notes" Label="@L["Recipes.Notes"].Value"
+                          Lines="3" Variant="Variant.Filled" Class="mb-3" />
+
+            @if (!string.IsNullOrWhiteSpace(_qualityReport))
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-3">
+                    <MudText Typo="Typo.subtitle2">@L["Dialog.Recipe.QualityReport"]</MudText>
+                    <MudText Typo="Typo.body2" Style="white-space: pre-wrap;">@_qualityReport</MudText>
+                </MudAlert>
+            }
+
+            <div class="d-flex gap-3 flex-wrap mb-3">
+                <MudTextField @bind-Value="_sourceUrl" Label="@L["Recipes.SourceUrl"].Value" Variant="Variant.Filled" Style="min-width:260px;" />
+                <MudTextField @bind-Value="_sourceName" Label="@L["Recipes.SourceName"].Value" Variant="Variant.Filled" Style="min-width:180px;" />
+                <MudSelect T="RecipeSourceType" @bind-Value="_sourceType" Label="@L["Recipes.SourceType"].Value"
+                           Variant="Variant.Filled" Style="min-width:180px;">
+                    <MudSelectItem T="RecipeSourceType" Value="RecipeSourceType.Manual">@L["Recipes.SourceType.Manual"]</MudSelectItem>
+                    <MudSelectItem T="RecipeSourceType" Value="RecipeSourceType.Url">@L["Recipes.SourceType.Url"]</MudSelectItem>
+                    <MudSelectItem T="RecipeSourceType" Value="RecipeSourceType.Text">@L["Recipes.SourceType.Text"]</MudSelectItem>
+                    <MudSelectItem T="RecipeSourceType" Value="RecipeSourceType.WhatsApp">@L["Recipes.SourceType.WhatsApp"]</MudSelectItem>
+                    <MudSelectItem T="RecipeSourceType" Value="RecipeSourceType.Instagram">@L["Recipes.SourceType.Instagram"]</MudSelectItem>
+                </MudSelect>
+                <MudTextField @bind-Value="_difficulty" Label="@L["Recipes.Difficulty"].Value" Variant="Variant.Filled" Style="min-width:160px;" />
+            </div>
+            @if (!string.IsNullOrWhiteSpace(_sourceText))
+            {
+                <MudExpansionPanels Class="mb-3">
+                    <MudExpansionPanel Text="@L["Recipes.SourceText"].Value">
+                        <MudTextField @bind-Value="_sourceText" Lines="8" Variant="Variant.Filled" />
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
+            }
+
+            <div class="d-flex gap-3 flex-wrap mb-3">
+                <MudNumericField T="int?" @bind-Value="_workTimeMinutes" Label="@L["Recipes.WorkTime"].Value" Min="0" Variant="Variant.Filled" Style="max-width:150px;" />
+                <MudNumericField T="int?" @bind-Value="_cookTimeMinutes" Label="@L["Recipes.CookTime"].Value" Min="0" Variant="Variant.Filled" Style="max-width:150px;" />
+                <MudNumericField T="int?" @bind-Value="_restTimeMinutes" Label="@L["Recipes.RestTime"].Value" Min="0" Variant="Variant.Filled" Style="max-width:150px;" />
+                <MudNumericField T="int?" @bind-Value="_totalTimeMinutes" Label="@L["Recipes.TotalTime"].Value" Min="0" Variant="Variant.Filled" Style="max-width:150px;" />
+            </div>
+
+            <div class="d-flex gap-3 flex-wrap mb-3">
+                <MudNumericField T="decimal" @bind-Value="_baseServings" Label="@L["Recipes.BaseServings"].Value"
+                                 Min="1" Max="50" Variant="Variant.Filled" Style="max-width:180px;" />
+                <MudSelect T="int?" @bind-Value="_selectedCategoryId" Label="@L["Recipes.Category"].Value"
+                           Variant="Variant.Filled" Style="min-width:240px;">
+                    <MudSelectItem T="int?" Value="@((int?)null)">@L["Recipes.NoCategory"]</MudSelectItem>
+                    @foreach (var category in _categories)
+                    {
+                        <MudSelectItem T="int?" Value="@category.Id">@category.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
+            <MudTextField @bind-Value="_newCategoryName" Label="@L["Recipes.NewCategory"].Value"
+                          Placeholder="@L["Recipes.NewCategoryHint"].Value" Variant="Variant.Filled" Class="mb-3" />
+
+            <MudTextField @bind-Value="_tagInput" Label="@L["Recipes.Tags"].Value"
+                          Placeholder="@L["Recipes.TagsHint"].Value" Variant="Variant.Filled" Class="mb-2" />
+            @if (_tagPreviewNames.Any())
+            {
+                <div class="d-flex gap-1 flex-wrap mb-3">
+                    @foreach (var tagName in _tagPreviewNames)
+                    {
+                        <MudChip T="string" Size="Size.Small">@tagName</MudChip>
+                    }
+                </div>
+            }
+
+            <MudDivider Class="my-3" />
+
+            <MudText Typo="Typo.subtitle1" Class="mb-2">@L["Recipes.Ingredients"]</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">@L["Dialog.Recipe.IngredientsHint"]</MudText>
+
+            @for (var i = 0; i < _ingredients.Count; i++)
+            {
+                var index = i;
+                var ingredient = _ingredients[i];
+                <MudPaper Outlined="true" Class="pa-3 mb-2">
+                    <div class="d-grid" style="grid-template-columns: minmax(70px, 90px) minmax(90px, 110px) minmax(160px, 1fr) auto; gap: 8px; align-items: start;">
+                        <MudNumericField T="decimal?" Value="ingredient.Quantity" ValueChanged="@(value => ingredient.Quantity = value)"
+                                         Label="@L["Recipes.Quantity"].Value" Variant="Variant.Filled" />
+                        <MudTextField T="string" @bind-Value="ingredient.Unit"
+                                      Label="@L["Recipes.Unit"].Value" Variant="Variant.Filled" />
+                        <MudTextField T="string" @bind-Value="ingredient.Name"
+                                      Label="@L["Common.Name"].Value" Variant="Variant.Filled" />
+                        <MudTooltip Text="@L["Common.Delete"].Value">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveIngredient(index))" />
+                        </MudTooltip>
+                    </div>
+                    <MudTextField T="string" @bind-Value="ingredient.Note"
+                                  Label="@L["Recipes.Note"].Value" Variant="Variant.Filled" Class="mt-2" />
+                    <MudTextField T="string" @bind-Value="ingredient.GroupName"
+                                  Label="@L["Recipes.IngredientGroup"].Value" Placeholder="@L["Recipes.IngredientGroupHint"].Value"
+                                  Variant="Variant.Filled" Class="mt-2" />
+                </MudPaper>
+            }
+
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="AddIngredient" Class="mb-4">
+                @L["Recipes.AddIngredient"]
+            </MudButton>
+
+            <MudText Typo="Typo.subtitle1" Class="mb-2">@L["Recipes.Steps"]</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">@L["Dialog.Recipe.StepsHint"]</MudText>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.AutoFixHigh"
+                       Disabled="@(_positioningChipsWithAi || _ingredients.Count == 0 || _steps.Count == 0)"
+                       OnClick="PositionIngredientChipsWithAiAsync" Class="mb-3">
+                @if (_positioningChipsWithAi)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                @L["Recipes.PositionIngredientChipsWithAi"]
+            </MudButton>
+
+            @for (var i = 0; i < _steps.Count; i++)
+            {
+                var index = i;
+                var step = _steps[i];
+                <MudPaper Outlined="true" Class="pa-3 mb-2">
+                    <div class="d-flex gap-2 align-start flex-wrap mb-2">
+                        <MudNumericField T="int" Value="step.GroupNumber" ValueChanged="@(value => step.GroupNumber = value <= 0 ? 1 : value)"
+                                         Label="@L["Recipes.ParallelGroupLabel"].Value" Min="1" Variant="Variant.Filled" Style="max-width:140px;" />
+                        <MudTooltip Text="@L["Common.Delete"].Value">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveStep(index))" />
+                        </MudTooltip>
+                    </div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">@L["Recipes.StepMarkup"].Value</MudText>
+                    <textarea @ref="step.MarkupElement"
+                              value="@GetStepMarkupEditorValue(step)"
+                              @oninput="@(args => SetStepMarkup(step, args.Value?.ToString()))"
+                              class="recipe-step-markup-input mb-2"
+                              rows="3"
+                              placeholder="@L["Recipes.StepMarkupHint"].Value"></textarea>
+                    <MudPaper Outlined="true" Class="pa-2 mb-2">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">@L["Recipes.StepMarkupPreview"]</MudText>
+                        <MudText Typo="Typo.body2">
+                            @foreach (var segment in GetStepPreviewSegments(step))
+                            {
+                                if (segment.Ingredient is not null)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined" Class="mx-1">
+                                        @GetIngredientPreview(segment.Ingredient)
+                                    </MudChip>
+                                }
+                                else
+                                {
+                                    @segment.Text
+                                }
+                            }
+                        </MudText>
+                    </MudPaper>
+                    <div class="d-flex gap-2 flex-wrap mb-2">
+                        <MudTextField T="string" @bind-Value="step.Section"
+                                      Label="@L["Recipes.StepSection"].Value" Variant="Variant.Filled" Style="min-width:200px;" />
+                        <MudTextField T="string" @bind-Value="step.ImageUrl"
+                                      Label="@L["Recipes.StepImageUrl"].Value" Variant="Variant.Filled" Style="min-width:260px;" />
+                    </div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">@L["Recipes.StepIngredients"]</MudText>
+                    <div class="d-flex gap-1 flex-wrap">
+                        @for (var ingredientIndex = 0; ingredientIndex < _ingredients.Count; ingredientIndex++)
+                        {
+                            var currentIngredient = _ingredients[ingredientIndex];
+                            var itemValue = ingredientIndex + 1;
+                            var isSelected = step.SelectedIngredientIds.Contains(itemValue);
+                            <MudChip T="string" Size="Size.Small"
+                                     Color="@(isSelected ? Color.Primary : Color.Default)"
+                                     Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                                     OnClick="@(() => InsertIngredientMarkerAsync(step, itemValue))">
+                                @GetIngredientPreview(currentIngredient)
+                            </MudChip>
+                        }
+                    </div>
+                    @if (step.SelectedIngredientIds.Count > 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">@L["Recipes.UnplacedStepIngredients"]</MudText>
+                        <div class="d-flex gap-1 flex-wrap">
+                            @foreach (var ingredientId in GetUnplacedIngredientIds(step))
+                            {
+                                var ingredient = _ingredients[ingredientId - 1];
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" OnClose="@(() => ToggleStepIngredient(step, ingredientId, false))">
+                                    @GetIngredientPreview(ingredient)
+                                </MudChip>
+                            }
+                        </div>
+                    }
+                </MudPaper>
+            }
+
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="AddStep" Class="mb-4">
+                @L["Recipes.AddStep"]
+            </MudButton>
+
+            <MudDivider Class="my-3" />
+
+            <MudText Typo="Typo.subtitle1" Class="mb-2">@L["Recipes.Photo"]</MudText>
+            @if (!string.IsNullOrWhiteSpace(_pastedImagePreviewUrl))
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-2">@L["Dialog.Recipe.PastedImageReady"]</MudAlert>
+                <img src="@_pastedImagePreviewUrl" alt="@_name"
+                     style="width:100%; max-height:220px; object-fit:cover; border-radius:12px; margin-bottom:12px;" />
+            }
+            else if (_primaryImageId is not null)
+            {
+                <img src="api/recipe-image/@_primaryImageId" alt="@_name"
+                     style="width:100%; max-height:220px; object-fit:cover; border-radius:12px; margin-bottom:12px;" />
+            }
+            else if (!string.IsNullOrWhiteSpace(_importImageUrl))
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-2">@L["Dialog.Recipe.ImportedImageHint"]</MudAlert>
+                <img src="@_importImageUrl" alt="@_name"
+                     style="width:100%; max-height:220px; object-fit:cover; border-radius:12px; margin-bottom:12px;" />
+            }
+            <div @ref="_imagePasteZone" tabindex="0">
+                <MudPaper Outlined="true" Class="pa-3 mb-3">
+                    <MudText Typo="Typo.subtitle2">@L["Dialog.Recipe.PasteImage"]</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Dialog.Recipe.PasteImageHint"]</MudText>
+                </MudPaper>
+            </div>
+            <InputFile OnChange="UploadRecipeImageAsync" accept="image/*" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">@L["Common.Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   StartIcon="@(_isNew ? Icons.Material.Filled.Add : Icons.Material.Filled.Save)"
+                   OnClick="SubmitAsync"
+                   Disabled="@(string.IsNullOrWhiteSpace(_name))">
+            @(_isNew ? L["Common.Create"] : L["Common.Save"])
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .recipe-step-markup-input {
+        width: 100%;
+        min-height: 76px;
+        padding: 12px;
+        color: inherit;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 8px;
+        font: inherit;
+        resize: vertical;
+    }
+
+    .recipe-step-markup-input:focus {
+        border-color: var(--mud-palette-primary);
+        outline: none;
+    }
+</style>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public int? RecipeId { get; set; }
+
+    [Parameter]
+    public RecipeImportDraft? ImportDraft { get; set; }
+
+    private bool _loading = true;
+    private bool _isNew;
+    private string _name = "";
+    private string? _description;
+    private string? _notes;
+    private string? _sourceUrl;
+    private string? _sourceName;
+    private RecipeSourceType _sourceType = RecipeSourceType.Manual;
+    private string? _sourceText;
+    private string? _difficulty;
+    private string? _qualityReport;
+    private int? _totalTimeMinutes;
+    private int? _workTimeMinutes;
+    private int? _cookTimeMinutes;
+    private int? _restTimeMinutes;
+    private decimal _baseServings = 4;
+    private int? _selectedCategoryId;
+    private string? _newCategoryName;
+    private string? _tagInput;
+    private int? _primaryImageId;
+    private string? _importImageUrl;
+    private ElementReference _imagePasteZone;
+    private DotNetObjectReference<RecipeDialog>? _dotNetRef;
+    private bool _pasteZoneRegistered;
+    private byte[]? _pastedImageBytes;
+    private string? _pastedImageFileName;
+    private string? _pastedImageContentType;
+    private string? _pastedImagePreviewUrl;
+    private bool _positioningChipsWithAi;
+    private List<RecipeCategory> _categories = [];
+    private List<IngredientInputModel> _ingredients = [];
+    private List<StepInputModel> _steps = [];
+
+    private IEnumerable<string> _tagPreviewNames => (_tagInput ?? string.Empty)
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Where(t => !string.IsNullOrWhiteSpace(t))
+        .Distinct(StringComparer.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isNew = RecipeId is null;
+        _categories = await Db.RecipeCategories.OrderBy(c => c.Name).ToListAsync();
+
+        if (_isNew)
+        {
+            ApplyImportDraft();
+            EnsureDefaults();
+            _loading = false;
+            return;
+        }
+
+        var recipe = await Db.Recipes
+            .Include(r => r.Tags)
+            .Include(r => r.Images)
+            .Include(r => r.IngredientGroups)
+            .Include(r => r.Ingredients)
+            .Include(r => r.Steps)
+                .ThenInclude(s => s.Ingredients)
+            .Include(r => r.Steps)
+                .ThenInclude(s => s.Images)
+            .FirstOrDefaultAsync(r => r.Id == RecipeId);
+
+        if (recipe is null)
+        {
+            Snackbar.Add(L["Recipes.Snackbar.NotFound"], Severity.Error);
+            MudDialog.Cancel();
+            return;
+        }
+
+        _name = recipe.Name;
+        _description = recipe.Description;
+        _notes = recipe.Notes;
+        _sourceUrl = recipe.SourceUrl;
+        _sourceName = recipe.SourceName;
+        _sourceType = recipe.SourceType;
+        _sourceText = recipe.SourceText;
+        _difficulty = recipe.Difficulty;
+        _totalTimeMinutes = recipe.TotalTimeMinutes;
+        _workTimeMinutes = recipe.WorkTimeMinutes;
+        _cookTimeMinutes = recipe.CookTimeMinutes;
+        _restTimeMinutes = recipe.RestTimeMinutes;
+        _baseServings = recipe.BaseServings;
+        _selectedCategoryId = recipe.CategoryId;
+        _tagInput = string.Join(", ", recipe.Tags.OrderBy(t => t.Name).Select(t => t.Name));
+        _primaryImageId = recipe.Images.OrderByDescending(i => i.IsPrimary).ThenBy(i => i.CreatedAt).Select(i => (int?)i.Id).FirstOrDefault();
+
+        var orderedIngredients = recipe.Ingredients.OrderBy(i => i.SortOrder).ToList();
+
+        _ingredients = orderedIngredients
+            .Select(i => new IngredientInputModel
+            {
+                Quantity = i.Quantity,
+                Unit = i.Unit,
+                Name = i.Name,
+                Note = i.Note,
+                GroupName = i.Group?.Name,
+                MarkerToken = string.IsNullOrWhiteSpace(i.MarkerToken) ? NewMarkerToken() : i.MarkerToken
+            })
+            .ToList();
+
+        _steps = recipe.Steps
+            .OrderBy(s => s.SortOrder)
+            .Select(s => new StepInputModel
+            {
+                Instruction = s.Instruction,
+                InstructionMarkup = string.IsNullOrWhiteSpace(s.InstructionMarkup) ? s.Instruction : s.InstructionMarkup,
+                Section = s.Section,
+                GroupNumber = s.GroupNumber,
+                ImageUrl = s.Images.OrderBy(i => i.CreatedAt).Select(i => i.SourceUrl).FirstOrDefault(),
+                SelectedIngredientIds = s.Ingredients
+                    .Select(link => orderedIngredients.FindIndex(i => i.Id == link.RecipeIngredientId) + 1)
+                    .Where(index => index > 0)
+                    .ToHashSet()
+            })
+            .ToList();
+
+        EnsureDefaults();
+        _loading = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_loading && !_pasteZoneRegistered)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("FamilyAssistantRecipeClipboard.register", _imagePasteZone, _dotNetRef);
+            _pasteZoneRegistered = true;
+        }
+    }
+
+    private void ApplyImportDraft()
+    {
+        if (ImportDraft is null)
+        {
+            return;
+        }
+
+        _name = ImportDraft.Name;
+        _description = ImportDraft.Description;
+        _notes = ImportDraft.Notes;
+        _sourceUrl = ImportDraft.SourceUrl;
+        _sourceName = ImportDraft.SourceName;
+        _sourceType = ImportDraft.SourceType;
+        _sourceText = ImportDraft.SourceText;
+        _difficulty = ImportDraft.Difficulty;
+        _qualityReport = ImportDraft.QualityReport;
+        _totalTimeMinutes = ImportDraft.TotalTimeMinutes;
+        _workTimeMinutes = ImportDraft.WorkTimeMinutes;
+        _cookTimeMinutes = ImportDraft.CookTimeMinutes;
+        _restTimeMinutes = ImportDraft.RestTimeMinutes;
+        _baseServings = ImportDraft.BaseServings <= 0 ? 4 : ImportDraft.BaseServings;
+        _importImageUrl = ImportDraft.ImageUrl;
+        _newCategoryName = ImportDraft.CategoryName;
+        _tagInput = string.Join(", ", ImportDraft.Tags);
+
+        _ingredients = ImportDraft.Ingredients
+            .Where(i => !string.IsNullOrWhiteSpace(i.Name))
+            .Select(i => new IngredientInputModel
+            {
+                Quantity = i.Quantity,
+                Unit = i.Unit,
+                Name = i.Name,
+                Note = i.Note ?? i.OriginalText,
+                GroupName = i.GroupName,
+                MarkerToken = NewMarkerToken()
+            })
+            .ToList();
+
+        var ingredientTokensByName = _ingredients
+            .Where(i => !string.IsNullOrWhiteSpace(i.Name))
+            .GroupBy(i => i.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().MarkerToken, StringComparer.OrdinalIgnoreCase);
+
+        _steps = ImportDraft.Steps
+            .Where(s => !string.IsNullOrWhiteSpace(s.Instruction))
+            .Select(s =>
+            {
+                var instructionMarkup = RecipeStepMarkupHelper.ConvertIngredientNameMarkersToTokens(s.InstructionMarkup, ingredientTokensByName)
+                    ?? s.Instruction;
+                var selectedIngredientIds = RecipeStepIngredientMatcher.ResolveStepIngredientIds(
+                    _ingredients.Select(i => i.Name).ToList(),
+                    s.IngredientNames,
+                    s.Instruction);
+                foreach (var ingredientId in GetIngredientIdsFromMarkup(instructionMarkup))
+                {
+                    selectedIngredientIds.Add(ingredientId);
+                }
+
+                return new StepInputModel
+                {
+                    Instruction = s.Instruction,
+                    InstructionMarkup = instructionMarkup,
+                    Section = s.Section,
+                    GroupNumber = s.GroupNumber <= 0 ? 1 : s.GroupNumber,
+                    ImageUrl = s.ImageUrl,
+                    SelectedIngredientIds = selectedIngredientIds
+                };
+            })
+            .ToList();
+    }
+
+    private void EnsureDefaults()
+    {
+        if (_ingredients.Count == 0)
+        {
+            _ingredients.Add(new IngredientInputModel { MarkerToken = NewMarkerToken() });
+        }
+
+        if (_steps.Count == 0)
+        {
+            _steps.Add(new StepInputModel());
+        }
+    }
+
+    private void AddIngredient() => _ingredients.Add(new IngredientInputModel { MarkerToken = NewMarkerToken() });
+
+    private void RemoveIngredient(int index)
+    {
+        if (index < 0 || index >= _ingredients.Count)
+        {
+            return;
+        }
+
+        var removedIngredientToken = _ingredients[index].MarkerToken;
+        _ingredients.RemoveAt(index);
+        var removedIngredientId = index + 1;
+        foreach (var step in _steps)
+        {
+            step.SelectedIngredientIds = step.SelectedIngredientIds
+                .Where(id => id != removedIngredientId)
+                .Select(id => id > removedIngredientId ? id - 1 : id)
+                .ToHashSet();
+            step.InstructionMarkup = RecipeStepMarkupHelper.RemoveMarkersForToken(step.InstructionMarkup, removedIngredientToken);
+            step.Instruction = RecipeStepMarkupHelper.StripMarkers(step.InstructionMarkup);
+        }
+
+        if (_ingredients.Count == 0)
+        {
+            _ingredients.Add(new IngredientInputModel { MarkerToken = NewMarkerToken() });
+        }
+    }
+
+    private void AddStep() => _steps.Add(new StepInputModel { GroupNumber = 1 });
+
+    private void RemoveStep(int index)
+    {
+        if (index < 0 || index >= _steps.Count)
+        {
+            return;
+        }
+
+        _steps.RemoveAt(index);
+        if (_steps.Count == 0)
+        {
+            _steps.Add(new StepInputModel());
+        }
+    }
+
+    private string GetIngredientPreview(IngredientInputModel ingredient)
+    {
+        var parts = new List<string>();
+        if (ingredient.Quantity is decimal quantity)
+        {
+            parts.Add(RecipeScalingHelper.FormatQuantity(quantity));
+        }
+
+        if (!string.IsNullOrWhiteSpace(ingredient.Unit))
+        {
+            parts.Add(ingredient.Unit!);
+        }
+
+        parts.Add(string.IsNullOrWhiteSpace(ingredient.Name) ? L["Recipes.IngredientPlaceholder"].Value : ingredient.Name);
+        return string.Join(" ", parts);
+    }
+
+    private void ToggleStepIngredient(StepInputModel step, int ingredientIndex, bool enabled)
+    {
+        if (enabled)
+        {
+            step.SelectedIngredientIds.Add(ingredientIndex);
+        }
+        else
+        {
+            step.SelectedIngredientIds.Remove(ingredientIndex);
+            if (ingredientIndex > 0 && ingredientIndex <= _ingredients.Count)
+            {
+                step.InstructionMarkup = RecipeStepMarkupHelper.RemoveMarkersForToken(step.InstructionMarkup, _ingredients[ingredientIndex - 1].MarkerToken);
+                step.Instruction = RecipeStepMarkupHelper.StripMarkers(step.InstructionMarkup);
+            }
+        }
+    }
+
+    private async Task InsertIngredientMarkerAsync(StepInputModel step, int ingredientIndex)
+    {
+        if (ingredientIndex <= 0 || ingredientIndex > _ingredients.Count)
+        {
+            return;
+        }
+
+        ToggleStepIngredient(step, ingredientIndex, true);
+        var marker = RecipeStepMarkupHelper.CreateMarker(_ingredients[ingredientIndex - 1].MarkerToken);
+        step.InstructionMarkup = await JS.InvokeAsync<string>("FamilyAssistantRecipeMarkup.insertAtCursor", step.MarkupElement, marker);
+        step.Instruction = RecipeStepMarkupHelper.StripMarkers(step.InstructionMarkup);
+    }
+
+    private string GetStepMarkupEditorValue(StepInputModel step)
+    {
+        return string.IsNullOrWhiteSpace(step.InstructionMarkup) ? step.Instruction : step.InstructionMarkup!;
+    }
+
+    private void SetStepMarkup(StepInputModel step, string? value)
+    {
+        step.InstructionMarkup = value ?? string.Empty;
+        step.Instruction = RecipeStepMarkupHelper.StripMarkers(step.InstructionMarkup);
+        foreach (var ingredientId in GetIngredientIdsFromMarkup(step.InstructionMarkup))
+        {
+            step.SelectedIngredientIds.Add(ingredientId);
+        }
+    }
+
+    private IEnumerable<StepPreviewSegment> GetStepPreviewSegments(StepInputModel step)
+    {
+        var segments = RecipeStepMarkupHelper.Parse(GetStepMarkupEditorValue(step));
+        if (segments.Count == 0)
+        {
+            yield return new StepPreviewSegment(step.Instruction, null);
+            yield break;
+        }
+
+        foreach (var segment in segments)
+        {
+            if (segment.IsIngredient)
+            {
+                var ingredient = _ingredients.FirstOrDefault(i => string.Equals(i.MarkerToken, segment.IngredientToken, StringComparison.OrdinalIgnoreCase));
+                if (ingredient is not null)
+                {
+                    yield return new StepPreviewSegment(null, ingredient);
+                }
+
+                continue;
+            }
+
+            yield return new StepPreviewSegment(segment.Text, null);
+        }
+    }
+
+    private HashSet<int> GetSelectedIngredientIds(StepInputModel step)
+    {
+        var selectedIds = step.SelectedIngredientIds.ToHashSet();
+        foreach (var ingredientId in GetIngredientIdsFromMarkup(step.InstructionMarkup))
+        {
+            selectedIds.Add(ingredientId);
+        }
+
+        return selectedIds;
+    }
+
+    private IEnumerable<int> GetUnplacedIngredientIds(StepInputModel step)
+    {
+        var placedTokens = RecipeStepMarkupHelper.ExtractTokens(step.InstructionMarkup);
+        return GetSelectedIngredientIds(step)
+            .Where(id => id > 0 && id <= _ingredients.Count)
+            .Where(id => !placedTokens.Contains(_ingredients[id - 1].MarkerToken))
+            .OrderBy(id => id);
+    }
+
+    private IEnumerable<int> GetIngredientIdsFromMarkup(string? markup)
+    {
+        var placedTokens = RecipeStepMarkupHelper.ExtractTokens(markup);
+        for (var index = 0; index < _ingredients.Count; index++)
+        {
+            if (placedTokens.Contains(_ingredients[index].MarkerToken))
+            {
+                yield return index + 1;
+            }
+        }
+    }
+
+    private static string NewMarkerToken() => Guid.NewGuid().ToString("N");
+
+    private async Task PositionIngredientChipsWithAiAsync()
+    {
+        _positioningChipsWithAi = true;
+        try
+        {
+            var draft = BuildCurrentDraftForAi();
+            var sourceText = BuildCurrentRecipeSourceText(draft);
+            var targetLanguage = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+            var enhancedDraft = await RecipeAiEnhancer.EnhanceAsync(
+                draft,
+                sourceText,
+                RecipeImportQuality.HighAi,
+                targetLanguage,
+                ct: CancellationToken.None);
+
+            ApplyAiStepMarkup(enhancedDraft);
+            Snackbar.Add(L["Recipes.Snackbar.IngredientChipsPositioned"], Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(string.Format(L["Common.Snackbar.Error"], ex.Message), Severity.Error);
+        }
+        finally
+        {
+            _positioningChipsWithAi = false;
+        }
+    }
+
+    private RecipeImportDraft BuildCurrentDraftForAi()
+    {
+        return new RecipeImportDraft
+        {
+            Name = string.IsNullOrWhiteSpace(_name) ? L["PageTitle.Recipes"].Value : _name.Trim(),
+            Description = _description,
+            Notes = _notes,
+            BaseServings = _baseServings <= 0 ? 1 : _baseServings,
+            CategoryName = _categories.FirstOrDefault(c => c.Id == _selectedCategoryId)?.Name ?? _newCategoryName,
+            Tags = _tagPreviewNames.ToList(),
+            TotalTimeMinutes = _totalTimeMinutes,
+            WorkTimeMinutes = _workTimeMinutes,
+            CookTimeMinutes = _cookTimeMinutes,
+            RestTimeMinutes = _restTimeMinutes,
+            Difficulty = _difficulty,
+            Ingredients = _ingredients
+                .Where(i => !string.IsNullOrWhiteSpace(i.Name))
+                .Select(i => new RecipeIngredientDraft
+                {
+                    Quantity = i.Quantity,
+                    Unit = i.Unit,
+                    Name = i.Name.Trim(),
+                    Note = i.Note,
+                    GroupName = i.GroupName
+                })
+                .ToList(),
+            Steps = _steps
+                .Where(s => !string.IsNullOrWhiteSpace(GetStepMarkupEditorValue(s)))
+                .Select(s => new RecipeStepDraft
+                {
+                    Instruction = RecipeStepMarkupHelper.StripMarkers(GetStepMarkupEditorValue(s)),
+                    InstructionMarkup = null,
+                    Section = s.Section,
+                    GroupNumber = s.GroupNumber <= 0 ? 1 : s.GroupNumber,
+                    IngredientNames = GetSelectedIngredientIds(s)
+                        .Where(id => id > 0 && id <= _ingredients.Count)
+                        .Select(id => _ingredients[id - 1].Name)
+                        .Where(name => !string.IsNullOrWhiteSpace(name))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList()
+                })
+                .ToList()
+        };
+    }
+
+    private static string BuildCurrentRecipeSourceText(RecipeImportDraft draft)
+    {
+        var lines = new List<string> { draft.Name, "", "Ingredients:" };
+        lines.AddRange(draft.Ingredients.Select(i => $"- {i.Quantity} {i.Unit} {i.Name} {i.Note}".Trim()));
+        lines.Add("Steps:");
+        lines.AddRange(draft.Steps.Select((s, index) => $"{index + 1}. {s.Instruction}"));
+        return string.Join("\n", lines);
+    }
+
+    private void ApplyAiStepMarkup(RecipeImportDraft enhancedDraft)
+    {
+        var ingredientTokensByName = _ingredients
+            .Where(i => !string.IsNullOrWhiteSpace(i.Name))
+            .GroupBy(i => i.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().MarkerToken, StringComparer.OrdinalIgnoreCase);
+        var stepCount = Math.Min(_steps.Count, enhancedDraft.Steps.Count);
+        for (var index = 0; index < stepCount; index++)
+        {
+            var aiStep = enhancedDraft.Steps[index];
+            var step = _steps[index];
+            var markup = RecipeStepMarkupHelper.ConvertIngredientNameMarkersToTokens(aiStep.InstructionMarkup, ingredientTokensByName);
+            if (!string.IsNullOrWhiteSpace(markup))
+            {
+                SetStepMarkup(step, markup);
+            }
+
+            var selectedIds = RecipeStepIngredientMatcher.ResolveStepIngredientIds(
+                _ingredients.Select(i => i.Name).ToList(),
+                aiStep.IngredientNames,
+                aiStep.Instruction);
+            foreach (var ingredientId in selectedIds)
+            {
+                step.SelectedIngredientIds.Add(ingredientId);
+            }
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            return;
+        }
+
+        var tagNames = (_tagInput ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (!string.IsNullOrWhiteSpace(_newCategoryName))
+        {
+            var trimmedCategoryName = _newCategoryName.Trim();
+            var existingCategory = await Db.RecipeCategories.FirstOrDefaultAsync(c => c.Name == trimmedCategoryName);
+            if (existingCategory is null)
+            {
+                existingCategory = new RecipeCategory { Name = trimmedCategoryName };
+                Db.RecipeCategories.Add(existingCategory);
+                await Db.SaveChangesAsync();
+            }
+
+            _selectedCategoryId = existingCategory.Id;
+        }
+
+        Recipe recipe;
+        if (_isNew)
+        {
+            recipe = new Recipe { Name = string.Empty };
+            Db.Recipes.Add(recipe);
+        }
+        else
+        {
+            recipe = await Db.Recipes
+                .Include(r => r.Images)
+                .Include(r => r.Tags)
+                .Include(r => r.IngredientGroups)
+                .Include(r => r.Ingredients)
+                .Include(r => r.Steps)
+                    .ThenInclude(s => s.Ingredients)
+                .Include(r => r.Steps)
+                    .ThenInclude(s => s.Images)
+                .FirstAsync(r => r.Id == RecipeId);
+
+            Db.RecipeStepIngredients.RemoveRange(recipe.Steps.SelectMany(s => s.Ingredients));
+            Db.RecipeStepImages.RemoveRange(recipe.Steps.SelectMany(s => s.Images));
+            Db.RecipeSteps.RemoveRange(recipe.Steps);
+            Db.RecipeIngredients.RemoveRange(recipe.Ingredients);
+            Db.RecipeIngredientGroups.RemoveRange(recipe.IngredientGroups);
+            recipe.Tags.Clear();
+        }
+
+        recipe.Name = _name.Trim();
+        recipe.Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim();
+        recipe.Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim();
+        recipe.SourceUrl = string.IsNullOrWhiteSpace(_sourceUrl) ? null : _sourceUrl.Trim();
+        recipe.SourceName = string.IsNullOrWhiteSpace(_sourceName) ? null : _sourceName.Trim();
+        recipe.SourceType = _sourceType;
+        recipe.SourceText = string.IsNullOrWhiteSpace(_sourceText) ? null : _sourceText.Trim();
+        recipe.Difficulty = string.IsNullOrWhiteSpace(_difficulty) ? null : _difficulty.Trim();
+        recipe.TotalTimeMinutes = _totalTimeMinutes;
+        recipe.WorkTimeMinutes = _workTimeMinutes;
+        recipe.CookTimeMinutes = _cookTimeMinutes;
+        recipe.RestTimeMinutes = _restTimeMinutes;
+        recipe.BaseServings = _baseServings <= 0 ? 1 : _baseServings;
+        recipe.CategoryId = _selectedCategoryId;
+        recipe.UpdatedAt = DateTime.UtcNow;
+
+        var tags = new List<RecipeTag>();
+        foreach (var tagName in tagNames)
+        {
+            var existingTag = await Db.RecipeTags.FirstOrDefaultAsync(t => t.Name == tagName);
+            if (existingTag is null)
+            {
+                existingTag = new RecipeTag { Name = tagName };
+                Db.RecipeTags.Add(existingTag);
+            }
+            tags.Add(existingTag);
+        }
+
+        recipe.Tags = tags;
+
+        var groupNames = _ingredients
+            .Select(i => i.GroupName?.Trim())
+            .Where(g => !string.IsNullOrWhiteSpace(g))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var groups = groupNames
+            .Select((name, index) => new RecipeIngredientGroup
+            {
+                Recipe = recipe,
+                Name = name!,
+                SortOrder = index + 1
+            })
+            .ToList();
+
+        recipe.IngredientGroups = groups;
+
+        var ingredientEntries = _ingredients
+            .Select((input, inputIndex) => new { Input = input, InputId = inputIndex + 1 })
+            .Where(entry => !string.IsNullOrWhiteSpace(entry.Input.Name))
+            .ToList();
+
+        var ingredients = ingredientEntries
+            .Select((entry, index) => new RecipeIngredient
+            {
+                Recipe = recipe,
+                Group = groups.FirstOrDefault(g => string.Equals(g.Name, entry.Input.GroupName?.Trim(), StringComparison.OrdinalIgnoreCase)),
+                Quantity = entry.Input.Quantity,
+                Unit = string.IsNullOrWhiteSpace(entry.Input.Unit) ? null : entry.Input.Unit.Trim(),
+                Name = entry.Input.Name.Trim(),
+                Note = string.IsNullOrWhiteSpace(entry.Input.Note) ? null : entry.Input.Note.Trim(),
+                MarkerToken = string.IsNullOrWhiteSpace(entry.Input.MarkerToken) ? NewMarkerToken() : entry.Input.MarkerToken,
+                SortOrder = index + 1
+            })
+            .ToList();
+        var ingredientsByInputId = ingredientEntries
+            .Select((entry, index) => new { entry.InputId, Ingredient = ingredients[index] })
+            .ToDictionary(entry => entry.InputId, entry => entry.Ingredient);
+
+        recipe.Ingredients = ingredients;
+
+        var stepEntries = _steps
+            .Where(s => !string.IsNullOrWhiteSpace(s.Instruction))
+            .ToList();
+
+        var steps = stepEntries
+            .Select((s, index) => new RecipeStep
+            {
+                Recipe = recipe,
+                Instruction = RecipeStepMarkupHelper.StripMarkers(GetStepMarkupEditorValue(s)),
+                InstructionMarkup = RecipeStepMarkupHelper.CleanMarkup(
+                    GetStepMarkupEditorValue(s),
+                    ingredientsByInputId.Values.Select(i => i.MarkerToken).ToHashSet(StringComparer.OrdinalIgnoreCase)),
+                Section = string.IsNullOrWhiteSpace(s.Section) ? null : s.Section.Trim(),
+                GroupNumber = s.GroupNumber <= 0 ? 1 : s.GroupNumber,
+                SortOrder = index + 1,
+                Ingredients = [],
+                Images = string.IsNullOrWhiteSpace(s.ImageUrl)
+                    ? []
+                    : [new RecipeStepImage { SourceUrl = s.ImageUrl.Trim(), CreatedAt = DateTime.UtcNow }]
+            })
+            .ToList();
+
+        for (var stepIndex = 0; stepIndex < steps.Count; stepIndex++)
+        {
+            foreach (var ingredientInputId in GetSelectedIngredientIds(stepEntries[stepIndex]).OrderBy(x => x))
+            {
+                if (!ingredientsByInputId.TryGetValue(ingredientInputId, out var ingredient))
+                {
+                    continue;
+                }
+
+                steps[stepIndex].Ingredients.Add(new RecipeStepIngredient
+                {
+                    RecipeStep = steps[stepIndex],
+                    RecipeIngredient = ingredient
+                });
+            }
+        }
+
+        recipe.Steps = steps;
+
+        await Db.SaveChangesAsync();
+
+        if (_pastedImageBytes is null && !string.IsNullOrWhiteSpace(_importImageUrl) && !recipe.Images.Any())
+        {
+            await StoreImportedImageAsync(recipe.Id, _importImageUrl);
+        }
+
+        if (_pastedImageBytes is not null)
+        {
+            await StorePastedImageAsync(recipe);
+        }
+
+        MudDialog.Close(DialogResult.Ok(recipe.Id));
+    }
+
+    private async Task StorePastedImageAsync(Recipe recipe)
+    {
+        if (_pastedImageBytes is null)
+        {
+            return;
+        }
+
+        foreach (var image in recipe.Images)
+        {
+            image.IsPrimary = false;
+        }
+
+        await using var stream = new MemoryStream(_pastedImageBytes);
+        var fileName = string.IsNullOrWhiteSpace(_pastedImageFileName) ? "clipboard-image.png" : _pastedImageFileName;
+        var (relativePath, contentType, fileSize) = await RecipeImageStorage.StoreImageAsync(recipe.Id, stream, fileName);
+        Db.RecipeImages.Add(new RecipeImage
+        {
+            RecipeId = recipe.Id,
+            FileName = fileName,
+            ContentType = string.IsNullOrWhiteSpace(_pastedImageContentType) ? contentType : _pastedImageContentType,
+            FilePath = relativePath,
+            FileSize = fileSize,
+            IsPrimary = true,
+            CreatedAt = DateTime.UtcNow
+        });
+        await Db.SaveChangesAsync();
+    }
+
+    private async Task StoreImportedImageAsync(int recipeId, string imageUrl)
+    {
+        if (!Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            return;
+        }
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            using var response = await client.GetAsync(uri);
+            response.EnsureSuccessStatusCode();
+
+            await using var stream = await response.Content.ReadAsStreamAsync();
+            var fileName = Path.GetFileName(uri.LocalPath);
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                fileName = "recipe-import.jpg";
+            }
+
+            var (relativePath, contentType, fileSize) = await RecipeImageStorage.StoreImageAsync(recipeId, stream, fileName);
+            Db.RecipeImages.Add(new RecipeImage
+            {
+                RecipeId = recipeId,
+                FileName = fileName,
+                ContentType = contentType,
+                FilePath = relativePath,
+                FileSize = fileSize,
+                IsPrimary = true,
+                CreatedAt = DateTime.UtcNow
+            });
+            await Db.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(string.Format(L["Dialog.Recipe.ImportedImageError"], ex.Message), Severity.Warning);
+        }
+    }
+
+    private async Task UploadRecipeImageAsync(InputFileChangeEventArgs args)
+    {
+        if (_isNew)
+        {
+            Snackbar.Add(L["Dialog.Recipe.SaveBeforePhoto"], Severity.Warning);
+            return;
+        }
+
+        var file = args.File;
+        if (RecipeId is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await using var stream = file.OpenReadStream(10 * 1024 * 1024);
+            using var content = new MultipartFormDataContent();
+            content.Add(new StringContent(RecipeId.Value.ToString()), "recipeId");
+
+            var streamContent = new StreamContent(stream);
+            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            content.Add(streamContent, "files", file.Name);
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "api/upload-recipe-image")
+            {
+                Content = content
+            };
+
+            using var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+            var response = await client.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            Db.ChangeTracker.Clear();
+            var recipe = await Db.Recipes.AsNoTracking().Include(r => r.Images).FirstAsync(r => r.Id == RecipeId.Value);
+            _primaryImageId = recipe.Images.OrderByDescending(i => i.IsPrimary).ThenBy(i => i.CreatedAt).Select(i => (int?)i.Id).FirstOrDefault();
+            Snackbar.Add(L["Recipes.Snackbar.ImageUploaded"], Severity.Success);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(string.Format(L["Common.Snackbar.Error"], ex.Message), Severity.Error);
+        }
+    }
+
+    [JSInvokable]
+    public Task OnRecipeImagePasted(string fileName, string contentType, string dataUrl)
+    {
+        try
+        {
+            var commaIndex = dataUrl.IndexOf(',');
+            if (commaIndex < 0)
+            {
+                throw new InvalidOperationException("Invalid image data.");
+            }
+
+            var bytes = Convert.FromBase64String(dataUrl[(commaIndex + 1)..]);
+            if (bytes.Length > 10 * 1024 * 1024)
+            {
+                throw new InvalidOperationException(L["Dialog.Recipe.PasteImageTooLarge"].Value);
+            }
+
+            _pastedImageBytes = bytes;
+            _pastedImageFileName = string.IsNullOrWhiteSpace(fileName) ? "clipboard-image.png" : fileName;
+            _pastedImageContentType = string.IsNullOrWhiteSpace(contentType) ? "image/png" : contentType;
+            _pastedImagePreviewUrl = dataUrl;
+            Snackbar.Add(L["Dialog.Recipe.PastedImageReady"], Severity.Success);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(string.Format(L["Common.Snackbar.Error"], ex.Message), Severity.Error);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = null!;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("FamilyAssistantRecipeClipboard.unregister", _imagePasteZone);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+
+        _dotNetRef?.Dispose();
+    }
+
+    private sealed class IngredientInputModel
+    {
+        public decimal? Quantity { get; set; }
+        public string? Unit { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Note { get; set; }
+        public string? GroupName { get; set; }
+        public string MarkerToken { get; set; } = NewMarkerToken();
+    }
+
+    private sealed class StepInputModel
+    {
+        public string Instruction { get; set; } = string.Empty;
+        public string? InstructionMarkup { get; set; }
+        public string? Section { get; set; }
+        public int GroupNumber { get; set; } = 1;
+        public string? ImageUrl { get; set; }
+        public HashSet<int> SelectedIngredientIds { get; set; } = [];
+        public ElementReference MarkupElement { get; set; }
+    }
+
+    private sealed record StepPreviewSegment(string? Text, IngredientInputModel? Ingredient);
+}

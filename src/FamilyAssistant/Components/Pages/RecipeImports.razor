@@ -1,0 +1,386 @@
+@page "/recipes/imports"
+@rendermode InteractiveServer
+@inject FamilyAssistant.Data.AppDbContext Db
+@inject IFeatureFlagsService FeatureFlags
+@inject RecipeImportCandidateControlService ImportControl
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<SharedResource> L
+@inject NavigationManager Navigation
+@using Microsoft.EntityFrameworkCore
+@implements IDisposable
+
+<PageTitle>@L["PageTitle.RecipeImports"]</PageTitle>
+
+<div class="d-flex justify-space-between align-center gap-3 mb-4 flex-wrap">
+    <div>
+        <MudText Typo="Typo.h4">@L["Recipes.ImportCandidates"]</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Recipes.ImportCandidates.Description"]</MudText>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToRecipes">
+            @L["Recipes.BackToRecipes"]
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download" OnClick="OpenImportDialog">
+            @L["Recipes.Import"]
+        </MudButton>
+    </div>
+</div>
+
+@if (_loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_candidates.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">@L["Recipes.ImportCandidates.Empty"]</MudAlert>
+}
+else
+{
+    <MudPaper Outlined="true" Class="pa-0">
+        @foreach (var candidate in _candidates)
+        {
+            <div class="pa-3 recipe-import-row">
+                <div class="d-flex justify-space-between align-start gap-3 flex-wrap">
+                    <div style="min-width:0; flex:1;">
+                        <MudText Typo="Typo.subtitle1">@GetCandidateTitle(candidate)</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@GetCandidateSubtitle(candidate)</MudText>
+                        @if (!string.IsNullOrWhiteSpace(candidate.ErrorMessage))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Error">@candidate.ErrorMessage</MudText>
+                        }
+                    </div>
+                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(candidate.Status)">
+                        @GetStatusLabel(candidate.Status)
+                    </MudChip>
+                </div>
+
+                @if (IsActive(candidate.Status))
+                {
+                    <MudProgressLinear Value="candidate.ProgressPercent" Min="0" Max="100" Color="Color.Primary"
+                                       Indeterminate="@(candidate.Status == RecipeImportCandidateStatus.EnhancingWithAi)" Class="mt-2 mb-1" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@candidate.ProgressMessage</MudText>
+                }
+
+                <div class="d-flex justify-end gap-1 mt-2 flex-wrap">
+                    @if (candidate.Status == RecipeImportCandidateStatus.ProposalReady)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.RateReview" OnClick="@(() => ReviewCandidateAsync(candidate.Id))">
+                            @L["Recipes.ImportQueue.Review"]
+                        </MudButton>
+                    }
+                    <MudTooltip Text="@L["Recipes.ImportCandidates.Details"].Value">
+                        <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenDetails(candidate.Id))" />
+                    </MudTooltip>
+                    @if (candidate.Status == RecipeImportCandidateStatus.Requested || IsActive(candidate.Status))
+                    {
+                        <MudTooltip Text="@L["Recipes.ImportCandidates.Pause"].Value">
+                            <MudIconButton Icon="@Icons.Material.Filled.Pause" Color="Color.Warning" Size="Size.Small" OnClick="@(() => PauseCandidateAsync(candidate.Id))" />
+                        </MudTooltip>
+                    }
+                    @if (candidate.Status is RecipeImportCandidateStatus.Paused or RecipeImportCandidateStatus.Interrupted)
+                    {
+                        <MudTooltip Text="@L["Recipes.ImportCandidates.Resume"].Value">
+                            <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Success" Size="Size.Small" OnClick="@(() => ResumeCandidateAsync(candidate.Id))" />
+                        </MudTooltip>
+                    }
+                    @if (candidate.Status is RecipeImportCandidateStatus.Failed or RecipeImportCandidateStatus.Cancelled)
+                    {
+                        <MudTooltip Text="@L["Recipes.ImportQueue.Retry"].Value">
+                            <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Primary" Size="Size.Small" OnClick="@(() => RetryCandidateAsync(candidate.Id))" />
+                        </MudTooltip>
+                    }
+                    @if (candidate.Status is not RecipeImportCandidateStatus.Accepted and not RecipeImportCandidateStatus.Cancelled)
+                    {
+                        <MudTooltip Text="@L["Recipes.ImportQueue.Cancel"].Value">
+                            <MudIconButton Icon="@Icons.Material.Filled.Cancel" Color="Color.Warning" Size="Size.Small" OnClick="@(() => CancelCandidateAsync(candidate.Id))" />
+                        </MudTooltip>
+                    }
+                    @if (!IsActive(candidate.Status))
+                    {
+                        <MudTooltip Text="@L["Common.Delete"].Value">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteCandidateAsync(candidate.Id))" />
+                        </MudTooltip>
+                    }
+                </div>
+            </div>
+            <MudDivider />
+        }
+    </MudPaper>
+}
+
+@code {
+    private bool _loading = true;
+    private List<RecipeImportCandidate> _candidates = [];
+    private PeriodicTimer? _refreshTimer;
+    private CancellationTokenSource? _refreshCts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await FeatureFlags.IsRecipesEnabledAsync())
+        {
+            Navigation.NavigateTo("");
+            return;
+        }
+
+        await LoadCandidatesAsync();
+        StartRefresh();
+        _loading = false;
+    }
+
+    private async Task LoadCandidatesAsync()
+    {
+        _candidates = await Db.RecipeImportCandidates
+            .AsNoTracking()
+            .OrderByDescending(c => c.UpdatedAt)
+            .ThenByDescending(c => c.CreatedAt)
+            .ToListAsync();
+        StateHasChanged();
+    }
+
+    private async Task OpenImportDialog()
+    {
+        var dialog = await DialogService.ShowAsync<RecipeImportDialog>(L["Dialog.RecipeImport.Title"].Value,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            Snackbar.Add(L["Recipes.ImportQueue.Started"], Severity.Info);
+            await LoadCandidatesAsync();
+        }
+    }
+
+    private async Task ReviewCandidateAsync(int candidateId)
+    {
+        var candidate = await Db.RecipeImportCandidates.AsNoTracking().FirstOrDefaultAsync(c => c.Id == candidateId);
+        if (candidate is null || string.IsNullOrWhiteSpace(candidate.DraftJson))
+        {
+            Snackbar.Add(L["Recipes.ImportQueue.ProposalMissing"], Severity.Error);
+            return;
+        }
+
+        var draft = System.Text.Json.JsonSerializer.Deserialize<RecipeImportDraft>(candidate.DraftJson, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        if (draft is null)
+        {
+            Snackbar.Add(L["Recipes.ImportQueue.ProposalMissing"], Severity.Error);
+            return;
+        }
+
+        var parameters = new DialogParameters<RecipeDialog>
+        {
+            { x => x.RecipeId, (int?)null },
+            { x => x.ImportDraft, draft }
+        };
+
+        var dialog = await DialogService.ShowAsync<RecipeDialog>(L["Dialog.RecipeImport.ReviewTitle"].Value, parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            var entity = await Db.RecipeImportCandidates.FirstOrDefaultAsync(c => c.Id == candidateId);
+            if (entity is not null)
+            {
+                entity.Status = RecipeImportCandidateStatus.Accepted;
+                entity.CompletedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.UtcNow;
+                await Db.SaveChangesAsync();
+            }
+
+            await LoadCandidatesAsync();
+        }
+    }
+
+    private async Task PauseCandidateAsync(int candidateId)
+    {
+        var candidate = await Db.RecipeImportCandidates.FirstOrDefaultAsync(c => c.Id == candidateId);
+        if (candidate is null)
+        {
+            return;
+        }
+
+        if (candidate.Status == RecipeImportCandidateStatus.Requested)
+        {
+            candidate.Status = RecipeImportCandidateStatus.Paused;
+            candidate.PausedAt = DateTime.UtcNow;
+            candidate.ProgressMessage = L["Recipes.ImportCandidates.Paused"].Value;
+        }
+        else if (IsActive(candidate.Status))
+        {
+            candidate.PauseRequested = true;
+            candidate.ProgressMessage = L["Recipes.ImportCandidates.PauseRequested"].Value;
+            ImportControl.CancelIfRunning(candidate.Id);
+        }
+
+        candidate.UpdatedAt = DateTime.UtcNow;
+        await Db.SaveChangesAsync();
+        await LoadCandidatesAsync();
+    }
+
+    private async Task ResumeCandidateAsync(int candidateId) => await ResetCandidateAsync(candidateId, clearDraft: false);
+
+    private async Task RetryCandidateAsync(int candidateId) => await ResetCandidateAsync(candidateId, clearDraft: true);
+
+    private async Task ResetCandidateAsync(int candidateId, bool clearDraft)
+    {
+        var candidate = await Db.RecipeImportCandidates.FirstOrDefaultAsync(c => c.Id == candidateId);
+        if (candidate is null)
+        {
+            return;
+        }
+
+        candidate.Status = RecipeImportCandidateStatus.Requested;
+        candidate.ProgressPercent = 0;
+        candidate.ProgressMessage = L["Dialog.RecipeImport.Requested"].Value;
+        candidate.ErrorMessage = null;
+        candidate.PausedAt = null;
+        candidate.CompletedAt = null;
+        candidate.LockedBy = null;
+        candidate.PauseRequested = false;
+        if (clearDraft)
+        {
+            candidate.DraftJson = null;
+            candidate.QualityReport = null;
+            candidate.ProposalName = null;
+        }
+        candidate.UpdatedAt = DateTime.UtcNow;
+        await Db.SaveChangesAsync();
+        await LoadCandidatesAsync();
+    }
+
+    private async Task CancelCandidateAsync(int candidateId)
+    {
+        var candidate = await Db.RecipeImportCandidates.FirstOrDefaultAsync(c => c.Id == candidateId);
+        if (candidate is null)
+        {
+            return;
+        }
+
+        candidate.Status = RecipeImportCandidateStatus.Cancelled;
+        candidate.ProgressMessage = L["Recipes.ImportQueue.Cancelled"].Value;
+        candidate.CompletedAt = DateTime.UtcNow;
+        candidate.LockedBy = null;
+        candidate.PauseRequested = false;
+        candidate.UpdatedAt = DateTime.UtcNow;
+        ImportControl.CancelIfRunning(candidate.Id);
+        await Db.SaveChangesAsync();
+        await LoadCandidatesAsync();
+    }
+
+    private async Task DeleteCandidateAsync(int candidateId)
+    {
+        var candidate = await Db.RecipeImportCandidates.FirstOrDefaultAsync(c => c.Id == candidateId);
+        if (candidate is null)
+        {
+            return;
+        }
+
+        Db.RecipeImportCandidates.Remove(candidate);
+        await Db.SaveChangesAsync();
+        await LoadCandidatesAsync();
+    }
+
+    private static bool IsActive(RecipeImportCandidateStatus status) => status is RecipeImportCandidateStatus.Fetching
+        or RecipeImportCandidateStatus.Parsing
+        or RecipeImportCandidateStatus.EnhancingWithAi;
+
+    private string GetCandidateTitle(RecipeImportCandidate candidate)
+    {
+        if (!string.IsNullOrWhiteSpace(candidate.ProposalName))
+        {
+            return candidate.ProposalName!;
+        }
+
+        if (!string.IsNullOrWhiteSpace(candidate.SourceUrl))
+        {
+            return candidate.SourceUrl!;
+        }
+
+        var text = candidate.SourceText ?? "";
+        var firstLine = text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault();
+        return string.IsNullOrWhiteSpace(firstLine) ? L["Recipes.ImportCandidates.Candidate"].Value : firstLine;
+    }
+
+    private string GetCandidateSubtitle(RecipeImportCandidate candidate)
+    {
+        var source = candidate.SourceType == RecipeSourceType.Url ? L["Dialog.RecipeImport.TabUrl"].Value : L["Dialog.RecipeImport.TabText"].Value;
+        return $"{source} · {GetQualityLabel(candidate.Quality)} · {string.Format(L["Recipes.ImportCandidates.Attempts"].Value, candidate.AttemptCount)} · {candidate.UpdatedAt:g}";
+    }
+
+    private string GetQualityLabel(RecipeImportQuality quality) => quality switch
+    {
+        RecipeImportQuality.SimpleParsing => L["Dialog.RecipeImport.Quality.SimpleParsing"].Value,
+        RecipeImportQuality.QuickAi => L["Dialog.RecipeImport.Quality.QuickAi"].Value,
+        RecipeImportQuality.MediumAi => L["Dialog.RecipeImport.Quality.MediumAi"].Value,
+        RecipeImportQuality.HighAi => L["Dialog.RecipeImport.Quality.HighAi"].Value,
+        _ => quality.ToString()
+    };
+
+    private string GetStatusLabel(RecipeImportCandidateStatus status) => status switch
+    {
+        RecipeImportCandidateStatus.Requested => L["Recipes.ImportQueue.Status.Requested"].Value,
+        RecipeImportCandidateStatus.Fetching => L["Recipes.ImportQueue.Status.Fetching"].Value,
+        RecipeImportCandidateStatus.Parsing => L["Recipes.ImportQueue.Status.Parsing"].Value,
+        RecipeImportCandidateStatus.EnhancingWithAi => L["Recipes.ImportQueue.Status.EnhancingWithAi"].Value,
+        RecipeImportCandidateStatus.ProposalReady => L["Recipes.ImportQueue.Status.ProposalReady"].Value,
+        RecipeImportCandidateStatus.Failed => L["Recipes.ImportQueue.Status.Failed"].Value,
+        RecipeImportCandidateStatus.Cancelled => L["Recipes.ImportQueue.Status.Cancelled"].Value,
+        RecipeImportCandidateStatus.Accepted => L["Recipes.ImportQueue.Status.Accepted"].Value,
+        RecipeImportCandidateStatus.Paused => L["Recipes.ImportQueue.Status.Paused"].Value,
+        RecipeImportCandidateStatus.Interrupted => L["Recipes.ImportQueue.Status.Interrupted"].Value,
+        _ => status.ToString()
+    };
+
+    private static Color GetStatusColor(RecipeImportCandidateStatus status) => status switch
+    {
+        RecipeImportCandidateStatus.ProposalReady => Color.Success,
+        RecipeImportCandidateStatus.Failed => Color.Error,
+        RecipeImportCandidateStatus.Cancelled => Color.Warning,
+        RecipeImportCandidateStatus.Paused => Color.Warning,
+        RecipeImportCandidateStatus.Interrupted => Color.Error,
+        RecipeImportCandidateStatus.EnhancingWithAi => Color.Secondary,
+        _ => Color.Primary
+    };
+
+    private void OpenDetails(int candidateId) => Navigation.NavigateTo($"recipes/imports/{candidateId}");
+    private void BackToRecipes() => Navigation.NavigateTo("recipes");
+
+    private void StartRefresh()
+    {
+        _refreshCts = new CancellationTokenSource();
+        _refreshTimer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        _ = RefreshAsync(_refreshCts.Token);
+    }
+
+    private async Task RefreshAsync(CancellationToken ct)
+    {
+        if (_refreshTimer is null)
+        {
+            return;
+        }
+
+        try
+        {
+            while (await _refreshTimer.WaitForNextTickAsync(ct))
+            {
+                await InvokeAsync(LoadCandidatesAsync);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    public void Dispose()
+    {
+        _refreshCts?.Cancel();
+        _refreshTimer?.Dispose();
+        _refreshCts?.Dispose();
+    }
+}
+
+<style>
+    .recipe-import-row + .mud-divider {
+        border-color: rgba(255,255,255,0.12);
+    }
+</style>

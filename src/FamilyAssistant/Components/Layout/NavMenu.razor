@@ -1,5 +1,6 @@
 ﻿@inject IStringLocalizer<SharedResource> L
 @inject FamilyAssistant.Services.AddonOptionsService AddonOptions
+@inject FamilyAssistant.Services.IFeatureFlagsService FeatureFlags
 
 <MudNavMenu>
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
@@ -14,12 +15,24 @@
     <MudNavLink Href="internet-rules" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Wifi">
         @L["Nav.InternetRules"]
     </MudNavLink>
+    @if (_recipesEnabled)
+    {
+        <MudNavLink Href="recipes" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.MenuBook">
+            @L["Nav.Recipes"]
+        </MudNavLink>
+        <MudNavLink Href="recipes/imports" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Download">
+            @L["Nav.RecipeImports"]
+        </MudNavLink>
+    }
     <MudDivider Class="my-2" />
     <MudNavLink Href="admin" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AdminPanelSettings">
         @L["Nav.Admin"]
     </MudNavLink>
     @if (AddonOptions.DevMode)
     {
+        <MudNavLink Href="labs" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Science">
+            @L["Nav.Labs"]
+        </MudNavLink>
         <MudNavLink Href="dev" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Code">
             @L["Nav.Dev"]
         </MudNavLink>
@@ -28,3 +41,12 @@
         @L["Nav.Settings"]
     </MudNavLink>
 </MudNavMenu>
+
+@code {
+    private bool _recipesEnabled;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _recipesEnabled = await FeatureFlags.IsRecipesEnabledAsync();
+    }
+}

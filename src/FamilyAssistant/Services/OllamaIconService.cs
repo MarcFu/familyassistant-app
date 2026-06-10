@@ -135,6 +135,47 @@ public partial class OllamaIconService
     }
 
     /// <summary>
+    /// Calls Ollama for free-form text generation. Use this for structured JSON tasks where
+    /// callers need the full response instead of the icon-specific single-token cleanup.
+    /// </summary>
+    public async Task<string?> GenerateTextAsync(
+        string prompt,
+        string ollamaUrl,
+        string model,
+        double temperature = 0.1,
+        int numPredict = 1200,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var requestBody = new
+            {
+                model,
+                prompt,
+                stream = false,
+                options = new { temperature, num_predict = numPredict }
+            };
+
+            var url = $"{ollamaUrl.TrimEnd('/')}/api/generate";
+            var response = await _httpClient.PostAsJsonAsync(url, requestBody, ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Ollama text generation returned {StatusCode}", response.StatusCode);
+                return null;
+            }
+
+            var json = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
+            return json.GetProperty("response").GetString()?.Trim();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to call Ollama at {Url} for text generation", ollamaUrl);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Check if Ollama is reachable and the model is available.
     /// </summary>
     public async Task<bool> IsAvailableAsync(string ollamaUrl, CancellationToken ct = default)
